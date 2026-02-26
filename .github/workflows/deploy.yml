@@ -1,0 +1,49 @@
+name: Deploy to Moltbook OpenClaw
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install OpenClaw CLI
+        run: npm install -g @moltbook/openclaw
+
+      - name: Deploy to Moltbook
+        env:
+          OPENCLAW_TOKEN: ${{ secrets.OPENCLAW_TOKEN }}
+        run: |
+          echo "Deploying integrity.molt to Moltbook OpenClaw..."
+          openclaw deploy \
+            --domain integrity.molt \
+            --git-url https://github.com/${{ github.repository }}.git \
+            --branch ${{ github.ref_name }} \
+            --dockerfile ./Dockerfile \
+            --memory 512MB \
+            --instances 1
+
+      - name: Verify Deployment
+        run: |
+          echo "Checking deployment status..."
+          openclaw status --domain integrity.molt
+          openclaw logs --domain integrity.molt --tail 20
+
+      - name: Notify on Success
+        if: success()
+        run: echo "✅ Deployment successful! integrity.molt is live on Moltbook OpenClaw"
+
+      - name: Notify on Failure
+        if: failure()
+        run: echo "❌ Deployment failed. Check logs above."

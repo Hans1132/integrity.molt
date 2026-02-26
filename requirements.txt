@@ -1,0 +1,25 @@
+# Python 3.11+ - Compatible Dependencies
+
+# Telegram Bot (compatible with asyncio)
+python-telegram-bot==21.0
+
+# OpenAI API
+openai>=1.0.0
+
+# Solana & Blockchain  
+solana>=0.33.0
+base58>=2.1.0
+
+# Storage & HTTP
+aiohttp>=3.9.0
+boto3>=1.26.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Logging
+python-json-logger>=2.0.7
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
