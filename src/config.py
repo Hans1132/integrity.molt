@@ -43,6 +43,10 @@ class Config:
     # Metaplex
     METAPLEX_PROGRAM_ID: str = os.getenv("METAPLEX_PROGRAM_ID", "4XKv23WzTb9ZpwLCxfQ3k2ChFmQwrUuuazpDKq3ikVSJ")
     
+    # MongoDB (Phase 3 - Real persistence layer)
+    MONGODB_URI: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017/integrity_molt")
+    DATABASE_MODE: str = os.getenv("DATABASE_MODE", "mock")  # "mock" or "real"
+    
     # Environment
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
