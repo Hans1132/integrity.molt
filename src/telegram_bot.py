@@ -175,10 +175,16 @@ async def quota_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /subscribe command - Subscribe to premium tier"""
+    """Handle /subscribe command - Subscribe to premium tier with Phantom integration"""
     from src.payment_processor import payment_processor
+    from src.phantom_wallet import phantom_wallet
+    from src.payment_signer import payment_signer
+    from src.database import db_client
     
     user_id = update.effective_user.id
+    
+    # Ensure user exists in database
+    db_client.insert_user(user_id, {"tier": "free"})
     
     # Check if already subscribed
     from src.quota_manager import quota_manager
@@ -190,39 +196,191 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             f"✅ You're already subscribed!\n\n"
             f"Current tier: {quota_info.get('tier').upper()}\n"
             f"Expires: {expires}\n\n"
-            f"Higher limits:\n"
-            f"⏱️ 10 audits/hour (vs 2)\n"
-            f"📅 50 audits/day (vs 5)\n"
-            f"📆 Unlimited monthly audits"
+            f"📊 **Your Benefits**:\n"
+            f"⏱️ {quota_info.get('hourly_limit')} audits/hour\n"
+            f"📅 {quota_info.get('daily_limit')} audits/day\n"
+            f"💰 Budget: {quota_info.get('budget_limit_sol')} SOL/month\n\n"
+            f"Want to upgrade to Premium? Use /subscribe premium"
         )
         return
     
-    # Create subscription payment request
+    # Determine tier from arguments
+    tier = "subscriber"  # default
+    if context.args and context.args[0] in ["subscriber", "premium"]:
+        tier = context.args[0]
+    
+    # Display subscription options
+    if tier == "subscriber":
+        tier_info = {
+            "price_sol": 0.1,
+            "price_usd": "$6",
+            "audits_hour": 10,
+            "audits_day": 50,
+            "audits_month": 999,
+            "benefits": [
+                "✅ 5x higher audit limits",
+                "✅ Unlimited monthly audits",
+                "✅ Priority support"
+            ]
+        }
+    else:  # premium
+        tier_info = {
+            "price_sol": 1.0,
+            "price_usd": "$60",
+            "audits_hour": 20,
+            "audits_day": 100,
+            "audits_month": 9999,
+            "benefits": [
+                "✅ Highest rate limits",
+                "✅ Truly unlimited audits",
+                "✅ Priority support",
+                "✅ API access (coming soon)",
+                "✅ Custom reports (coming soon)"
+            ]
+        }
+    
+    # Create subscription payment
     subscription_payment = payment_processor.create_subscription_payment(
         user_id=user_id,
-        tier="subscriber"
+        tier=tier
     )
     
-    if subscription_payment.get("status") == "pending":
-        amount = subscription_payment.get("amount_sol", 0.1)
-        payment_id = subscription_payment.get("payment_id", "unknown")
-        
-        message = (
-            f"⭐ **Subscribe to Premium**\n\n"
-            f"Amount: {amount} SOL (~$6 USD)\n"
-            f"Duration: 30 days\n\n"
-            f"**You'll get**:\n"
-            f"✅ 5x higher audit limits\n"
-            f"✅ Unlimited monthly audits\n"
-            f"✅ Priority support\n\n"
-            f"💰 Payment ID: `{payment_id}`\n\n"
-            f"Send {amount} SOL to: [Phase 3 - Phantom wallet integration]\n"
-            f"Or reply with /confirm to retry payment"
-        )
-        await update.message.reply_text(message)
-    else:
+    if subscription_payment.get("status") != "pending":
         await update.message.reply_text(
-            "❌ Could not create subscription payment. Try again later."
+            "❌ Could not create subscription. Try again later."
+        )
+        return
+    
+    # Generate payment transaction for signing
+    payment_tx = payment_signer.create_subscription_payment_transaction(
+        payment_id=subscription_payment['payment_id'],
+        user_id=user_id,
+        amount_lamports=subscription_payment['amount_lamports'],
+        tier=tier,
+        duration_days=30
+    )
+    
+    # Create Phantom wallet signing request
+    signing_request = phantom_wallet.create_signing_request(
+        user_id=user_id,
+        transaction_type="subscription",
+        amount_lamports=subscription_payment['amount_lamports'],
+        contract_address="integrity.molt",
+        metadata={
+            "tier": tier,
+            "duration_days": 30,
+            "payment_id": subscription_payment['payment_id']
+        }
+    )
+    
+    # Build subscription message
+    benefits_list = "\n".join(tier_info["benefits"])
+    
+    message = (
+        f"⭐ **{tier.upper()} Subscription**\n\n"
+        f"💰 Price: {tier_info['price_sol']} SOL (~{tier_info['price_usd']})\n"
+        f"📅 Duration: 30 days (auto-renew)\n\n"
+        f"📊 **Your New Limits**:\n"
+        f"⏱️ {tier_info['audits_hour']} audits per hour\n"
+        f"📅 {tier_info['audits_day']} audits per day\n"
+        f"📆 {tier_info['audits_month']} audits per month\n"
+        f"💵 Budget: {'Unlimited' if tier == 'premium' else f'{tier_info[\"price_sol\"] * 100:.1f} SOL/month'}\n\n"
+        f"🎁 **What You Get**:\n"
+        f"{benefits_list}\n\n"
+        f"**Next Steps**:\n"
+        f"1️⃣ Open your Phantom wallet app or browser extension\n"
+        f"2️⃣ Look for a signing request from integrity.molt\n"
+        f"3️⃣ Review the transaction details\n"
+        f"4️⃣ Tap 'Approve' to confirm\n"
+        f"5️⃣ Your subscription will activate immediately!\n\n"
+        f"🔐 **Request ID**: `{signing_request.get('request_id')}`\n"
+        f"(Save this for support)\n\n"
+        f"📞 Questions? Type /help or reply to this message"
+    )
+    
+    await update.message.reply_text(message)
+    
+    # Send follow-up with status updates
+    import asyncio
+    await asyncio.sleep(2)
+    
+    status_msg = (
+        f"📋 **Payment Details**\n\n"
+        f"Amount: {subscription_payment['amount_sol']} SOL\n"
+        f"Recipients:\n"
+        f"  • integrity.molt (90%): {(subscription_payment['amount_lamports'] * 0.9) / 1_000_000_000:.3f} SOL\n"
+        f"  • Moltbook fee (10%): {(subscription_payment['amount_lamports'] * 0.1) / 1_000_000_000:.3f} SOL\n\n"
+        f"⏰ This request expires in 5 minutes\n\n"
+        f"💡 **Didn't see the request in your wallet?**\n"
+        f"1. Make sure you have Phantom installed\n"
+        f"2. Open Phantom and check for notifications\n"
+        f"3. Try refreshing the Phantom app\n"
+        f"4. Use the deep link below:\n"
+        f"`{signing_request.get('deeplink', 'phantom://browse')}`"
+    )
+    
+    await update.message.reply_text(status_msg)
+
+
+
+async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /history command - Show user's audit history"""
+    from src.database import db_client
+    
+    user_id = update.effective_user.id
+    
+    # Get limit from arguments (default 10)
+    limit = 10
+    if context.args:
+        try:
+            limit = min(int(context.args[0]), 50)  # Max 50
+        except ValueError:
+            pass
+    
+    try:
+        # Retrieve audit history from database
+        audits = db_client.get_user_audits(user_id, limit=limit)
+        
+        if not audits:
+            await update.message.reply_text(
+                "📭 No audit history yet.\n\n"
+                "Start with `/audit <contract_address>` to perform your first security analysis!"
+            )
+            return
+        
+        # Format history
+        history_msg = f"📚 **Your Audit History** ({len(audits)} audits)\n\n"
+        
+        for i, audit in enumerate(audits, 1):
+            contract_short = audit.get("contract_address", "unknown")[:16]
+            risk = audit.get("risk_score", "N/A")
+            date = audit.get("created_at", "unknown")[:10]  # YYYY-MM-DD
+            status_emoji = {
+                1: "🟩", 2: "🟩", 3: "🟨", 4: "🟨", 5: "🟨",
+                6: "🟧", 7: "🟧", 8: "🔴", 9: "🔴", 10: "🔴"
+            }.get(risk, "⚪")
+            
+            history_msg += (
+                f"{i}. {status_emoji} **Risk {risk}/10** | {date}\n"
+                f"   Contract: `{contract_short}...`\n"
+            )
+            
+            if audit.get("r2_url"):
+                history_msg += f"   📄 [View Report]({audit['r2_url']})\n"
+            
+            history_msg += "\n"
+        
+        # Pagination info
+        if len(audits) >= limit:
+            history_msg += f"📌 Showing {limit} most recent audits\n"
+            history_msg += f"Use `/history 20` to see more (max 50)"
+        
+        await update.message.reply_text(history_msg)
+    
+    except Exception as e:
+        logger.error(f"❌ History retrieval failed: {e}")
+        await update.message.reply_text(
+            "❌ Error retrieving history. Try again later."
         )
 
 
@@ -264,6 +422,7 @@ def main() -> None:
     app.add_handler(CommandHandler("status", status_command))
     app.add_handler(CommandHandler("quota", quota_command))
     app.add_handler(CommandHandler("subscribe", subscribe_command))
+    app.add_handler(CommandHandler("history", history_command))
     
     # Start bot
     logger.info("🤖 integrity.molt bot starting...")
