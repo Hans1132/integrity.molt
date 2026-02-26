@@ -49,11 +49,11 @@ Create/verify critical variables for production:
 **Required:**
 ```bash
 # Telegram
-TELEGRAM_TOKEN=8781568638:AAHuk9md08bcsfoYCd3aLibR7R2GaW73UAM
+TELEGRAM_TOKEN=your_telegram_token_here
 ENVIRONMENT=production
 
 # OpenAI
-OPENAI_API_KEY=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
+OPENAI_API_KEY=sk-proj-your-api-key-here
 
 # Solana
 SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
@@ -67,9 +67,9 @@ DATABASE_MODE=real
 **Optional but Recommended:**
 ```bash
 # Cloudflare R2 (Phase 2)
-R2_ACCOUNT_ID=gkeOGM3HNTxjTlmcmQj2uywLUh7tkPALPVyZEv2v
-R2_ACCESS_KEY_ID=ab1eadc973a21b62dda09de87e3c8fd5
-R2_SECRET_ACCESS_KEY=466879f7d985217ec00a3adda8460e775caea18055cd1e5e8c534391ce5a7308
+R2_ACCOUNT_ID=your_account_id_here
+R2_ACCESS_KEY_ID=your_access_key_id_here
+R2_SECRET_ACCESS_KEY=your_secret_access_key_here
 
 # Logging
 LOG_LEVEL=INFO
@@ -100,9 +100,9 @@ ENVIRONMENT=production
 
 5. **Get Connection String:**
    ```
-   mongodb+srv://lickohonza_db_user:hm4PjMqKMVUsvFzw@cluster.mongodb.net/integrity_molt
+   mongodb+srv://integrity_user:your_password@cluster.mongodb.net/integrity_molt
    ```
-   - Note: Replace PASSWORD with your actual password
+   - Note: Replace `your_password` with your actual database password
 
 6. **Whitelist IP:**
    - Go to Network Access → IP Whitelist
@@ -118,7 +118,7 @@ ENVIRONMENT=production
    - Bot username: `integrity_molt_bot`
 4. Copy the token:
    ```
-   8781568638:AAHuk9md08bcsfoYCd3aLibR7R2GaW73UAM
+   YOUR_TELEGRAM_BOT_TOKEN_HERE
    ```
 
 ### 5. OpenAI API Key
