@@ -13,6 +13,7 @@ base58>=2.1.0
 # Storage & HTTP
 aiohttp>=3.9.0
 boto3>=1.26.0
+httpx>=0.24.0
 
 # Configuration
 python-dotenv>=1.0.0
