@@ -3,12 +3,14 @@ Security Auditor module
 Uses GPT-4 to analyze smart contracts for vulnerabilities
 Enhanced with pattern-based detection and comprehensive vulnerability analysis
 Stores audit reports in Cloudflare R2
+Anchors audits as Metaplex Core NFTs on Solana
 """
 import logging
 import re
 from openai import OpenAI
 from src.config import Config
 from src.r2_storage import upload_audit_to_r2
+from src.metaplex_nft import create_audit_nft_anchor
 
 logger = logging.getLogger(__name__)
 client = OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -266,6 +268,18 @@ class SecurityAuditor:
             if r2_upload.get("status") == "success":
                 logger.info(f"✅ Audit stored in R2: {r2_upload.get('report_url')}")
             
+            # **STAGE 5: Anchor to Metaplex Core NFT** (on-chain proof)
+            r2_report_url = r2_upload.get("report_url") if r2_upload.get("status") == "success" else None
+            nft_result = create_audit_nft_anchor(contract_address, audit_result, r2_report_url)
+            audit_result["nft_anchor"] = nft_result
+            
+            if nft_result.get("status") == "prepared":
+                logger.info(
+                    f"✅ NFT anchor prepared | "
+                    f"Hash: {nft_result.get('audit_hash')[:16]}... | "
+                    f"Solscan: https://solscan.io/token/{contract_address[:8]}"
+                )
+            
             return audit_result
         
         except Exception as e:
@@ -328,6 +342,14 @@ def format_audit_report(audit_result: dict) -> str:
         report += f"\n\n🔗 [Full Report on R2]({r2_url})"
     elif r2_info.get("status") == "error":
         report += f"\n\n⚠️ Full report storage failed (R2 error)"
+    
+    # Add NFT anchor if available
+    nft_info = audit_result.get("nft_anchor", {})
+    if nft_info.get("status") == "prepared":
+        audit_hash = nft_info.get("audit_hash", "")[:16]
+        report += f"\n🔐 **On-Chain NFT Proof** (Phase 3): Audit hash {audit_hash}... ready for Metaplex Core"
+    elif nft_info.get("status") == "offline":
+        report += f"\n⚠️ On-chain anchoring offline (Solana RPC unavailable)"
     
     return report
 
