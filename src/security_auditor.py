@@ -5,14 +5,17 @@ Enhanced with pattern-based detection and comprehensive vulnerability analysis
 Stores audit reports in Cloudflare R2
 Anchors audits as Metaplex Core NFTs on Solana
 Calculates and tracks payment for audits
+Caches audit history for deduplication and retrieval
 """
 import logging
 import re
 from openai import OpenAI
+from datetime import datetime
 from src.config import Config
 from src.r2_storage import upload_audit_to_r2
 from src.metaplex_nft import create_audit_nft_anchor
 from src.payment_processor import payment_processor
+from src.audit_cache import cache_audit_result
 
 logger = logging.getLogger(__name__)
 client = OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -196,6 +199,34 @@ class SecurityAuditor:
         try:
             logger.info(f"Starting enhanced audit for {contract_address}")
             
+            # **STAGE 0: Check for recent cached audit** (deduplication)
+            from src.audit_cache import audit_cache
+            if user_id > 0:
+                recent_audit = audit_cache.is_recent_audit(
+                    user_id,
+                    contract_address,
+                    within_hours=24
+                )
+                
+                if recent_audit:
+                    logger.info(
+                        f"⚡ Cached audit found for {contract_address[:8]}... (user {user_id}) within 24h"
+                    )
+                    # Return cached result info
+                    return {
+                        "status": "cached",
+                        "contract_address": contract_address,
+                        "source": "cache",
+                        "message": f"Recent audit found from {recent_audit.timestamp}. Use /history to view or /audit <addr> --force to re-audit.",
+                        "cached_record": {
+                            "timestamp": recent_audit.timestamp,
+                            "risk_score": recent_audit.risk_score,
+                            "findings": recent_audit.findings_summary,
+                            "r2_url": recent_audit.r2_url
+                        }
+                    }
+            
+            
             # If no code provided, return placeholder
             if not contract_code:
                 contract_code = f"[Contract bytecode from Solana: {contract_address}]"
@@ -305,6 +336,12 @@ class SecurityAuditor:
                         f"Amount: {payment_request.get('amount_sol')} SOL"
                     )
             
+            # **STAGE 7: Cache audit result** (for history and deduplication)
+            if user_id > 0:
+                audit_id = f"audit_{user_id}_{int(datetime.utcnow().timestamp())}"
+                cache_audit_result(audit_id, user_id, contract_address, audit_result)
+                audit_result["audit_id"] = audit_id
+            
             return audit_result
         
         except Exception as e:
@@ -327,12 +364,31 @@ def format_audit_report(audit_result: dict) -> str:
     Returns:
         Formatted string for Telegram message (with emoji highlights)
     """
+    # Handle cached audit
+    if audit_result.get("status") == "cached":
+        cached = audit_result.get("cached_record", {})
+        addr_short = audit_result["contract_address"][:8]
+        
+        report = f"⚡ **Cached Audit Found** ({addr_short}...)\n\n"
+        report += f"📅 From: `{cached.get('timestamp', 'unknown')}`\n"
+        report += f"📊 Risk Score: {cached.get('risk_score', 'N/A')}\n"
+        report += f"📝 Summary: {cached.get('findings', 'N/A')}\n\n"
+        
+        if cached.get('r2_url'):
+            report += f"🔗 [Full Cached Report on R2]({cached['r2_url']})\n\n"
+        
+        report += "💡 To re-audit: `/audit <addr> --force`\n"
+        report += "📚 View history: `/history`"
+        
+        return report
+    
+    # Handle error status
     if audit_result["status"] == "error":
         return f"❌ **Audit Failed**: {audit_result.get('error', 'Unknown error')}"
     
     addr_short = audit_result["contract_address"][:8]
     addr_preview = audit_result["contract_address"][:37]
-    findings = audit_result["findings"]
+    findings = audit_result.get("findings", "")
     pattern_findings = audit_result.get("pattern_findings", [])
     code_size = audit_result.get("code_size_bytes", 0)
     
