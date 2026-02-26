@@ -49,15 +49,15 @@ Create/verify critical variables for production:
 **Required:**
 ```bash
 # Telegram
-TELEGRAM_TOKEN=your_token_here
+TELEGRAM_TOKEN=8781568638:AAHuk9md08bcsfoYCd3aLibR7R2GaW73UAM
 ENVIRONMENT=production
 
 # OpenAI
-OPENAI_API_KEY=your_openai_key_here
+OPENAI_API_KEY=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
 
 # Solana
 SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-SOLANA_PUBLIC_KEY=your_wallet_address
+SOLANA_PUBLIC_KEY=HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY
 
 # MongoDB (NEW)
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/integrity_molt
@@ -67,9 +67,9 @@ DATABASE_MODE=real
 **Optional but Recommended:**
 ```bash
 # Cloudflare R2 (Phase 2)
-R2_ACCOUNT_ID=your_r2_account_id
-R2_ACCESS_KEY_ID=your_r2_key_id
-R2_SECRET_ACCESS_KEY=your_r2_secret
+R2_ACCOUNT_ID=gkeOGM3HNTxjTlmcmQj2uywLUh7tkPALPVyZEv2v
+R2_ACCESS_KEY_ID=ab1eadc973a21b62dda09de87e3c8fd5
+R2_SECRET_ACCESS_KEY=466879f7d985217ec00a3adda8460e775caea18055cd1e5e8c534391ce5a7308
 
 # Logging
 LOG_LEVEL=INFO
@@ -100,7 +100,7 @@ ENVIRONMENT=production
 
 5. **Get Connection String:**
    ```
-   mongodb+srv://integrity_user:PASSWORD@cluster.mongodb.net/integrity_molt
+   mongodb+srv://lickohonza_db_user:hm4PjMqKMVUsvFzw@cluster.mongodb.net/integrity_molt
    ```
    - Note: Replace PASSWORD with your actual password
 
@@ -154,7 +154,7 @@ TELEGRAM_TOKEN=8781568638:AAHuk9md08...
 OPENAI_API_KEY=sk-proj-0B7ECIgj-AQp...
 SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 SOLANA_PUBLIC_KEY=3vDc6RTAmWGuvpbT6n6DdNgwafRE88nJAx7YXA64wojM
-MONGODB_URI=mongodb+srv://integrity_user:PASSWORD@cluster.mongodb.net/integrity_molt
+MONGODB_URI=mongodb+srv://lickohonza_db_user:hm4PjMqKMVUsvFzw@cluster.mongodb.net/integrity_molt
 DATABASE_MODE=real
 ENVIRONMENT=production
 LOG_LEVEL=INFO
