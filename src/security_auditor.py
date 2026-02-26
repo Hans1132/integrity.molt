@@ -1,6 +1,7 @@
 """
 Security Auditor module
-Uses GPT-4 to analyze smart contracts for vulnerabilities
+Uses GPT-4 to analyze smart contracts for vulnerabilities (PAID users)
+Free users get pattern-based analysis with free_analyzer
 Enhanced with pattern-based detection and comprehensive vulnerability analysis
 Stores audit reports in Cloudflare R2
 Anchors audits as Metaplex Core NFTs on Solana
@@ -18,6 +19,7 @@ from src.metaplex_nft import create_audit_nft_anchor
 from src.payment_processor import payment_processor
 from src.audit_cache import cache_audit_result
 from src.quota_manager import quota_manager
+from src.free_analyzer import free_analyzer
 
 logger = logging.getLogger(__name__)
 client = OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -256,7 +258,36 @@ class SecurityAuditor:
             if not contract_code:
                 contract_code = f"[Contract bytecode from Solana: {contract_address}]"
             
-            # **STAGE 1: Pattern-based local detection** (free, instant)
+            # **STAGE 0.5: Check if user is FREE TIER**
+            # Free users get pattern-based analysis only (cost: $0)
+            # Paid/subscriber users get full GPT-4 analysis (cost: $0.03-0.10)
+            # Note: Unauthenticated users (user_id=0) still use GPT-4 for testing
+            
+            user_tier = None
+            if user_id > 0:
+                # Get user tier from quota_manager
+                quota_info = quota_manager.get_user_quota_info(user_id)
+                user_tier = quota_info.get("tier", "free")
+            
+            # If user is REGISTERED and FREE TIER (not subscribed)
+            if user_id > 0 and user_tier == "free" and not is_subscriber:
+                logger.info(f"🆓 Free tier user {user_id} - using pattern-based analyzer (zero cost)")
+                
+                # Use FREE analyzer (no API costs)
+                free_result = free_analyzer.analyze_contract(contract_code)
+                free_result["contract_address"] = contract_address
+                
+                # Do quota tracking and caching
+                audit_id = f"audit_{user_id}_{int(datetime.utcnow().timestamp())}"
+                cache_audit_result(audit_id, user_id, contract_address, free_result)
+                free_result["audit_id"] = audit_id
+                
+                # Record quota usage (free = minimal impact)
+                quota_manager.record_audit(user_id, 0.0)  # 0 cost for free
+                
+                return free_result
+            
+            # **STAGE 1: Pattern-based local detection** (paid only - context for GPT-4)
             pattern_findings = VulnerabilityDetector.detect_patterns(contract_code)
             logger.debug(f"Pattern detection found {len(pattern_findings)} potential issues")
             
