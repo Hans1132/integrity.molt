@@ -1,25 +1,33 @@
 """
-MongoDB Database Layer for integrity.molt
+MongoDB Database Layer for integrity.molt (Phase 3c)
 Handles persistent storage of audits, users, subscriptions, and transactions
-Replaces in-memory caches in Phase 3+
+Supports both real MongoDB and in-memory mock mode
 """
 import logging
+import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+# Try to import pymongo for real MongoDB support
+try:
+    from pymongo import MongoClient
+    from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+    PYMONGO_AVAILABLE = True
+except ImportError:
+    PYMONGO_AVAILABLE = False
+    logger.warning("⚠️  pymongo not installed - database will use mock mode only")
+
 
 class MongoDBClient:
     """
-    MongoDB client for integrity.molt data persistence
+    MongoDB client for integrity.molt data persistence (Phase 3c)
     
-    Phase 3 Implementation:
-    - Store audit history (user → audits)
-    - Store subscription data (user → tier, expiry)
-    - Store transaction records (payment → hash)
-    - Store wallet sessions (user → wallet_address)
-    - Query and retrieve user data efficiently
+    Features:
+    - Real MongoDB support (production)
+    - Mock in-memory storage (development/testing)
+    - Automatic fallback if MongoDB unavailable
     
     Collections:
     1. audits - Security audit reports
@@ -30,26 +38,72 @@ class MongoDBClient:
     6. quota_usage - Rate limit tracking
     """
     
-    # MongoDB connection (will use environment variable in Phase 3)
-    # MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/integrity_molt")
-    
-    def __init__(self, connection_string: Optional[str] = None):
+    def __init__(self, connection_string: Optional[str] = None, force_mock: bool = False):
         """
         Initialize MongoDB client
         
         Args:
             connection_string: MongoDB connection URI (optional)
+            force_mock: Force mock mode even if MongoDB available
         """
         self.connected = False
         self.db = None
         self.client = None
+        self.use_mock = force_mock
         
-        # Phase 3: Actual MongoDB connection
-        # from pymongo import MongoClient
-        # self.client = MongoClient(connection_string or os.getenv("MONGODB_URI"))
-        # self.db = self.client["integrity_molt"]
+        # Get connection string from parameter, env, or default
+        mongo_uri = connection_string or os.getenv(
+            "MONGODB_URI",
+            "mongodb://localhost:27017/integrity_molt"
+        )
         
-        # For Phase 2/3 testing, use in-memory mock
+        # Get database mode from env (mock or real)
+        db_mode = os.getenv("DATABASE_MODE", "mock" if not PYMONGO_AVAILABLE else "real")
+        
+        # Try real MongoDB if available and not forced to mock
+        if db_mode == "real" and PYMONGO_AVAILABLE and not force_mock:
+            self._init_real_mongodb(mongo_uri)
+        else:
+            self._init_mock_mongodb()
+    
+    def _init_real_mongodb(self, connection_string: str):
+        """Initialize real MongoDB connection"""
+        try:
+            logger.info(f"🔄 Connecting to MongoDB: {connection_string[:50]}...")
+            
+            self.client = MongoClient(
+                connection_string,
+                serverSelectionTimeoutMS=5000,
+                socketTimeoutMS=5000,
+                connectTimeoutMS=5000
+            )
+            
+            # Test connection
+            self.client.admin.command("ping")
+            
+            self.db = self.client["integrity_molt"]
+            self.connected = True
+            self.use_mock = False
+            
+            # Create indexes for performance
+            self._create_indexes()
+            
+            logger.info("✅ Real MongoDB connected successfully!")
+            
+        except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+            logger.warning(f"⚠️  MongoDB connection failed: {e}")
+            logger.warning("📦 Falling back to mock mode...")
+            self._init_mock_mongodb()
+        except Exception as e:
+            logger.error(f"❌ MongoDB initialization error: {e}")
+            self._init_mock_mongodb()
+    
+    def _init_mock_mongodb(self):
+        """Initialize in-memory mock database (fallback/testing)"""
+        self.use_mock = True
+        self.connected = True
+        
+        # In-memory collections for mock mode
         self.collections = {
             "audits": [],
             "users": [],
@@ -59,8 +113,36 @@ class MongoDBClient:
             "quota_usage": []
         }
         
-        self.connected = True
-        logger.info("✅ MongoDB Client initialized (mock mode - Phase 3 will use real DB)")
+        logger.info("✅ Mock MongoDB initialized (development/testing mode)")
+    
+    def _create_indexes(self):
+        """Create database indexes for real MongoDB"""
+        if self.use_mock or not self.db:
+            return
+        
+        try:
+            # Audit indexes
+            self.db["audits"].create_index("user_id")
+            self.db["audits"].create_index("contract_address")
+            self.db["audits"].create_index("created_at")
+            
+            # User indexes
+            self.db["users"].create_index("telegram_id", unique=True)
+            
+            # Subscription indexes
+            self.db["subscriptions"].create_index("user_id")
+            self.db["subscriptions"].create_index("expires_at")
+            
+            # Transaction indexes
+            self.db["transactions"].create_index("user_id")
+            self.db["transactions"].create_index("created_at")
+            
+            # Wallet indexes
+            self.db["wallets"].create_index("user_id", unique=True)
+            
+            logger.debug("✅ Database indexes created")
+        except Exception as e:
+            logger.warning(f"⚠️  Index creation warning: {e}")
     
     # ============= AUDIT OPERATIONS =============
     
@@ -84,6 +166,7 @@ class MongoDBClient:
                 "risk_score": audit_data.get("nft_anchor", {}).get("risk_score", 5),
                 "tokens_used": audit_data.get("tokens_used", 0),
                 "cost_usd": audit_data.get("cost_usd", 0.0),
+                "analysis_type": audit_data.get("analysis_type", "gpt4"),  # gpt4 or pattern-based
                 "r2_url": audit_data.get("r2_storage", {}).get("report_url"),
                 "nft_mint": audit_data.get("nft_anchor", {}).get("audit_hash"),
                 "created_at": datetime.utcnow().isoformat(),
@@ -91,11 +174,14 @@ class MongoDBClient:
                 "payment_id": audit_data.get("payment", {}).get("payment_id")
             }
             
-            self.collections["audits"].append(audit_doc)
+            if self.use_mock:
+                self.collections["audits"].append(audit_doc)
+            else:
+                self.db["audits"].insert_one(audit_doc)
             
             logger.info(
-                f"✅ Audit stored: {audit_doc['_id']} | "
-                f"User: {audit_doc['user_id']} | Risk: {audit_doc['risk_score']}"
+                f"✅ Audit stored ({self._db_mode()}): {audit_doc['_id'][:16]}... | "
+                f"User: {audit_doc['user_id']} | Type: {audit_doc['analysis_type']}"
             )
             
             return {"status": "inserted", "audit_id": audit_doc["_id"]}
@@ -122,21 +208,30 @@ class MongoDBClient:
             List of audit documents
         """
         try:
-            user_audits = [
-                doc for doc in self.collections["audits"]
-                if doc.get("user_id") == user_id
-            ]
+            if self.use_mock:
+                user_audits = [
+                    doc for doc in self.collections["audits"]
+                    if doc.get("user_id") == user_id
+                ]
+                
+                # Sort by created_at descending (newest first)
+                user_audits.sort(
+                    key=lambda x: x.get("created_at", ""),
+                    reverse=True
+                )
+                
+                # Apply pagination
+                result = user_audits[skip:skip+limit]
+            else:
+                result = list(
+                    self.db["audits"]
+                    .find({"user_id": user_id})
+                    .sort("created_at", -1)
+                    .skip(skip)
+                    .limit(limit)
+                )
             
-            # Sort by created_at descending (newest first)
-            user_audits.sort(
-                key=lambda x: x.get("created_at", ""),
-                reverse=True
-            )
-            
-            # Apply pagination
-            result = user_audits[skip:skip+limit]
-            
-            logger.info(f"📖 Retrieved {len(result)} audits for user {user_id}")
+            logger.info(f"📖 Retrieved {len(result)} audits for user {user_id} ({self._db_mode()})")
             
             return result
         
@@ -160,20 +255,28 @@ class MongoDBClient:
             List of audit documents
         """
         try:
-            contract_audits = [
-                doc for doc in self.collections["audits"]
-                if doc.get("contract_address") == contract_address
-            ]
+            if self.use_mock:
+                contract_audits = [
+                    doc for doc in self.collections["audits"]
+                    if doc.get("contract_address") == contract_address
+                ]
+                
+                # Sort by created_at descending
+                contract_audits.sort(
+                    key=lambda x: x.get("created_at", ""),
+                    reverse=True
+                )
+                
+                result = contract_audits[:limit]
+            else:
+                result = list(
+                    self.db["audits"]
+                    .find({"contract_address": contract_address})
+                    .sort("created_at", -1)
+                    .limit(limit)
+                )
             
-            # Sort by created_at descending
-            contract_audits.sort(
-                key=lambda x: x.get("created_at", ""),
-                reverse=True
-            )
-            
-            result = contract_audits[:limit]
-            
-            logger.info(f"📊 Retrieved {len(result)} audits for contract {contract_address[:16]}...")
+            logger.info(f"📊 Retrieved {len(result)} audits for contract ({self._db_mode()})")
             
             return result
         
@@ -207,18 +310,27 @@ class MongoDBClient:
                 "banned": False
             }
             
-            # Check if user already exists
-            existing = next(
-                (u for u in self.collections["users"] if u["_id"] == user_id),
-                None
-            )
+            if self.use_mock:
+                # Check if user already exists
+                existing = next(
+                    (u for u in self.collections["users"] if u["_id"] == user_id),
+                    None
+                )
+                
+                if existing:
+                    return {"status": "exists", "user_id": user_id}
+                
+                self.collections["users"].append(user_doc)
+            else:
+                # Try to insert, handle duplicate key
+                try:
+                    self.db["users"].insert_one(user_doc)
+                except Exception as e:
+                    if "duplicate key" in str(e):
+                        return {"status": "exists", "user_id": user_id}
+                    raise
             
-            if existing:
-                return {"status": "exists", "user_id": user_id}
-            
-            self.collections["users"].append(user_doc)
-            
-            logger.info(f"✅ User created: {user_id} | Tier: {user_doc['tier']}")
+            logger.info(f"✅ User created ({self._db_mode()}): {user_id} | Tier: {user_doc['tier']}")
             
             return {"status": "inserted", "user_id": user_id}
         
@@ -237,20 +349,26 @@ class MongoDBClient:
             User document or None
         """
         try:
-            user = next(
-                (u for u in self.collections["users"] if u["_id"] == user_id),
-                None
-            )
-            
-            if user:
-                logger.debug(f"📖 User retrieved: {user_id}")
-            else:
-                # Create on first access
-                self.insert_user(user_id, {"tier": "free"})
+            if self.use_mock:
                 user = next(
                     (u for u in self.collections["users"] if u["_id"] == user_id),
                     None
                 )
+            else:
+                user = self.db["users"].find_one({"_id": user_id})
+            
+            if user:
+                logger.debug(f"📖 User retrieved ({self._db_mode()}): {user_id}")
+            else:
+                # Create on first access
+                self.insert_user(user_id, {"tier": "free"})
+                if self.use_mock:
+                    user = next(
+                        (u for u in self.collections["users"] if u["_id"] == user_id),
+                        None
+                    )
+                else:
+                    user = self.db["users"].find_one({"_id": user_id})
             
             return user
         
@@ -293,16 +411,25 @@ class MongoDBClient:
                 "status": "active"
             }
             
-            self.collections["subscriptions"].append(subscription)
+            if self.use_mock:
+                self.collections["subscriptions"].append(subscription)
+            else:
+                self.db["subscriptions"].insert_one(subscription)
             
             # Update user tier
             user = self.get_user(user_id)
             if user:
-                user["tier"] = tier
+                if self.use_mock:
+                    user["tier"] = tier
+                else:
+                    self.db["users"].update_one(
+                        {"_id": user_id},
+                        {"$set": {"tier": tier}}
+                    )
             
             logger.info(
-                f"✅ Subscription set: User {user_id} | Tier: {tier} | "
-                f"Expires: {expiry}"
+                f"✅ Subscription set ({self._db_mode()}): User {user_id} | Tier: {tier} | "
+                f"Expires: {expiry[:10]}"
             )
             
             return subscription
@@ -322,19 +449,31 @@ class MongoDBClient:
             Active subscription or None
         """
         try:
-            subscriptions = [
-                s for s in self.collections["subscriptions"]
-                if s.get("user_id") == user_id and s.get("status") == "active"
-            ]
-            
-            # Check expiry
-            active_subs = [
-                s for s in subscriptions
-                if datetime.fromisoformat(s.get("expires_at", "")) > datetime.utcnow()
-            ]
-            
-            if active_subs:
-                return active_subs[-1]  # Most recent
+            if self.use_mock:
+                subscriptions = [
+                    s for s in self.collections["subscriptions"]
+                    if s.get("user_id") == user_id and s.get("status") == "active"
+                ]
+                
+                # Check expiry
+                active_subs = [
+                    s for s in subscriptions
+                    if datetime.fromisoformat(s.get("expires_at", "")) > datetime.utcnow()
+                ]
+                
+                if active_subs:
+                    return active_subs[-1]  # Most recent
+            else:
+                result = self.db["subscriptions"].find_one(
+                    {
+                        "user_id": user_id,
+                        "status": "active",
+                        "expires_at": {"$gt": datetime.utcnow().isoformat()}
+                    },
+                    sort=[("expires_at", -1)]
+                )
+                if result:
+                    return result
             
             return None
         
@@ -368,12 +507,14 @@ class MongoDBClient:
                 "solscan_link": transaction_data.get("solscan_link")
             }
             
-            self.collections["transactions"].append(tx_doc)
+            if self.use_mock:
+                self.collections["transactions"].append(tx_doc)
+            else:
+                self.db["transactions"].insert_one(tx_doc)
             
             logger.info(
-                f"✅ Transaction stored: {tx_doc['_id'][:16]}... | "
-                f"Type: {tx_doc['transaction_type']} | "
-                f"Amount: {tx_doc['amount_sol']} SOL"
+                f"✅ Transaction stored ({self._db_mode()}): {tx_doc['_id'][:16]}... | "
+                f"Type: {tx_doc['transaction_type']} | {tx_doc['amount_sol']} SOL"
             )
             
             return {"status": "inserted", "transaction_id": tx_doc["_id"]}
@@ -411,11 +552,18 @@ class MongoDBClient:
                 "confirmed": True
             }
             
-            self.collections["wallets"].append(wallet_doc)
+            if self.use_mock:
+                self.collections["wallets"].append(wallet_doc)
+            else:
+                # Upsert to replace if exists
+                self.db["wallets"].update_one(
+                    {"_id": f"wallet_{user_id}"},
+                    {"$set": wallet_doc},
+                    upsert=True
+                )
             
             logger.info(
-                f"✅ Wallet session stored: User {user_id} | "
-                f"Address: {wallet_address[:16]}..."
+                f"✅ Wallet session stored ({self._db_mode()}): User {user_id}"
             )
             
             return wallet_doc
@@ -439,13 +587,22 @@ class MongoDBClient:
         try:
             now = datetime.utcnow()
             month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            month_start_iso = month_start.isoformat()
             
-            # Count audits this month
-            monthly = [
-                a for a in self.collections["audits"]
-                if a.get("user_id") == user_id
-                and datetime.fromisoformat(a.get("created_at", "")) >= month_start
-            ]
+            if self.use_mock:
+                # Count audits this month
+                monthly = [
+                    a for a in self.collections["audits"]
+                    if a.get("user_id") == user_id
+                    and datetime.fromisoformat(a.get("created_at", "")) >= month_start
+                ]
+            else:
+                monthly = list(
+                    self.db["audits"].find({
+                        "user_id": user_id,
+                        "created_at": {"$gte": month_start_iso}
+                    })
+                )
             
             monthly_cost = sum(a.get("cost_usd", 0.0) for a in monthly)
             
@@ -459,20 +616,45 @@ class MongoDBClient:
             logger.error(f"❌ Quota stats retrieval failed: {e}")
             return {}
     
+    def _db_mode(self) -> str:
+        """Return current database mode for logging"""
+        return "mock" if self.use_mock else "mongodb"
+    
     def health_check(self) -> Dict[str, Any]:
         """Check database connection health"""
         try:
-            return {
-                "status": "healthy" if self.connected else "disconnected",
-                "connected": self.connected,
-                "collections": len(self.collections),
-                "audits_count": len(self.collections["audits"]),
-                "users_count": len(self.collections["users"]),
-                "subscriptions_count": len(self.collections["subscriptions"])
-            }
+            if self.use_mock:
+                return {
+                    "status": "healthy",
+                    "connected": self.connected,
+                    "mode": "mock",
+                    "collections": len(self.collections),
+                    "audits_count": len(self.collections["audits"]),
+                    "users_count": len(self.collections["users"]),
+                    "subscriptions_count": len(self.collections["subscriptions"]),
+                    "transactions_count": len(self.collections["transactions"])
+                }
+            else:
+                # Try to ping MongoDB
+                self.client.admin.command("ping")
+                
+                return {
+                    "status": "healthy",
+                    "connected": self.connected,
+                    "mode": "mongodb",
+                    "audits_count": self.db["audits"].count_documents({}),
+                    "users_count": self.db["users"].count_documents({}),
+                    "subscriptions_count": self.db["subscriptions"].count_documents({}),
+                    "transactions_count": self.db["transactions"].count_documents({})
+                }
         except Exception as e:
             logger.error(f"❌ Health check failed: {e}")
-            return {"status": "error", "error": str(e)}
+            return {
+                "status": "error",
+                "connected": False,
+                "error": str(e),
+                "mode": self._db_mode()
+            }
 
 
 # Global instance
@@ -481,36 +663,66 @@ db_client = MongoDBClient()
 
 if __name__ == "__main__":
     # Test MongoDB client
-    print("Testing MongoDB Client...")
-    print("=" * 50)
+    print("Testing MongoDB Client (Phase 3c)...")
+    print("=" * 60)
+    print(f"Mode: {db_client._db_mode().upper()}")
+    print("=" * 60)
     
     # Insert user
     db_client.insert_user(12345, {"tier": "free", "username": "test_user"})
     
-    # Insert audit
+    # Insert audit (pattern-based)
     db_client.insert_audit({
-        "audit_id": "audit_001",
+        "audit_id": "audit_pattern_001",
         "user_id": 12345,
         "contract_address": "EvXNCtaoVuC1NQLQswAnqsbQKPgVTdjrrLKa8MpMJiLf",
         "status": "success",
         "findings": "Test findings",
         "risk_score": 7,
-        "cost_usd": 0.03
+        "cost_usd": 0.0,
+        "analysis_type": "pattern-based"
+    })
+    
+    # Insert audit (GPT-4)
+    db_client.insert_audit({
+        "audit_id": "audit_gpt4_001",
+        "user_id": 12345,
+        "contract_address": "AnotherContractAddress123",
+        "status": "success",
+        "findings": "GPT-4 analysis findings",
+        "risk_score": 5,
+        "cost_usd": 0.03,
+        "tokens_used": 1200,
+        "analysis_type": "gpt4"
     })
     
     # Retrieve user audits
     audits = db_client.get_user_audits(12345)
-    print(f"\n1. User Audits: {len(audits)} found")
+    print(f"\n✅ User Audits: {len(audits)} found")
+    for audit in audits:
+        print(f"   - {audit['_id']}: {audit['analysis_type']} (${audit['cost_usd']:.2f})")
     
     # Set subscription
     db_client.set_subscription(12345, "subscriber", 30)
     
+    # Get active subscription
+    sub = db_client.get_active_subscription(12345)
+    if sub:
+        print(f"\n✅ Active Subscription: {sub['tier']} tier (expires {sub['expires_at'][:10]})")
+    
+    # Quota stats
+    quota = db_client.get_quota_stats(12345)
+    print(f"\n📊 Quota Stats:")
+    print(f"   Audits this month: {quota['audits_this_month']}")
+    print(f"   Cost this month: ${quota['cost_this_month_usd']:.2f}")
+    
     # Health check
     health = db_client.health_check()
-    print(f"\n2. Database Health:")
-    print(f"  Status: {health['status']}")
-    print(f"  Audits: {health['audits_count']}")
-    print(f"  Users: {health['users_count']}")
-    print(f"  Subscriptions: {health['subscriptions_count']}")
+    print(f"\n🏥 Database Health:")
+    print(f"   Status: {health['status']}")
+    print(f"   Mode: {health.get('mode', 'unknown')}")
+    print(f"   Users: {health.get('users_count', 0)}")
+    print(f"   Audits: {health.get('audits_count', 0)}")
+    print(f"   Subscriptions: {health.get('subscriptions_count', 0)}")
     
-    print("\n✅ MongoDB client test complete!")
+    print("\n✅ Phase 3c MongoDB client test complete!")
