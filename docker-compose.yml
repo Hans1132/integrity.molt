@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  integrity-molt:
+    build: .
+    container_name: integrity-molt-bot
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SOLANA_PUBLIC_KEY=${SOLANA_PUBLIC_KEY}
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - integrity-net
+    ports:
+      - "8000:8000"  # For future webhook endpoint
+
+networks:
+  integrity-net:
+    driver: bridge
