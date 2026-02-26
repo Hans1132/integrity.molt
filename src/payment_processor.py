@@ -182,6 +182,87 @@ class PaymentProcessor:
                 "error": str(e)
             }
     
+    def create_subscription_payment(
+        self,
+        user_id: int,
+        tier: str = "subscriber",
+        recipient_wallet: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create payment request for subscription tier
+        
+        Args:
+            user_id: Telegram user ID
+            tier: Subscription tier ('subscriber' or 'premium')
+            recipient_wallet: Recipient wallet address
+        
+        Returns:
+            Payment request dict
+        """
+        
+        try:
+            # Determine subscription fee based on tier
+            if tier == "premium":
+                fee_sol = Decimal("1.0")  # Premium: 1 SOL/month
+            else:
+                fee_sol = self.PRICING["subscription_monthly_sol"]  # 0.1 SOL
+            
+            fee_lamports = int(fee_sol * LAMPORTS_PER_SOL)
+            
+            # Generate payment ID
+            import time
+            payment_id = f"subscription_{user_id}_{int(time.time())}"
+            
+            payment_request = {
+                "payment_id": payment_id,
+                "status": "pending",
+                "user_id": user_id,
+                "subscription_tier": tier,
+                "timestamp": datetime.utcnow().isoformat(),
+                "expiry": (datetime.utcnow() + timedelta(minutes=15)).isoformat(),
+                "amount_lamports": fee_lamports,
+                "amount_sol": float(fee_sol),
+                "duration_days": 30,
+                "tier_benefits": {
+                    "subscriber": {
+                        "audits_per_hour": 10,
+                        "audits_per_day": 50,
+                        "audits_per_month": 999,
+                        "monthly_budget_sol": 10.0
+                    },
+                    "premium": {
+                        "audits_per_hour": 20,
+                        "audits_per_day": 100,
+                        "audits_per_month": 9999,
+                        "monthly_budget_sol": 100.0
+                    }
+                }.get(tier, {}),
+                "recipient_wallet": recipient_wallet or "integrity.molt",
+                "phase": "2-pending-signature",
+                "instructions": {
+                    "phase2_status": "Subscription payment request generated",
+                    "phase3_action": "Sign subscription transaction with user wallet",
+                    "phase3_submit": "Submit signed transaction to Solana RPC"
+                }
+            }
+            
+            # Store in memory
+            self.pending_payments[payment_id] = payment_request
+            
+            logger.info(
+                f"✅ Subscription payment request created: {payment_id} | "
+                f"User: {user_id} | Tier: {tier} | Amount: {fee_lamports} lamports"
+            )
+            
+            return payment_request
+        
+        except Exception as e:
+            logger.error(f"❌ Subscription payment request creation failed: {e}")
+            return {
+                "status": "error",
+                "error": str(e)
+            }
+    
     def confirm_payment(
         self,
         payment_id: str,

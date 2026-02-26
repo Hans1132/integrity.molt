@@ -36,6 +36,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/audit <address> - Analyze contract security\n"
         "/status - Check audit queue status\n"
         "/history - View your audit history\n"
+        "/quota - View your rate limits and usage\n"
+        "/subscribe - Subscribe to premium tier\n"
     )
 
 
@@ -65,9 +67,29 @@ async def audit_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Import here to avoid circular imports
     from src.security_auditor import SecurityAuditor, format_audit_report
     
-    # Perform audit
-    logger.info(f"Audit requested by {user_id} for {contract_address}")
-    audit_result = SecurityAuditor.analyze_contract(contract_address)
+    # Perform audit with user context (for quota and payment tracking)
+    logger.info(f"Audit requested by user {user_id} for {contract_address}")
+    audit_result = SecurityAuditor.analyze_contract(
+        contract_address,
+        contract_code="",
+        user_id=user_id,
+        is_subscriber=False  # TODO: Check actual subscription status
+    )
+    
+    # Handle quota exceeded response
+    if audit_result.get("status") == "quota_exceeded":
+        quota_info = audit_result.get("quota_info", {})
+        message = (
+            f"❌ **Audit Limit Reached**\n\n"
+            f"Reason: {audit_result.get('reason', 'Unknown')}\n\n"
+            f"📊 Your Limits:\n"
+            f"⏱️ Hourly: {quota_info.get('audits_this_hour', 0)}/{quota_info.get('hourly_limit', 0)}\n"
+            f"📅 Daily: {quota_info.get('audits_today', 0)}/{quota_info.get('daily_limit', 0)}\n"
+            f"📆 Monthly: {quota_info.get('audits_this_month', 0)}/{quota_info.get('monthly_limit', 0)}\n\n"
+            f"💡 Upgrade to /subscribe for higher limits!"
+        )
+        await update.message.reply_text(message)
+        return
     
     # Format and send result
     report = format_audit_report(audit_result)
@@ -80,15 +102,127 @@ async def audit_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     else:
         await update.message.reply_text(report)
     
-    # Log cost
+    # Log cost and quota info
     if audit_result["status"] == "success":
         cost = audit_result.get("cost_usd", 0)
         logger.info(f"✅ Audit completed - Cost: ${cost:.4f}")
-        await update.message.reply_text(
+        
+        quota_remaining = audit_result.get("quota_remaining", {})
+        footer_msg = (
             f"✅ Audit complete!\n"
             f"📊 Risk Score: Analysis completed\n"
             f"💰 Cost: ${cost:.4f}\n"
-            f"⏱️ Tokens used: {audit_result.get('tokens_used', 0)}"
+            f"⏱️ Tokens used: {audit_result.get('tokens_used', 0)}\n\n"
+            f"📊 **Your Quota Remaining**:\n"
+        )
+        
+        if quota_remaining:
+            footer_msg += (
+                f"⏱️ This hour: {quota_remaining.get('audits_remaining_hour', 0)} audits\n"
+                f"📅 Today: {quota_remaining.get('audits_remaining_day', 0)} audits\n"
+                f"📆 This month: {quota_remaining.get('audits_remaining_month', 0)} audits"
+            )
+        else:
+            footer_msg += "📊 Premium quota (unlimited)"
+        
+        await update.message.reply_text(footer_msg)
+    elif audit_result.get("status") == "cached":
+        await update.message.reply_text(
+            "📊 Quota Information:\n"
+            "⏱️ This hour: No quota consumed (cached result)\n"
+            "📅 Today: No quota consumed (cached result)"
+        )
+
+
+async def quota_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /quota command - Show user's rate limits and usage"""
+    from src.quota_manager import quota_manager
+    
+    user_id = update.effective_user.id
+    quota_info = quota_manager.get_user_quota_info(user_id)
+    
+    if quota_info.get("tier") == "premium":
+        tier_name = "🌟 PREMIUM (Unlimited)"
+    elif quota_info.get("tier") == "subscriber":
+        tier_name = "⭐ SUBSCRIBER"
+    else:
+        tier_name = "📊 FREE"
+    
+    message = (
+        f"📊 **Your Quota Status**\n\n"
+        f"Tier: {tier_name}\n\n"
+        f"**Hourly Limit**:\n"
+        f"  {quota_info.get('audits_this_hour', 0)}/{quota_info.get('hourly_limit', 0)} audits\n"
+        f"  Remaining: {quota_info.get('audits_remaining_hour', 0)}\n\n"
+        f"**Daily Limit**:\n"
+        f"  {quota_info.get('audits_today', 0)}/{quota_info.get('daily_limit', 0)} audits\n"
+        f"  Remaining: {quota_info.get('audits_remaining_day', 0)}\n\n"
+        f"**Monthly Limit**:\n"
+        f"  {quota_info.get('audits_this_month', 0)}/{quota_info.get('monthly_limit', 0)} audits\n"
+        f"  Remaining: {quota_info.get('audits_remaining_month', 0)}\n\n"
+        f"**Budget**:\n"
+        f"  Spent: {quota_info.get('spent_this_month_sol', 0):.3f} SOL\n"
+        f"  Limit: {quota_info.get('budget_limit_sol', 0.1):.3f} SOL/month\n"
+    )
+    
+    if quota_info.get("tier") == "free":
+        message += (
+            f"\n💡 **Upgrade to subscriber** for 5x more audits!\n"
+            f"Type /subscribe to get started."
+        )
+    
+    await update.message.reply_text(message)
+
+
+async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /subscribe command - Subscribe to premium tier"""
+    from src.payment_processor import payment_processor
+    
+    user_id = update.effective_user.id
+    
+    # Check if already subscribed
+    from src.quota_manager import quota_manager
+    quota_info = quota_manager.get_user_quota_info(user_id)
+    
+    if quota_info.get("tier") in ["subscriber", "premium"]:
+        expires = quota_info.get("subscription_expires", "unknown")
+        await update.message.reply_text(
+            f"✅ You're already subscribed!\n\n"
+            f"Current tier: {quota_info.get('tier').upper()}\n"
+            f"Expires: {expires}\n\n"
+            f"Higher limits:\n"
+            f"⏱️ 10 audits/hour (vs 2)\n"
+            f"📅 50 audits/day (vs 5)\n"
+            f"📆 Unlimited monthly audits"
+        )
+        return
+    
+    # Create subscription payment request
+    subscription_payment = payment_processor.create_subscription_payment(
+        user_id=user_id,
+        tier="subscriber"
+    )
+    
+    if subscription_payment.get("status") == "pending":
+        amount = subscription_payment.get("amount_sol", 0.1)
+        payment_id = subscription_payment.get("payment_id", "unknown")
+        
+        message = (
+            f"⭐ **Subscribe to Premium**\n\n"
+            f"Amount: {amount} SOL (~$6 USD)\n"
+            f"Duration: 30 days\n\n"
+            f"**You'll get**:\n"
+            f"✅ 5x higher audit limits\n"
+            f"✅ Unlimited monthly audits\n"
+            f"✅ Priority support\n\n"
+            f"💰 Payment ID: `{payment_id}`\n\n"
+            f"Send {amount} SOL to: [Phase 3 - Phantom wallet integration]\n"
+            f"Or reply with /confirm to retry payment"
+        )
+        await update.message.reply_text(message)
+    else:
+        await update.message.reply_text(
+            "❌ Could not create subscription payment. Try again later."
         )
 
 
@@ -128,6 +262,8 @@ def main() -> None:
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("audit", audit_command))
     app.add_handler(CommandHandler("status", status_command))
+    app.add_handler(CommandHandler("quota", quota_command))
+    app.add_handler(CommandHandler("subscribe", subscribe_command))
     
     # Start bot
     logger.info("🤖 integrity.molt bot starting...")

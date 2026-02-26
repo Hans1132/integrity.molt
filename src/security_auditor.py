@@ -6,6 +6,7 @@ Stores audit reports in Cloudflare R2
 Anchors audits as Metaplex Core NFTs on Solana
 Calculates and tracks payment for audits
 Caches audit history for deduplication and retrieval
+Enforces rate limits and quotas
 """
 import logging
 import re
@@ -16,6 +17,7 @@ from src.r2_storage import upload_audit_to_r2
 from src.metaplex_nft import create_audit_nft_anchor
 from src.payment_processor import payment_processor
 from src.audit_cache import cache_audit_result
+from src.quota_manager import quota_manager
 
 logger = logging.getLogger(__name__)
 client = OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -195,9 +197,32 @@ class SecurityAuditor:
             - tokens_used: GPT-4 token count
             - cost_usd: Estimated cost
             - payment: Payment request info (if user_id provided)
+            - quota_status: Rate limiting status (if enforced)
         """
         try:
             logger.info(f"Starting enhanced audit for {contract_address}")
+            
+            # **STAGE -1: Check rate limit quota** (abuse prevention)
+            if user_id > 0:
+                # Estimate cost for quota checking (base + pattern-based multiplier)
+                cost_estimate = 0.005  # Base fee
+                
+                # Quick quota check
+                quota_check = quota_manager.can_audit(user_id, cost_estimate)
+                
+                if not quota_check["allowed"]:
+                    logger.warning(
+                        f"Quota exceeded for user {user_id}: {quota_check['reason']}"
+                    )
+                    return {
+                        "status": "quota_exceeded",
+                        "contract_address": contract_address,
+                        "reason": quota_check["reason"],
+                        "quota_info": quota_check,
+                        "error": f"❌ Audit limit reached: {quota_check['reason']}"
+                    }
+                
+                logger.debug(f"✅ Quota check passed for user {user_id}")
             
             # **STAGE 0: Check for recent cached audit** (deduplication)
             from src.audit_cache import audit_cache
@@ -341,6 +366,18 @@ class SecurityAuditor:
                 audit_id = f"audit_{user_id}_{int(datetime.utcnow().timestamp())}"
                 cache_audit_result(audit_id, user_id, contract_address, audit_result)
                 audit_result["audit_id"] = audit_id
+            
+            # **STAGE 8: Record quota usage** (after successful audit)
+            if user_id > 0:
+                actual_cost = audit_result.get("payment", {}).get("amount_sol", 0.009)
+                quota_recorded = quota_manager.record_audit(user_id, actual_cost)
+                
+                if quota_recorded:
+                    logger.info(f"✅ Quota recorded for user {user_id} (cost: {actual_cost} SOL)")
+                    quota_info = quota_manager.get_user_quota_info(user_id)
+                    audit_result["quota_remaining"] = quota_info
+                else:
+                    logger.warning(f"❌ Failed to record quota for user {user_id}")
             
             return audit_result
         
