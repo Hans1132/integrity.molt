@@ -276,6 +276,9 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Build subscription message
     benefits_list = "\n".join(tier_info["benefits"])
     
+    # Calculate budget string (avoid nested f-string)
+    budget_str = "Unlimited" if tier == "premium" else f"{tier_info['price_sol'] * 100:.1f} SOL/month"
+    
     message = (
         f"⭐ **{tier.upper()} Subscription**\n\n"
         f"💰 Price: {tier_info['price_sol']} SOL (~{tier_info['price_usd']})\n"
@@ -284,7 +287,7 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         f"⏱️ {tier_info['audits_hour']} audits per hour\n"
         f"📅 {tier_info['audits_day']} audits per day\n"
         f"📆 {tier_info['audits_month']} audits per month\n"
-        f"💵 Budget: {'Unlimited' if tier == 'premium' else f'{tier_info[\"price_sol\"] * 100:.1f} SOL/month'}\n\n"
+        f"💵 Budget: {budget_str}\n\n"
         f"🎁 **What You Get**:\n"
         f"{benefits_list}\n\n"
         f"**Next Steps**:\n"
@@ -304,12 +307,16 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     import asyncio
     await asyncio.sleep(2)
     
+    # Calculate recipient amounts
+    integrity_amount_sol = (subscription_payment['amount_lamports'] * 0.9) / 1_000_000_000
+    moltbook_amount_sol = (subscription_payment['amount_lamports'] * 0.1) / 1_000_000_000
+    
     status_msg = (
         f"📋 **Payment Details**\n\n"
         f"Amount: {subscription_payment['amount_sol']} SOL\n"
         f"Recipients:\n"
-        f"  • integrity.molt (90%): {(subscription_payment['amount_lamports'] * 0.9) / 1_000_000_000:.3f} SOL\n"
-        f"  • Moltbook fee (10%): {(subscription_payment['amount_lamports'] * 0.1) / 1_000_000_000:.3f} SOL\n\n"
+        f"  • integrity.molt (90%): {integrity_amount_sol:.3f} SOL\n"
+        f"  • Moltbook fee (10%): {moltbook_amount_sol:.3f} SOL\n\n"
         f"⏰ This request expires in 5 minutes\n\n"
         f"💡 **Didn't see the request in your wallet?**\n"
         f"1. Make sure you have Phantom installed\n"
