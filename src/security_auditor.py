@@ -4,6 +4,7 @@ Uses GPT-4 to analyze smart contracts for vulnerabilities
 Enhanced with pattern-based detection and comprehensive vulnerability analysis
 Stores audit reports in Cloudflare R2
 Anchors audits as Metaplex Core NFTs on Solana
+Calculates and tracks payment for audits
 """
 import logging
 import re
@@ -11,6 +12,7 @@ from openai import OpenAI
 from src.config import Config
 from src.r2_storage import upload_audit_to_r2
 from src.metaplex_nft import create_audit_nft_anchor
+from src.payment_processor import payment_processor
 
 logger = logging.getLogger(__name__)
 client = OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -168,7 +170,9 @@ class SecurityAuditor:
     @staticmethod
     def analyze_contract(
         contract_address: str,
-        contract_code: str = ""
+        contract_code: str = "",
+        user_id: int = 0,
+        is_subscriber: bool = False
     ) -> dict:
         """
         Analyze a smart contract using GPT-4 with pattern-based pre-detection
@@ -176,6 +180,8 @@ class SecurityAuditor:
         Args:
             contract_address: Solana contract address
             contract_code: Contract source code or bytecode
+            user_id: Telegram user ID for payment tracking (0 = no payment)
+            is_subscriber: User subscription status for pricing discount
         
         Returns:
             dict with keys:
@@ -185,6 +191,7 @@ class SecurityAuditor:
             - risk_score: 1-10
             - tokens_used: GPT-4 token count
             - cost_usd: Estimated cost
+            - payment: Payment request info (if user_id provided)
         """
         try:
             logger.info(f"Starting enhanced audit for {contract_address}")
@@ -280,6 +287,24 @@ class SecurityAuditor:
                     f"Solscan: https://solscan.io/token/{contract_address[:8]}"
                 )
             
+            # **STAGE 6: Process Payment** (if user_id provided)
+            if user_id > 0:
+                risk_score = nft_result.get("risk_score", "5") if nft_result.get("status") == "prepared" else "5"
+                payment_request = payment_processor.create_payment_request(
+                    contract_address=contract_address,
+                    user_id=user_id,
+                    tokens_used=tokens_used,
+                    risk_score=risk_score,
+                    is_subscriber=is_subscriber
+                )
+                audit_result["payment"] = payment_request
+                
+                if payment_request.get("status") == "pending":
+                    logger.info(
+                        f"💰 Payment request: {payment_request.get('payment_id')} | "
+                        f"Amount: {payment_request.get('amount_sol')} SOL"
+                    )
+            
             return audit_result
         
         except Exception as e:
@@ -350,6 +375,22 @@ def format_audit_report(audit_result: dict) -> str:
         report += f"\n🔐 **On-Chain NFT Proof** (Phase 3): Audit hash {audit_hash}... ready for Metaplex Core"
     elif nft_info.get("status") == "offline":
         report += f"\n⚠️ On-chain anchoring offline (Solana RPC unavailable)"
+    
+    # Add payment info if available
+    payment_info = audit_result.get("payment", {})
+    if payment_info.get("status") == "pending":
+        amount_sol = payment_info.get("amount_sol", 0)
+        payment_id = payment_info.get("payment_id", "")
+        discount = payment_info.get("fee_breakdown", {}).get("discount_sol", 0)
+        
+        report += f"\n\n💰 **Payment Required**\n"
+        report += f"Amount: `{amount_sol:.6f} SOL`"
+        
+        if discount > 0:
+            report += f" (20% subscriber discount applied)"
+        
+        report += f"\nPayment ID: `{payment_id}`"
+        report += f"\n⏰ Expires in 15 minutes"
     
     return report
 
