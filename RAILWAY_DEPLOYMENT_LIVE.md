@@ -70,8 +70,8 @@ After repo selected, you'll see the project dashboard.
 **Click "Variables" tab** and add these:
 
 ```
-TELEGRAM_TOKEN=8781568638:AAHuk9md08bcsfoYCd3aLibR7R2GaW73UAM
-OPENAI_API_KEY=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
+TELEGRAM_TOKEN=your_telegram_bot_token_here
+OPENAI_API_KEY=sk-proj-your-api-key-here
 SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 SOLANA_PUBLIC_KEY=3vDc6RTAmWGuvpbT6n6DdNgwafRE88nJAx7YXA64wojM
 MONGODB_URI=mongodb://localhost:27017/integrity_molt
