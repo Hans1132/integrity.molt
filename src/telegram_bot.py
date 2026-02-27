@@ -58,6 +58,9 @@ async def audit_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     
     contract_address = context.args[0]
     
+    # Check for --force flag (re-audit, ignore cache)
+    force_refresh = len(context.args) > 1 and "force" in context.args[1].lower()
+    
     # Send "analyzing" message
     await update.message.reply_text(
         f"🔍 Analyzing {contract_address[:8]}...\n"
@@ -73,8 +76,8 @@ async def audit_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         contract_address,
         contract_code="",
         user_id=user_id,
-        is_subscriber=False  # TODO: Check actual subscription status
-    )
+        is_subscriber=False,  # TODO: Check actual subscription status
+        force_refresh=force_refresh  # ✅ Pass force flag
     
     # Handle quota exceeded response
     if audit_result.get("status") == "quota_exceeded":
