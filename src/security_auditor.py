@@ -179,16 +179,9 @@ class SecurityAuditor:
         contract_address: str,
         contract_code: str = "",
         user_id: int = 0,
-        is_subscriber: bool = False
-    ) -> dict:
-        """
-        Analyze a smart contract using GPT-4 with pattern-based pre-detection
-        
-        Args:
-            contract_address: Solana contract address
-            contract_code: Contract source code or bytecode
-            user_id: Telegram user ID for payment tracking (0 = no payment)
-            is_subscriber: User subscription status for pricing discount
+        is_subscriber: bool = False,
+        force_refresh: bool = False  # ✅ Add force flag
+            force_refresh: Force new audit, ignore cache
         
         Returns:
             dict with keys:
@@ -228,7 +221,7 @@ class SecurityAuditor:
             
             # **STAGE 0: Check for recent cached audit** (deduplication)
             from src.audit_cache import audit_cache
-            if user_id > 0:
+            if user_id > 0 and not force_refresh:  # ✅ Skip cache if force_refresh=True
                 recent_audit = audit_cache.is_recent_audit(
                     user_id,
                     contract_address,
