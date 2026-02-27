@@ -78,6 +78,7 @@ async def audit_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         user_id=user_id,
         is_subscriber=False,  # TODO: Check actual subscription status
         force_refresh=force_refresh  # ✅ Pass force flag
+    )
     
     # Handle quota exceeded response
     if audit_result.get("status") == "quota_exceeded":
