@@ -1,0 +1,419 @@
+{
+  "auth": {
+    "profiles": {
+      "openai:default": {
+        "provider": "openai",
+        "mode": "api_key",
+        "email": "lickohonza@gmail.com"
+      },
+      "openrouter:default": {
+        "provider": "openrouter",
+        "mode": "api_key"
+      },
+      "github:integrity-molt": {
+        "provider": "github",
+        "mode": "token",
+        "repository": "Hans1132/integrity.molt",
+        "branch": "main"
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "__YOUR_OPENROUTER_API_KEY__",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "openai/gpt-4o",
+            "name": "GPT-4o (via OpenRouter) - PRIMARY",
+            "api": "openai-completions",
+            "reasoning": false,
+            "input": ["text", "image"],
+            "cost": {
+              "input": 0.0025,
+              "output": 0.01,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 128000,
+            "maxTokens": "__OPENCLAW_REDACTED__"
+          },
+          {
+            "id": "anthropic/claude-sonnet-4-5",
+            "name": "Claude Sonnet 4.5 - SECURITY ANALYSIS",
+            "api": "openai-completions",
+            "reasoning": false,
+            "input": ["text", "image"],
+            "cost": {
+              "input": 0.003,
+              "output": 0.015,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 200000,
+            "maxTokens": "__OPENCLAW_REDACTED__"
+          },
+          {
+            "id": "openai/gpt-4o-mini",
+            "name": "GPT-4o Mini - COST OPTIMIZED",
+            "api": "openai-completions",
+            "reasoning": false,
+            "input": ["text", "image"],
+            "cost": {
+              "input": 0.00015,
+              "output": 0.0006,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 128000,
+            "maxTokens": "__OPENCLAW_REDACTED__"
+          }
+        ]
+      }
+    }
+  },
+  "repository": {
+    "github": {
+      "owner": "Hans1132",
+      "repo": "integrity.molt",
+      "branch": "main",
+      "webhook": "https://multiclaw.moltid.workers.dev/c/molt_78587c41ed99a3375022dc28/github-webhook",
+      "capabilities": [
+        "audit_source_code",
+        "monitor_commits",
+        "auto_deployment",
+        "vulnerability_scanning"
+      ]
+    }
+  },
+  "deployment": {
+    "railway": {
+      "enabled": true,
+      "projectId": "integrity-molt",
+      "service": "integrity-audit-bot",
+      "environment": "production",
+      "autoRedeploy": true,
+      "healthCheck": {
+        "endpoint": "https://integrity-molt.railway.app/health",
+        "interval": 60
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openai/gpt-4o",
+        "fallback": "openai/gpt-4o-mini",
+        "security": "anthropic/claude-sonnet-4-5"
+      },
+      "workspace": "/root/clawd/workspace",
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8
+      }
+    },
+    "list": [
+      {
+        "id": "integrity-molt-main",
+        "name": "integrity.molt Security Audit Agent",
+        "identity": {
+          "name": "integrity.molt Agent",
+          "theme": "molt.id autonomous agent",
+          "emoji": "🦞",
+          "wallet": "BFmkPKu2tS9RoMufgJUd9GyabzC91hriAbMS6Hmr8TX6",
+          "nftIdentity": "2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy",
+          "domain": "integrity.molt"
+        },
+        "capabilities": {
+          "security_analysis": {
+            "enabled": true,
+            "models": ["openai/gpt-4o", "anthropic/claude-sonnet-4-5"],
+            "features": [
+              "smart_contract_audit",
+              "vulnerability_detection",
+              "pattern_analysis",
+              "risk_scoring",
+              "severity_classification"
+            ]
+          },
+          "on_chain_verification": {
+            "enabled": true,
+            "moltbook": {
+              "apiUrl": "https://api.molt.id",
+              "agentId": "molt_78587c41ed99a3375022dc28",
+              "domain": "integrity.molt",
+              "verification": "JWT-Ed25519"
+            }
+          },
+          "database_storage": {
+            "enabled": true,
+            "type": "mongodb",
+            "connection": "mongodb+srv://user:password@cluster.mongodb.net/?appName=Cluster0",
+            "collections": [
+              "audits",
+              "contracts",
+              "users",
+              "cache"
+            ]
+          },
+          "telegram_integration": {
+            "enabled": true,
+            "commands": [
+              "/start - Welcome message",
+              "/audit <address> - Analyze smart contract",
+              "/audit <address> --force - Force re-audit (bypass cache)",
+              "/history - View audit history",
+              "/help - Show commands"
+            ]
+          }
+        },
+        "monitoring": {
+          "enabled": true,
+          "providers": [
+            "sentry",
+            "datadog",
+            "prometheus"
+          ],
+          "metrics": [
+            "audit_latency",
+            "error_rate",
+            "token_usage",
+            "cost_per_audit",
+            "verification_success_rate"
+          ]
+        },
+        "quotas": {
+          "free_tier": {
+            "audits_per_hour": 2,
+            "audits_per_day": 20,
+            "cost": 0,
+            "model": "pattern_analyzer"
+          },
+          "premium_tier": {
+            "audits_per_hour": 10,
+            "audits_per_day": 200,
+            "cost": 0.03,
+            "model": "gpt-4o"
+          }
+        }
+      }
+    ]
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "custom": {
+      "audit": {
+        "function": "analyze_contract",
+        "description": "Perform security audit on Solana smart contract",
+        "parameters": {
+          "address": "contract_address",
+          "force": "boolean"
+        }
+      },
+      "verify": {
+        "function": "verify_on_chain",
+        "description": "Verify audit on Moltbook with integrity.molt signature",
+        "parameters": {}
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "dmPolicy": "pairing",
+      "botToken": "__YOUR_TELEGRAM_BOT_TOKEN__",
+      "groupPolicy": "allowlist",
+      "streamMode": "partial",
+      "webhookUrl": "https://multiclaw.moltid.workers.dev/c/molt_78587c41ed99a3375022dc28/telegram-webhook",
+      "webhookSecret": "__YOUR_WEBHOOK_SECRET__",
+      "webhookPath": "/telegram-webhook",
+      "rateLimit": {
+        "messages_per_minute": 60,
+        "concurrent_chats": 100
+      }
+    },
+    "discord": {
+      "enabled": true,
+      "webhookUrl": "https://discord.com/api/webhooks/__YOUR_DISCORD_WEBHOOK__",
+      "capabilities": [
+        "audit_reports",
+        "alerts",
+        "monitoring"
+      ]
+    }
+  },
+  "integrations": {
+    "github": {
+      "enabled": true,
+      "repository": "Hans1132/integrity.molt",
+      "webhook": {
+        "enabled": true,
+        "events": ["push", "pull_request", "release"],
+        "url": "https://multiclaw.moltid.workers.dev/c/molt_78587c41ed99a3375022dc28/github-webhook"
+      },
+      "cicd": {
+        "autoTest": true,
+        "autoDeployOnPush": true,
+        "deployBranch": "main"
+      }
+    },
+    "solana": {
+      "enabled": true,
+      "rpc": "https://api.mainnet-beta.solana.com",
+      "programId": "4XKv23WzTb9ZpwLCxfQ3k2ChFmQwrUuuazpDKq3ikVSJ",
+      "verification": {
+        "walletAddress": "BFmkPKu2tS9RoMufgJUd9GyabzC91hriAbMS6Hmr8TX6",
+        "nftAddress": "2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy"
+      }
+    },
+    "moltbook": {
+      "enabled": true,
+      "apiUrl": "https://api.molt.id",
+      "agentId": "molt_78587c41ed99a3375022dc28",
+      "domain": "integrity.molt",
+      "verification": {
+        "scheme": "JWT-Ed25519",
+        "header": "X-Verification-Token"
+      },
+      "marketplace": {
+        "enabled": true,
+        "publishAudits": true,
+        "category": "security"
+      }
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": [
+        "https://multiclaw.moltid.workers.dev",
+        "https://app.molt.id"
+      ],
+      "allowInsecureAuth": true
+    },
+    "auth": {
+      "mode": "token",
+      "token": "__YOUR_GATEWAY_AUTH_TOKEN__"
+    },
+    "trustedProxies": [
+      "10.1.0.0",
+      "127.0.0.1",
+      "::1"
+    ]
+  },
+  "plugins": {
+    "entries": {
+      "telegram": {
+        "enabled": true
+      },
+      "discord": {
+        "enabled": true
+      },
+      "slack": {
+        "enabled": false
+      },
+      "memory-core": {
+        "enabled": true
+      },
+      "llm-task": {
+        "enabled": true
+      },
+      "lobster": {
+        "enabled": true
+      },
+      "open-prose": {
+        "enabled": true
+      },
+      "moltbook-integration": {
+        "enabled": true,
+        "module": "integrity-molt/moltbook_integration.py"
+      },
+      "security-audit": {
+        "enabled": true,
+        "module": "integrity-molt/security_auditor.py"
+      },
+      "github-automation": {
+        "enabled": true,
+        "module": "integrity-molt/github_automation.py"
+      }
+    }
+  },
+  "messages": {
+    "ackReactionScope": "group-mentions",
+    "formatting": {
+      "auditReport": {
+        "includeSignature": true,
+        "includeVerification": true,
+        "includeOnChainLink": true
+      }
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "sentry": {
+      "enabled": true,
+      "dsn": "https://your-key@sentry.io/123456"
+    },
+    "prometheus": {
+      "enabled": true,
+      "port": 9090,
+      "metrics": [
+        "audit_latency_seconds",
+        "total_audits_completed",
+        "error_rate",
+        "gpt4_token_usage",
+        "mongodb_operation_duration"
+      ]
+    },
+    "healthCheck": {
+      "enabled": true,
+      "interval": 60,
+      "endpoints": [
+        "https://integrity-molt.railway.app/health",
+        "https://api.molt.id/health"
+      ]
+    }
+  },
+  "update": {
+    "channel": "stable",
+    "autoUpdate": true,
+    "checkInterval": 86400
+  },
+  "web": {
+    "enabled": true,
+    "port": 3000,
+    "dashboard": {
+      "enabled": true,
+      "url": "https://integrity.molt.railway.app/dashboard"
+    }
+  },
+  "hooks": {
+    "presets": [
+      {
+        "event": "agent_startup",
+        "action": "log_agent_config"
+      },
+      {
+        "event": "audit_complete",
+        "action": "verify_on_chain"
+      },
+      {
+        "event": "monthly",
+        "action": "generate_analytics"
+      }
+    ]
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2026-02-28",
+    "agent": "integrity.molt Security Audit Agent",
+    "repository": "https://github.com/Hans1132/integrity.molt",
+    "documentation": "https://github.com/Hans1132/integrity.molt/blob/main/README.md",
+    "support": "https://discord.gg/moltbook"
+  }
+}
