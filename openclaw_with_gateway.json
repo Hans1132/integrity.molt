@@ -1,0 +1,20 @@
+{
+  "agent": {
+    "workspace": "~/.openclaw/workspace"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8781568638:AAFDwqrFjlNM9QHlUQjlymj6Xa0kDF8l0P0",
+      "dmPolicy": "pairing",
+      "allowFrom": ["tg:123456789"]
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "auth": {
+      "mode": "token",
+      "token": "yvR_KVqo6Niwvx7t__NWepUPZAL3j5HwfAIb4ynyyVo"
+    }
+  }
+}

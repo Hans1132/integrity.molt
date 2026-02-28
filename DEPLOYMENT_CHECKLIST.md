@@ -1,52 +1,149 @@
-# ✅ Moltbook OpenClaw Deployment Checklist
+# ✅ Autonomous Agent Deployment Checklist
 
-**Project:** integrity.molt  
-**Status:** Ready for Deployment  
-**Date:** February 26, 2026
+Complete checklist for deploying integrity.molt as a fully autonomous money-earning agent on Moltbook.
 
----
-
-## 📋 Pre-Deployment Checklist
-
-### Infrastructure
-- [ ] `integrity.molt` NFT minted on Solana (✅ Done)
-- [ ] Moltbook account created (app.molt.id)
-- [ ] GitHub account ready
-- [ ] Node.js 16+ installed locally
-
-### Credentials
-- [ ] Telegram Bot Token: `8488646935:AAE2hXdjBLPr-8QJboEPXsidlR8BIETEXJ0` ✅
-- [ ] OpenAI API Key: `sk-proj-0B7ECIgj-...` ✅
-- [ ] Solana Public Key: `3vDc6RTAmWGuvpbT6n6DdNgwafRE88nJAx7YXA64wojM` ✅
-
-### Code
-- [ ] `src/` directory with all modules ✅
-- [ ] `requirements.txt` with dependencies ✅
-- [ ] `Dockerfile` for containerization ✅
-- [ ] `openclaw.json` configuration ✅
-- [ ] `.env.example` template ✅
-- [ ] `.gitignore` properly configured ✅
-- [ ] `.dockerignore` created ✅
-
-### Documentation
-- [ ] `OPENCLAW_DEPLOY.md` (full guide) ✅
-- [ ] `DEPLOY_QUICK.md` (quick reference) ✅
-- [ ] `.github/copilot-instructions.md` ✅
-- [ ] `README.md` with setup ✅
+**Updated**: February 28, 2026  
+**Phase**: Phase 3g - Autonomous & Monetization
 
 ---
 
-## 🚀 Deployment Steps
+## 📋 Pre-Deployment (Local Setup)
 
-### Phase 1: Local Verification (Already Done ✅)
-```bash
-✅ Bot running locally on Windows
-✅ Telegram commands responding
-✅ GPT-4 integration working
-✅ Cost tracking logging
-```
+- [ ] **Clone/pull latest code**
+  ```bash
+  git pull origin main
+  ```
 
-### Phase 2: GitHub Setup
+- [ ] **Install dependencies**
+  ```bash
+  pip install -r requirements.txt
+  ```
+  - ✅ Includes: FastAPI, Uvicorn, Pydantic
+
+- [ ] **Create/update `.env`**
+  ```bash
+  cp .env.example .env
+  # Edit with your actual values
+  ```
+
+- [ ] **Validate all required variables**
+  ```bash
+  python3 -c "from src.config import validate_config; validate_config()"
+  ```
+  Must have:
+  - [ ] `TELEGRAM_TOKEN`
+  - [ ] `OPENAI_API_KEY`
+  - [ ] `SOLANA_PUBLIC_KEY`
+  - [ ] `MONGODB_URI`
+  - [ ] `MOLTBOOK_API_KEY` (new)
+  - [ ] `MOLTBOOK_WEBHOOK_SECRET` (new)
+
+- [ ] **Test locally**
+  ```bash
+  python -m src
+  ```
+  Should see:
+  - ✅ Telegram bot thread started
+  - ✅ Marketplace API thread started
+  - ✅ Autonomous auditor thread started
+
+- [ ] **Test Telegram bot**
+  ```bash
+  Send: /help
+  Expect: Command list
+  ```
+
+- [ ] **Test FastAPI/health check**
+  ```bash
+  curl http://localhost:8000/health
+  Expect: {"status": "healthy"}
+  ```
+
+- [ ] **Test earnings endpoint**
+  ```bash
+  curl http://localhost:8000/earnings
+  Expect: {"total_audits": 0, ...}
+  ```
+
+---
+
+## 🚀 Deploy to Railway
+
+- [ ] **Commit code changes**
+  ```bash
+  git add -A
+  git commit -m "Deploy autonomous agent with FastAPI marketplace integration"
+  ```
+
+- [ ] **Push to GitHub**
+  ```bash
+  git push origin main
+  ```
+  - Railway auto-detects changes
+  - Auto-builds Docker image
+  - Auto-starts new deployment
+
+- [ ] **Verify Railway build succeeded**
+  - Go to: https://railway.app/dashboard
+  - Select project: `integrity.molt`
+  - Check deployments tab
+  - Look for green checkmark ✅
+
+- [ ] **Monitor deploy logs**
+  ```bash
+  railway logs --follow
+  ```
+  Wait for:
+  - "Application startup complete"
+  - "integrity.molt is now FULLY OPERATIONAL"
+
+- [ ] **Update/verify environment variables on Railway**
+  - Go to: Project → Variables
+  - Ensure all variables set (see pre-deployment)
+  - Add new variables:
+    - [ ] `MARKETPLACE_API_PORT=8000`
+    - [ ] `MAX_CONCURRENT_AUDITS=3`
+    - [ ] `AUDIT_QUEUE_CHECK_INTERVAL=5`
+
+- [ ] **Find your Railway domain**
+  - Go to: Project → Networking
+  - Public URL format: `https://integrity-molt--production-XXXX.railway.app`
+  - Copy and save this URL
+
+---
+
+## 🔗 Integrate with Moltbook
+
+- [ ] **Register webhook with Moltbook**
+  ```bash
+  export RAILWAY_DOMAIN="https://integrity-molt--production-XXXX.railway.app"
+  export MOLTBOOK_API_KEY="sk_live_xxxxx"
+  export WEBHOOK_SECRET="your_secret_here"
+  
+  curl -X POST https://api.molt.id/webhooks/subscribe \
+    -H "Authorization: Bearer $MOLTBOOK_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "agent_id": "molt_78587c41ed99a3375022dc28",
+      "webhook_url": "'$RAILWAY_DOMAIN'/webhooks/audit",
+      "events": ["audit_request", "payment_confirmed"],
+      "secret": "'$WEBHOOK_SECRET'"
+    }'
+  ```
+  Expected: `"status": "active"`
+
+- [ ] **Test webhook connectivity**
+  ```bash
+  curl -X GET https://api.molt.id/webhooks/list \
+    -H "Authorization: Bearer $MOLTBOOK_API_KEY"
+  ```
+  Should list your webhook
+
+- [ ] **Create audit service listing on Moltbook**
+  - Go to: https://app.molt.id/services/create
+  - Service type: "Security Audit"
+  - Set price: ~0.05 SOL per audit
+  -
 
 ```bash
 # [ ] Initialize git repo in integrity.molt/

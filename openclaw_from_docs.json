@@ -1,0 +1,24 @@
+{
+  "identity": {
+    "name": "integrity.molt",
+    "theme": "security audit agent"
+  },
+  "agent": {
+    "workspace": "~/.openclaw/workspace",
+    "model": {
+      "primary": "openai/gpt-4o"
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8781568638:AAFDwqrFjlNM9QHlUQjlymj6Xa0kDF8l0P0",
+      "allowFrom": ["tg:123456789"],
+      "groups": {
+        "*": {
+          "requireMention": true
+        }
+      }
+    }
+  }
+}

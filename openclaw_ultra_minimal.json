@@ -1,0 +1,11 @@
+{
+  "agent": {
+    "workspace": "~/.openclaw/workspace"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8781568638:AAFDwqrFjlNM9QHlUQjlymj6Xa0kDF8l0P0"
+    }
+  }
+}

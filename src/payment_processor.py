@@ -18,7 +18,7 @@ class PaymentProcessor:
     
     # Audit pricing model
     PRICING = {
-        "base_fee_sol": Decimal("0.005"),  # Base fee: 0.005 SOL (~0.30 USD)
+        "base_fee_sol": Decimal("0.05"),  # Base fee: 0.05 SOL (~$3 USD)
         "per_token_cost": Decimal("0.000001"),  # 1 lamport per token
         "risk_multiplier": {
             "1": Decimal("1.0"),   # Low risk: 1x

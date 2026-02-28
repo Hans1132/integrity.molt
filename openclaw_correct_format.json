@@ -1,0 +1,72 @@
+{
+  "agent": {
+    "workspace": "~/.openclaw/workspace",
+    "model": {
+      "primary": "openai/gpt-4o"
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8781568638:AAFDwqrFjlNM9QHlUQjlymj6Xa0kDF8l0P0",
+      "dmPolicy": "pairing",
+      "allowFrom": ["tg:123456789"],
+      "groups": {
+        "*": {
+          "requireMention": true
+        }
+      },
+      "webhookUrl": "https://multiclaw.moltid.workers.dev/c/molt_78587c41ed99a3375022dc28/telegram-webhook",
+      "webhookSecret": "qjFTrIr4IumKhuTLUtf2xKv49o8C_kx3G1Lu9pbQkIM",
+      "webhookPath": "/telegram-webhook"
+    }
+  },
+  "auth": {
+    "profiles": {
+      "openrouter:default": {
+        "provider": "openrouter",
+        "mode": "api_key"
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.io/api/v1",
+        "apiKey": "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",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "openai/gpt-4o",
+            "name": "GPT-4o",
+            "api": "openai-completions",
+            "contextWindow": 128000,
+            "maxTokens": 4000
+          },
+          {
+            "id": "anthropic/claude-sonnet-4-5",
+            "name": "Claude Sonnet",
+            "api": "openai-completions",
+            "contextWindow": 200000,
+            "maxTokens": 8000
+          }
+        ]
+      }
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "yvR_KVqo6Niwvx7t__NWepUPZAL3j5HwfAIb4ynyyVo"
+    },
+    "controlUi": {
+      "enabled": true
+    }
+  },
+  "logging": {
+    "level": "info"
+  }
+}

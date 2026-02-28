@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "name": "integrity.molt",
+    "description": "Autonomous Solana Smart Contract Security Auditor"
+  },
+  "auth": {
+    "profiles": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "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"
+      }
+    }
+  },
+  "models": {
+    "primary": "openai/gpt-4o",
+    "fallback": "openai/gpt-4o-mini"
+  },
+  "agents": {
+    "id": "integrity-molt-main",
+    "name": "integrity.molt Security Audit Agent",
+    "identity": {
+      "wallet": "BFmkPKu2tS9RoMufgJUd9GyabzC91hriAbMS6Hmr8TX6",
+      "nftIdentity": "2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy",
+      "domain": "integrity.molt"
+    }
+  },
+  "deployment": {
+    "type": "railway",
+    "projectId": "integrity-molt",
+    "environment": "production"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8781568638:AAFDwqrFjlNM9QHlUQjlymj6Xa0kDF8l0P0",
+      "webhookUrl": "https://multiclaw.moltid.workers.dev/c/molt_78587c41ed99a3375022dc28/telegram-webhook",
+      "webhookSecret": "qjFTrIr4IumKhuTLUtf2xKv49o8C_kx3G1Lu9pbQkIM"
+    }
+  },
+  "integrations": {
+    "github": {
+      "enabled": true,
+      "repository": "Hans1132/integrity.molt",
+      "branch": "main"
+    },
+    "solana": {
+      "enabled": true,
+      "rpc": "https://api.mainnet-beta.solana.com"
+    },
+    "moltbook": {
+      "enabled": true,
+      "agentId": "molt_78587c41ed99a3375022dc28",
+      "domain": "integrity.molt"
+    }
+  },
+  "database": {
+    "type": "mongodb",
+    "uri": "mongodb+srv://lickohonza_db_user:hm4PjMqKMVUsvFzw@cluster0.o15ogse.mongodb.net/?appName=Cluster0"
+  },
+  "monitoring": {
+    "enabled": true,
+    "prometheus": {
+      "enabled": true,
+      "port": 9090
+    }
+  }
+}

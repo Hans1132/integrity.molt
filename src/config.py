@@ -52,6 +52,16 @@ class Config:
     # Metaplex
     METAPLEX_PROGRAM_ID: str = os.getenv("METAPLEX_PROGRAM_ID", "4XKv23WzTb9ZpwLCxfQ3k2ChFmQwrUuuazpDKq3ikVSJ")
     
+    # Marketplace Webhook Security (Phase 3g - Autonomous)
+    MOLTBOOK_WEBHOOK_SECRET: str = os.getenv("MOLTBOOK_WEBHOOK_SECRET", "")
+    MARKETPLACE_API_PORT: int = int(os.getenv("MARKETPLACE_API_PORT", "8000"))
+    MARKETPLACE_API_HOST: str = os.getenv("MARKETPLACE_API_HOST", "0.0.0.0")
+    MARKETPLACE_API_URL: str = os.getenv("MARKETPLACE_API_URL", "https://integrity.molt.app")
+    
+    # Autonomous Audit Settings
+    MAX_CONCURRENT_AUDITS: int = int(os.getenv("MAX_CONCURRENT_AUDITS", "3"))
+    AUDIT_QUEUE_CHECK_INTERVAL: int = int(os.getenv("AUDIT_QUEUE_CHECK_INTERVAL", "5"))
+    
     # MongoDB (Phase 3 - Real persistence layer)
     MONGODB_URI: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017/integrity_molt")
     DATABASE_MODE: str = os.getenv("DATABASE_MODE", "mock")  # "mock" or "real"

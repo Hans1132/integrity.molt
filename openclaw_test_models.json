@@ -1,0 +1,27 @@
+{
+  "agent": {
+    "workspace": "~/.openclaw/workspace"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8781568638:AAFDwqrFjlNM9QHlUQjlymj6Xa0kDF8l0P0"
+    }
+  },
+  "models": {
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.io/api/v1",
+        "apiKey": "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",
+        "api": "openai-completions"
+      }
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "auth": {
+      "mode": "token",
+      "token": "yvR_KVqo6Niwvx7t__NWepUPZAL3j5HwfAIb4ynyyVo"
+    }
+  }
+}
