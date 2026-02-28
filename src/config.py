@@ -28,6 +28,15 @@ class Config:
     # Solana
     SOLANA_RPC_URL: str = os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
     SOLANA_PUBLIC_KEY: str = os.getenv("SOLANA_PUBLIC_KEY", "")
+    SOLANA_PRIVATE_KEY: str = os.getenv("SOLANA_PRIVATE_KEY", "")  # For agent signing
+    
+    # Agent On-Chain Identity (Moltbook Phase 3e)
+    AGENT_PRIVATE_KEY: str = os.getenv("AGENT_PRIVATE_KEY", "")
+    AGENT_WALLET: str = os.getenv("AGENT_WALLET", "BFmkPKu2tS9RoMufgJUd9GyabzC91hriAbMS6Hmr8TX6")
+    AGENT_IDENTITY_NFT: str = os.getenv("AGENT_IDENTITY_NFT", "2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy")
+    MOLTBOOK_API_URL: str = os.getenv("MOLTBOOK_API_URL", "https://api.molt.id")
+    MOLTBOOK_AGENT_ID: str = os.getenv("MOLTBOOK_AGENT_ID", "molt_78587c41ed99a3375022dc28")
+    MOLTBOOK_API_KEY: str = os.getenv("MOLTBOOK_API_KEY", "")
     
     # Cloudflare R2 (Phase 2 - Optional)
     R2_ACCOUNT_ID: str = os.getenv("R2_ACCOUNT_ID", "")
