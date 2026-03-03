@@ -105,7 +105,7 @@ class OpenClawDeployer:
 
 ┌─ ENVIRONMENT VARIABLES ────────────────────────────────┐
 │ Already set in Railway dashboard:                      │
-│ • TELEGRAM_TOKEN=8781568638:AAFDwqrFjlNM9...         │
+  │ • TELEGRAM_TOKEN=YOUR_TELEGRAM_TOKEN_HERE         │
 │ • OPENAI_API_KEY=sk-q6DsDr7uO_o4zHpVgjkst...         │
 │ • MONGODB_URI=mongodb+srv://...                       │
 │ • AGENT_PRIVATE_KEY=YOUR_SOLANA_PRIVATE_KEY          │
@@ -166,7 +166,7 @@ class OpenClawDeployer:
       Path: channels.telegram.botToken
       Value: Get from @BotFather on Telegram (already provided)
       Current: __OPENCLAW_REDACTED__
-      New: 8781568638:AAFDwqrFjlNM9QHlUQjlymj6Xa0kDF8l0P0
+      New: YOUR_TELEGRAM_TOKEN_HERE
   
   4.2 OPENROUTER API KEY
       Path: models.providers.openrouter.apiKey

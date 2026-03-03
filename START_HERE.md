@@ -67,11 +67,11 @@ openclaw login
 
 ```
 Variable Name: TELEGRAM_TOKEN
-Value: 8488646935:AAE2hXdjBLPr-8QJboEPXsidlR8BIETEXJ0
+Value: YOUR_TELEGRAM_TOKEN_HERE
 [Click Save]
 
 Variable Name: OPENAI_API_KEY
-Value: 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
+Value: YOUR_OPENAI_API_KEY_HERE
 [Click Save]
 
 Variable Name: SOLANA_PUBLIC_KEY

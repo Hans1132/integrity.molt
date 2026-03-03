@@ -150,8 +150,8 @@ In Railway Dashboard:
 3. Add all production environment variables:
 
 ```
-TELEGRAM_TOKEN=8781568638:AAHuk9md08...
-OPENAI_API_KEY=sk-proj-0B7ECIgj-AQp...
+TELEGRAM_TOKEN=YOUR_TELEGRAM_TOKEN_HERE
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY_HERE
 SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 SOLANA_PUBLIC_KEY=3vDc6RTAmWGuvpbT6n6DdNgwafRE88nJAx7YXA64wojM
 MONGODB_URI=mongodb+srv://lickohonza_db_user:hm4PjMqKMVUsvFzw@cluster.mongodb.net/integrity_molt
