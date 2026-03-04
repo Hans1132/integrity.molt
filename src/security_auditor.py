@@ -180,7 +180,16 @@ class SecurityAuditor:
         contract_code: str = "",
         user_id: int = 0,
         is_subscriber: bool = False,
-        force_refresh: bool = False  # ✅ Add force flag
+        force_refresh: bool = False
+    ) -> dict:
+        """
+        Enhanced contract security audit with pattern detection and caching
+        
+        Args:
+            contract_address: Solana contract address to audit
+            contract_code: Contract code/bytecode (optional, uses RPC if empty)
+            user_id: Telegram user ID (0 = anonymous)
+            is_subscriber: Whether user has active subscription
             force_refresh: Force new audit, ignore cache
         
         Returns:
