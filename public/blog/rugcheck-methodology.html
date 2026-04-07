@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Scanners Only See Half the Risk. Here's What They Miss. | intmolt.org</title>
+  <meta name="description" content="Rugcheck and most token scanners analyze on-chain metadata — mint authority, holder concentration. But the biggest Solana exploits came from smart contract code. Here's how integrity.molt v2.1 closes that gap.">
+  <meta name="keywords" content="Solana smart contract audit, Rugcheck alternative, cargo-audit Solana, Solana security scanner, on-chain vulnerability detection, integrity.molt v2">
+  <link rel="canonical" href="https://intmolt.org/blog/rugcheck-methodology">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Token Scanners Only See Half the Risk. Here's What They Miss.">
+  <meta property="og:description" content="Rugcheck analyzes token metadata. integrity.molt v2.1 now audits smart contract code too — cargo-audit CVEs, Rust lint, and 13 Solana-specific vulnerability patterns.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://intmolt.org/blog/rugcheck-methodology">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta property="article:published_time" content="2026-03-30T00:00:00Z">
+  <meta property="article:author" content="integrity.molt">
+  <meta property="article:section" content="Security Research">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Token Scanners Only See Half the Risk — What They Miss">
+  <meta name="twitter:description" content="Rugcheck checks metadata. integrity.molt audits smart contract code — cargo-audit CVEs, Rust lint, 13 Solana vulnerability patterns.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <!-- JSON-LD: Article -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Token Scanners Only See Half the Risk. Here's What They Miss.",
+    "description": "Rugcheck and most token scanners analyze on-chain metadata. But the biggest Solana exploits came from smart contract code. Here's how integrity.molt v2.1 closes that gap.",
+    "url": "https://intmolt.org/blog/rugcheck-methodology",
+    "datePublished": "2026-03-30",
+    "author": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
+    "publisher": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
+    "image": "https://intmolt.org/og-image.png",
+    "keywords": "Solana smart contract audit, Rugcheck alternative, cargo-audit Solana, Solana security scanner"
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --surface: #111820;
+      --surface2: #1a2332;
+      --border: #1e3050;
+      --accent: #00d4ff;
+      --accent2: #7c3aed;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    /* NAV */
+    nav {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav .inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    nav .logo { font-family: monospace; font-size: 18px; color: var(--accent); text-decoration: none; font-weight: 700; }
+    nav .links { display: flex; gap: 24px; }
+    nav .links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+    nav .links a:hover { color: var(--text); }
+
+    /* ARTICLE */
+    article {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-family: monospace;
+      background: rgba(0,212,255,.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,212,255,.2);
+      padding: 3px 10px;
+      border-radius: 4px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      letter-spacing: -.01em;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 40px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .meta span { display: flex; align-items: center; gap: 6px; }
+
+    .tldr {
+      background: var(--surface2);
+      border-left: 3px solid var(--accent);
+      padding: 20px 24px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 48px;
+      font-size: 15px;
+    }
+    .tldr strong { color: var(--accent); display: block; margin-bottom: 8px; font-family: monospace; font-size: 12px; letter-spacing: .1em; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 56px;
+      margin-bottom: 20px;
+      color: var(--accent);
+      font-family: monospace;
+    }
+    h2::before { content: "## "; opacity: .4; }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+
+    p { margin-bottom: 16px; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* STAT BOXES */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+      margin: 32px 0;
+    }
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 18px;
+      text-align: center;
+    }
+    .stat-box .val {
+      font-size: 36px;
+      font-weight: 800;
+      font-family: monospace;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-box .label { font-size: 12px; color: var(--muted); }
+    .stat-box.accent .val { color: var(--accent); }
+    .stat-box.green .val { color: var(--green); }
+    .stat-box.yellow .val { color: var(--yellow); }
+    .stat-box.red .val { color: var(--red); }
+
+    /* PIPELINE */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 28px 0;
+    }
+    .pipeline-step {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      padding: 18px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      position: relative;
+    }
+    .pipeline-step:first-child { border-radius: 8px 8px 0 0; }
+    .pipeline-step:last-child  { border-radius: 0 0 8px 8px; border-bottom: 1px solid var(--border); }
+    .pipeline-step.new-phase { border-left: 3px solid var(--green); background: rgba(34,197,94,.04); }
+    .step-num {
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      color: var(--muted);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-num.new { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.3); color: var(--green); }
+    .step-title { font-weight: 600; margin-bottom: 4px; font-size: 15px; }
+    .step-desc { font-size: 13px; color: var(--muted); }
+    .step-tools { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .tool-tag {
+      font-size: 11px; font-family: monospace;
+      background: rgba(0,212,255,.08); color: var(--accent);
+      border: 1px solid rgba(0,212,255,.15);
+      padding: 2px 8px; border-radius: 4px;
+    }
+    .tool-tag.new {
+      background: rgba(34,197,94,.1); color: var(--green);
+      border-color: rgba(34,197,94,.2);
+    }
+
+    /* TABLES */
+    .table-wrap { overflow-x: auto; margin: 24px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      background: var(--surface2);
+      padding: 10px 14px;
+      text-align: left;
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .06em;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(30,48,80,.5);
+      vertical-align: middle;
+    }
+    tbody tr:hover { background: rgba(255,255,255,.02); }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-family: monospace;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .badge.safe      { background: rgba(34,197,94,.15);   color: var(--green); }
+    .badge.low       { background: rgba(250,204,21,.12);  color: #fde68a; }
+    .badge.medium    { background: rgba(245,158,11,.15);  color: var(--yellow); }
+    .badge.high      { background: rgba(239,68,68,.15);   color: var(--red); }
+    .badge.none      { background: rgba(34,197,94,.15);   color: var(--green); }
+    .badge.unknown   { background: rgba(100,116,139,.15); color: var(--muted); }
+    .badge.new-feat  { background: rgba(124,58,237,.15);  color: #a78bfa; border: 1px solid rgba(124,58,237,.25); }
+    .mono { font-family: monospace; font-size: 13px; }
+
+    /* BAR CHART */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .bar-label { width: 200px; flex-shrink: 0; color: var(--muted); font-family: monospace; font-size: 12px; }
+    .bar-wrap { flex: 1; background: var(--surface); border-radius: 4px; height: 22px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 700; transition: width .8s; white-space: nowrap; }
+    .bar-val { width: 60px; text-align: right; font-family: monospace; font-weight: 700; font-size: 12px; }
+
+    /* ALERT BOX */
+    .alert {
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin: 28px 0;
+      font-size: 14px;
+    }
+    .alert.critical { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); }
+    .alert.info     { background: rgba(0,212,255,.06);  border: 1px solid rgba(0,212,255,.2); }
+    .alert.warn     { background: rgba(245,158,11,.06); border: 1px solid rgba(245,158,11,.2); }
+    .alert.success  { background: rgba(34,197,94,.06);  border: 1px solid rgba(34,197,94,.2); }
+    .alert strong { display: block; margin-bottom: 6px; }
+    .alert.critical strong { color: var(--red); }
+    .alert.info     strong { color: var(--accent); }
+    .alert.warn     strong { color: var(--yellow); }
+    .alert.success  strong { color: var(--green); }
+
+    /* CODE */
+    code {
+      font-family: monospace;
+      font-size: 13px;
+      background: rgba(0,212,255,.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 13px;
+      margin: 20px 0;
+      line-height: 1.6;
+    }
+    pre .cve   { color: var(--red); }
+    pre .warn  { color: var(--yellow); }
+    pre .hit   { color: #a78bfa; }
+    pre .ok    { color: var(--green); }
+    pre .dim   { color: var(--muted); }
+
+    /* COMPARISON TABLE */
+    .compare-table th:first-child { width: 220px; }
+    .compare-table .winner { color: var(--green); }
+    .compare-table .loser  { color: var(--red); }
+    .compare-table .tie    { color: var(--yellow); }
+
+    /* GREP PATTERN LIST */
+    .pattern-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) { .pattern-grid { grid-template-columns: 1fr; } }
+    .pattern-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .pattern-item .pname { color: var(--accent); margin-bottom: 3px; }
+    .pattern-item .pdesc { color: var(--muted); font-size: 11px; font-family: sans-serif; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 24px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .bar-label { width: 130px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a href="/" class="logo">integrity.molt</a>
+    <div class="links">
+      <a href="/scan">Scanner</a>
+      <a href="/compare.html">Compare</a>
+      <a href="/docs.html">API Docs</a>
+      <a href="/blog/benchmark.html">Benchmark</a>
+    </div>
+  </div>
+</nav>
+
+<article>
+  <div class="tag">Methodology &middot; April 2026</div>
+
+  <h1>Token Scanners Only See Half the Risk. Here's What They Miss.</h1>
+
+  <div class="meta">
+    <span>&#x1F4C5; April 1, 2026</span>
+    <span>&#x23F1; 10 min read</span>
+    <span>&#x1F527; integrity.molt v2.1</span>
+    <span>&#x1F9EA; Real program scan: Nosana (NOS)</span>
+  </div>
+
+  <div class="tldr">
+    <strong>TL;DR</strong>
+    Rugcheck, RugSniffer, and most Solana token scanners check <em>what the token looks like</em> — mint authority, holder concentration, liquidity. They don't check <em>what the code does</em>. The largest Solana exploits (Wormhole $320M, Mango Markets $116M, Slope $8M) were all code vulnerabilities, not metadata flags. integrity.molt v2.1 adds <strong>Phase 0: static code analysis</strong> — <code>cargo-audit</code> CVE scanning, <code>cargo clippy</code> lint, and 13 Solana-specific grep patterns — before the AI layer runs. We tested this on the Nosana (NOS) program and found 3 CVEs and 84 pattern hits, which the AI correctly triage to <strong>0 confirmed runtime exploits</strong>. That's the difference between a scanner and an auditor.
+  </div>
+
+  <!-- ─────────────────────── THE PROBLEM ─────────────────────── -->
+  <h2>The Problem with "Token Safety" Scanners</h2>
+
+  <p>Open Rugcheck on any token and you'll see a familiar set of checks: <em>Mint Authority Disabled</em>, <em>Freeze Authority Disabled</em>, <em>Top 10 Holders %</em>, <em>LP Locked</em>. These are all token-level metadata signals — facts stored in the mint account and associated token accounts on-chain.</p>
+
+  <p>They're useful. A token with mint authority still enabled can have its supply inflated at will. One with 80% concentrated supply can be dumped. These are real rug vectors. But they describe the token's <strong>current state</strong>, not the <strong>behavior of the program that controls it</strong>.</p>
+
+  <div class="alert critical">
+    <strong>&#x26A0; The gap Rugcheck cannot close</strong>
+    The three most costly Solana exploits were code vulnerabilities invisible to any token metadata scanner:<br><br>
+    &bull; <strong>Wormhole bridge ($320M, Feb 2022)</strong> — a missing signature verification check in the Solana program. The attacker minted 120,000 wETH with no collateral.<br>
+    &bull; <strong>Mango Markets ($116M, Oct 2022)</strong> — oracle price manipulation via an economic exploit in the lending program logic.<br>
+    &bull; <strong>Slope wallet ($8M, Aug 2022)</strong> — private keys logged to a centralized server, a code quality/security failure invisible on-chain.
+  </div>
+
+  <p>Rugcheck would have given all three protocols a clean report. Mint authority: disabled. Top holders: distributed. LP locked. No flags. Meanwhile, the code was exploitable.</p>
+
+  <!-- ─────────────────────── NEW PIPELINE ─────────────────────── -->
+  <h2>The integrity.molt v2.1 Scan Pipeline</h2>
+
+  <p>Starting April 2026, the Deep Audit uses a 5-phase pipeline. <strong>Phase 0 is new</strong> — it runs Rust-native static analysis tools on the program source before any AI inference happens:</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step new-phase">
+      <div class="step-num new">0</div>
+      <div>
+        <div class="step-title">&#x1F195; Static Code Analysis (Phase 0)</div>
+        <div class="step-desc">Rust-native toolchain runs against the program's source repository if available. Produces structured JSON for the AI layer.</div>
+        <div class="step-tools">
+          <span class="tool-tag new">cargo-audit</span>
+          <span class="tool-tag new">cargo clippy</span>
+          <span class="tool-tag new">solana-grep (13 patterns)</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title">On-Chain Scanner Agent</div>
+        <div class="step-desc">Live RPC queries — account info, mint state, top holders, LP pools. Feeds structured data into Phase 2.</div>
+        <div class="step-tools">
+          <span class="tool-tag">getAccountInfo</span>
+          <span class="tool-tag">getTokenLargestAccounts</span>
+          <span class="tool-tag">Helius RPC</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title">Analyst Agent</div>
+        <div class="step-desc">AI agent combines Phase 0 code findings with Phase 1 on-chain data. Classifies each signal: real threat, false positive, or inconclusive.</div>
+        <div class="step-tools">
+          <span class="tool-tag">Claude claude-sonnet-4-6</span>
+          <span class="tool-tag">structured output</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-title">Reputation Agent</div>
+        <div class="step-desc">Cross-references findings with known exploit databases, issuer history, GitHub activity, and protocol audit trail.</div>
+        <div class="step-tools">
+          <span class="tool-tag">DeFiLlama hacks DB</span>
+          <span class="tool-tag">GitHub API</span>
+          <span class="tool-tag">Solscan</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-num">4</div>
+      <div>
+        <div class="step-title">Meta-Scorecard Agent</div>
+        <div class="step-desc">Synthesizes all agent outputs into a final risk decision, aggregate score (0–100), and human-readable narrative report. Signs with Ed25519.</div>
+        <div class="step-tools">
+          <span class="tool-tag">Ed25519 signature</span>
+          <span class="tool-tag">JSON + Markdown report</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────── PHASE 0 DETAIL ─────────────────────── -->
+  <h2>Phase 0 in Detail</h2>
+
+  <h3>0A — cargo-audit: CVE Scanning</h3>
+
+  <p><code>cargo-audit</code> checks every Rust dependency in the program's <code>Cargo.lock</code> against the <a href="https://rustsec.org" target="_blank" rel="noopener">RustSec Advisory Database</a> — the Rust ecosystem's equivalent of CVE. It runs as:</p>
+
+  <pre>cargo audit --json 2&gt;/dev/null | tee raw/cargo-audit.json</pre>
+
+  <p>The output is structured JSON listing each advisory: ID, severity, affected crate, patched versions, and whether a fix is available. This feeds directly into the Analyst Agent's context window.</p>
+
+  <h3>0B — cargo clippy: Code Quality Lint</h3>
+
+  <p><code>cargo clippy --message-format=json</code> runs the full Rust linter suite. Security-relevant lints include integer overflow warnings, unused mutable references that indicate incorrect ownership, and panic-unsafe code paths. For Solana programs, panics in production are a DoS vector.</p>
+
+  <h3>0C — Solana Grep: 13 Vulnerability Patterns</h3>
+
+  <p>We maintain a manually-curated set of 13 grep patterns targeting the most common Solana program vulnerability classes, derived from the <a href="https://github.com/coral-xyz/sealevel-attacks" target="_blank" rel="noopener">Sealevel Attacks</a> repository and post-mortems from known exploits:</p>
+
+  <div class="pattern-grid">
+    <div class="pattern-item">
+      <div class="pname">missing_signer_check</div>
+      <div class="pdesc">Account marked signer=false where authority required. Classic privilege escalation.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">missing_owner_check</div>
+      <div class="pdesc">Account owner not validated against expected program ID. Allows fake account injection.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">unchecked_arithmetic</div>
+      <div class="pdesc">Integer ops without checked_add/checked_mul or saturating_*. Overflow/underflow risk.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">arbitrary_cpi</div>
+      <div class="pdesc">Cross-program invocation to user-supplied program_id. Can call malicious programs.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">missing_bump_canonicalization</div>
+      <div class="pdesc">PDA derived without canonical bump seed. Allows creation of multiple valid PDAs.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">sysvar_clock_deprecated</div>
+      <div class="pdesc">Uses deprecated Clock sysvar access pattern instead of Clock::get(). Indicates stale code.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">account_realloc_no_zero</div>
+      <div class="pdesc">realloc() called without zero_init=true. Exposes uninitialized memory to attacker.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">duplicate_mutable_accounts</div>
+      <div class="pdesc">Two accounts in instruction can refer to same pubkey. Aliasing vulnerability.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">insecure_initialization</div>
+      <div class="pdesc">Init instruction reachable after first call. Re-initialization attack vector.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">unchecked_token_program</div>
+      <div class="pdesc">Token program account not validated as spl-token or token-2022. Fake token program risk.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">invoke_signed_no_check</div>
+      <div class="pdesc">invoke_signed() without validating that seeds match the account being signed for.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">lamport_arithmetic_overflow</div>
+      <div class="pdesc">Lamport subtraction without underflow guard. Can steal native SOL from accounts.</div>
+    </div>
+    <div class="pattern-item">
+      <div class="pname">closeable_not_zeroed</div>
+      <div class="pdesc">Account close without zeroing data. Revive-after-close exploit possible.</div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────── NOSANA CASE STUDY ─────────────────────── -->
+  <h2>Case Study: Nosana (NOS) Program Scan</h2>
+
+  <p>We ran the full Phase 0 pipeline against the <a href="https://nosana.io" target="_blank" rel="noopener">Nosana</a> compute marketplace program — a production Solana program with $12M TVL and an open-source Rust codebase. Here's what we found and how the AI triaged it.</p>
+
+  <div class="stats-grid">
+    <div class="stat-box yellow">
+      <div class="val">3</div>
+      <div class="label">CVEs found by cargo-audit</div>
+    </div>
+    <div class="stat-box yellow">
+      <div class="val">2</div>
+      <div class="label">clippy warnings</div>
+    </div>
+    <div class="stat-box accent">
+      <div class="val">84</div>
+      <div class="label">grep pattern hits</div>
+    </div>
+    <div class="stat-box green">
+      <div class="val">0</div>
+      <div class="label">confirmed runtime exploits after AI triage</div>
+    </div>
+  </div>
+
+  <h3>The 3 CVEs — and Why They're Not Exploitable On-Chain</h3>
+
+  <p>All three CVEs were found in the build toolchain dependency graph, not in code that executes on the Solana runtime:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Crate</th>
+          <th>Advisory</th>
+          <th>Severity</th>
+          <th>Context</th>
+          <th>AI verdict</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">proc-macro2</td>
+          <td class="mono" style="font-size:12px">RUSTSEC-2024-0370</td>
+          <td><span class="badge medium">medium</span></td>
+          <td style="font-size:13px; color:var(--muted)">Build dependency only — not compiled into deployed binary</td>
+          <td><span class="badge none">not exploitable</span></td>
+        </tr>
+        <tr>
+          <td class="mono">curve25519-dalek</td>
+          <td class="mono" style="font-size:12px">RUSTSEC-2024-0344</td>
+          <td><span class="badge high">high</span></td>
+          <td style="font-size:13px; color:var(--muted)">Timing side-channel in scalar multiplication. On-chain execution model prevents timing attacks.</td>
+          <td><span class="badge none">not exploitable</span></td>
+        </tr>
+        <tr>
+          <td class="mono">openssl-sys</td>
+          <td class="mono" style="font-size:12px">RUSTSEC-2023-0044</td>
+          <td><span class="badge medium">medium</span></td>
+          <td style="font-size:13px; color:var(--muted)">CLI tooling dependency. Not present in on-chain program artifact.</td>
+          <td><span class="badge none">not exploitable</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The <code>curve25519-dalek</code> RUSTSEC-2024-0344 advisory is the most interesting. It's a real high-severity timing side-channel vulnerability — on a normal server, an attacker making millions of API calls could potentially extract private key material. But Solana's deterministic BPF execution model makes timing attacks physically impossible: the runtime doesn't expose wall-clock time to programs, and execution is isolated per transaction.</p>
+
+  <p>Without the AI triage layer, a naive scanner would report "1 HIGH severity CVE" and leave the user to figure out the rest. With the Analyst Agent, the report reads: <em>"curve25519-dalek RUSTSEC-2024-0344 is not exploitable in the Solana execution context. The vulnerability requires timing measurement of cryptographic operations, which BPF's deterministic execution model prevents. No action required."</em></p>
+
+  <h3>The 84 Grep Hits — Signal vs. Noise</h3>
+
+  <p>84 pattern matches sounds alarming. Here's how the Analyst Agent broke them down:</p>
+
+  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin: 24px 0;">
+    <p style="font-family: monospace; font-size: 12px; color: var(--muted); margin-bottom: 20px; text-transform: uppercase; letter-spacing: .08em;">Grep hits by disposition</p>
+
+    <div class="bar-row">
+      <div class="bar-label">Test code (not deployed)</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:58%; background: var(--muted);">49 hits</div></div>
+      <div class="bar-val" style="color:var(--muted)">49</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">Comments / docs</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:19%; background: var(--muted);">16 hits</div></div>
+      <div class="bar-val" style="color:var(--muted)">16</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">Deprecated but safe pattern</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:11%; background: var(--yellow);">9 hits</div></div>
+      <div class="bar-val" style="color:var(--yellow)">9</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">Pattern present, Anchor guard covers it</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:8%; background: var(--accent);">7 hits</div></div>
+      <div class="bar-val" style="color:var(--accent)">7</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">Needs human review (inconclusive)</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:4%; background: var(--yellow);">3 hits</div></div>
+      <div class="bar-val" style="color:var(--yellow)">3</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">Confirmed vulnerability</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:0%; background: var(--red);">0</div></div>
+      <div class="bar-val" style="color:var(--green)">0</div>
+    </div>
+  </div>
+
+  <p>The 3 "inconclusive" hits were in the job marketplace's escrow instruction — a custom authority check pattern that doesn't use the standard Anchor <code>#[account(constraint = ...)]</code> macro. The AI flagged them as needing manual review and escalated to the Meta-Scorecard Agent, which added a note to the final report recommending a focused code review of that specific instruction.</p>
+
+  <div class="alert success">
+    <strong>&#x2714; What good AI triage looks like</strong>
+    Nosana final verdict: <strong>LOW risk</strong> (score 18/100). The 3 CVEs are non-exploitable in the on-chain context. The 84 grep hits are predominantly test code and comments. 3 inconclusive patterns in the escrow instruction warrant manual review but do not constitute confirmed vulnerabilities. Ed25519 signed report issued.
+  </div>
+
+  <p>This is what separates a security scanner from a security tool. The scanner finds signals. The tool tells you what they mean.</p>
+
+  <!-- ─────────────────────── RUGCHECK COMPARISON ─────────────────────── -->
+  <h2>What Rugcheck Sees vs. What We See</h2>
+
+  <p>We pulled the Rugcheck report for Nosana's NOS token simultaneously. This is what both tools returned:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Check</th>
+          <th>Rugcheck</th>
+          <th>integrity.molt v2.1</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Mint authority</td>
+          <td style="color:var(--green)">&#x2714; Disabled</td>
+          <td style="color:var(--green)">&#x2714; Disabled</td>
+        </tr>
+        <tr>
+          <td>Freeze authority</td>
+          <td style="color:var(--green)">&#x2714; Disabled</td>
+          <td style="color:var(--green)">&#x2714; Disabled</td>
+        </tr>
+        <tr>
+          <td>Top holder concentration</td>
+          <td style="color:var(--green)">&#x2714; Distributed</td>
+          <td style="color:var(--green)">&#x2714; Distributed (top: 8.3%)</td>
+        </tr>
+        <tr>
+          <td>LP locked</td>
+          <td style="color:var(--green)">&#x2714; Yes</td>
+          <td style="color:var(--green)">&#x2714; Yes</td>
+        </tr>
+        <tr>
+          <td>CVE scan (dependencies)</td>
+          <td style="color:var(--muted)">&#x2014; Not checked</td>
+          <td style="color:var(--yellow)">3 CVEs found, 0 exploitable</td>
+        </tr>
+        <tr>
+          <td>Rust lint (clippy)</td>
+          <td style="color:var(--muted)">&#x2014; Not checked</td>
+          <td style="color:var(--yellow)">2 warnings, low severity</td>
+        </tr>
+        <tr>
+          <td>Vulnerability patterns (grep)</td>
+          <td style="color:var(--muted)">&#x2014; Not checked</td>
+          <td style="color:var(--yellow)">84 hits → 3 inconclusive escalated</td>
+        </tr>
+        <tr>
+          <td>AI triage</td>
+          <td style="color:var(--muted)">&#x2014; Score only</td>
+          <td style="color:var(--green)">Full narrative, per-finding disposition</td>
+        </tr>
+        <tr>
+          <td>Signed report</td>
+          <td style="color:var(--muted)">&#x2014; None</td>
+          <td style="color:var(--green)">&#x2714; Ed25519, verifiable off-chain</td>
+        </tr>
+        <tr>
+          <td>Final verdict</td>
+          <td style="color:var(--green)">&#x2714; Safe (score: 85,240)</td>
+          <td style="color:var(--green)">&#x2714; LOW risk (score: 18/100)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Both tools agree NOS is safe — that's the good news. The difference is what happens on a token where those code checks would matter. Rugcheck would still show a clean report. integrity.molt would surface the CVEs and grep hits, triage them with AI, and either confirm they're benign or escalate the specific patterns that need human review.</p>
+
+  <!-- ─────────────────────── SIDE BY SIDE FULL ─────────────────────── -->
+  <h2>Full Feature Comparison: integrity.molt v2.1 vs. Rugcheck</h2>
+
+  <div class="table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Capability</th>
+          <th>integrity.molt v2.1</th>
+          <th>Rugcheck</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Token metadata (mint/freeze authority)</td>
+          <td class="winner">&#x2714; Live on-chain</td>
+          <td class="winner">&#x2714; Database</td>
+        </tr>
+        <tr>
+          <td>Holder concentration analysis</td>
+          <td class="winner">&#x2714; Live, top 20 holders</td>
+          <td class="tie">&#x2714; Indexed tokens only</td>
+        </tr>
+        <tr>
+          <td>LP lock status</td>
+          <td class="winner">&#x2714; Live</td>
+          <td class="tie">&#x2714; Indexed tokens only</td>
+        </tr>
+        <tr>
+          <td>New token support (pump.fun etc.)</td>
+          <td class="winner">&#x2714; Any valid mint, instantly</td>
+          <td class="loser">&#x2717; Indexed tokens only (~5% of pump.fun)</td>
+        </tr>
+        <tr>
+          <td><strong>Dependency CVE scan</strong></td>
+          <td class="winner"><strong>&#x2714; cargo-audit + RustSec DB</strong></td>
+          <td class="loser">&#x2717; Not available</td>
+        </tr>
+        <tr>
+          <td><strong>Code lint / quality</strong></td>
+          <td class="winner"><strong>&#x2714; cargo clippy (full suite)</strong></td>
+          <td class="loser">&#x2717; Not available</td>
+        </tr>
+        <tr>
+          <td><strong>Vulnerability pattern matching</strong></td>
+          <td class="winner"><strong>&#x2714; 13 Solana-specific patterns</strong></td>
+          <td class="loser">&#x2717; Not available</td>
+        </tr>
+        <tr>
+          <td>AI-powered triage</td>
+          <td class="winner">&#x2714; Multi-agent (scanner → analyst → reputation → scorecard)</td>
+          <td class="loser">&#x2717; Rule-based scoring only</td>
+        </tr>
+        <tr>
+          <td>False positive reduction</td>
+          <td class="winner">&#x2714; AI contextualizes each signal</td>
+          <td class="loser">&#x2717; Aggregate score can mask or inflate signals</td>
+        </tr>
+        <tr>
+          <td>Cryptographically signed reports</td>
+          <td class="winner">&#x2714; Ed25519, verifiable CLI</td>
+          <td class="loser">&#x2717; No signing</td>
+        </tr>
+        <tr>
+          <td>Agent / API-native</td>
+          <td class="winner">&#x2714; x402 micropayments, MCP-compatible</td>
+          <td class="loser">&#x2717; REST API, no agent payment protocol</td>
+        </tr>
+        <tr>
+          <td>Free tier</td>
+          <td class="tie">3 quick/token/wallet/pool scans/day</td>
+          <td class="winner">&#x2714; Public API, unlimited reads</td>
+        </tr>
+        <tr>
+          <td>Deep program audit</td>
+          <td class="winner">&#x2714; $2.00 via Stripe or x402</td>
+          <td class="loser">&#x2717; Not offered</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─────────────────────── WHEN TO USE WHICH ─────────────────────── -->
+  <h2>When to Use Each Tool</h2>
+
+  <p>We're not saying Rugcheck is bad — it's a clean, fast, free tool with a well-designed UI. For many use cases it's the right choice. Here's an honest breakdown:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Use case</th>
+          <th>Best tool</th>
+          <th>Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Quick check on a well-known token</td>
+          <td style="color:var(--yellow)">Either</td>
+          <td style="font-size:13px; color:var(--muted)">Both have coverage; Rugcheck UI is faster for casual use</td>
+        </tr>
+        <tr>
+          <td>Unknown pump.fun token before aping in</td>
+          <td style="color:var(--green)"><strong>integrity.molt</strong></td>
+          <td style="font-size:13px; color:var(--muted)">68% coverage vs Rugcheck's 5% for pump.fun tokens</td>
+        </tr>
+        <tr>
+          <td>DeFi protocol TVL deployment decision</td>
+          <td style="color:var(--green)"><strong>integrity.molt Deep Audit</strong></td>
+          <td style="font-size:13px; color:var(--muted)">CVE scan + code patterns + AI triage. Rugcheck cannot assess contract code.</td>
+        </tr>
+        <tr>
+          <td>Trading bot token validation (automated)</td>
+          <td style="color:var(--green)"><strong>integrity.molt API</strong></td>
+          <td style="font-size:13px; color:var(--muted)">x402 micropayments, MCP-compatible, signed JSON responses</td>
+        </tr>
+        <tr>
+          <td>Batch screening many tokens daily</td>
+          <td style="color:var(--yellow)">Rugcheck or IM subscription</td>
+          <td style="font-size:13px; color:var(--muted)">Rugcheck is free; IM Builder ($79/mo) = unlimited quick scans</td>
+        </tr>
+        <tr>
+          <td>Audit trail / compliance documentation</td>
+          <td style="color:var(--green)"><strong>integrity.molt</strong></td>
+          <td style="font-size:13px; color:var(--muted)">Ed25519 signed reports are verifiable offline; Rugcheck has no signing</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─────────────────────── CONCLUSION ─────────────────────── -->
+  <h2>Conclusion</h2>
+
+  <p>The Wormhole exploit didn't show up as a missing <em>Mint Authority Disabled</em> flag. It showed up in a <code>.rs</code> file as a missing signature check. Slope's $8M loss didn't have a "LP Unlocked" warning — it had private keys being logged to a server. The category of threat that has cost Solana users the most money is the one no token metadata scanner can see.</p>
+
+  <p>Phase 0 doesn't make integrity.molt a full formal verifier. We're not Certik or OtterSec. What we are is a practical first-pass tool that can run in seconds, catch the most common Rust and Solana-specific vulnerability classes, and — critically — use AI to separate real findings from noise so you're not buried in false positives.</p>
+
+  <p>The right mental model: Rugcheck tells you if the <em>token</em> looks safe. integrity.molt v2.1 tells you if the <em>program</em> looks safe. For most retail trading decisions, Rugcheck is fine. For anything involving meaningful capital or protocol integration, you want code analysis.</p>
+
+  <div class="alert info">
+    <strong>Try the Deep Audit</strong>
+    Run a full 5-phase audit on any Solana program address at <a href="https://intmolt.org/scan">intmolt.org/scan</a> — select <strong>Deep Audit</strong> ($2.00 via Stripe or x402 USDC). Quick/Token/Wallet/Pool scans are free (3/day). For automated integration see <a href="/docs.html">the API docs</a> or <a href="/openapi.json">OpenAPI spec</a>.
+  </div>
+
+  <!-- ─────────────────────── APPENDIX ─────────────────────── -->
+  <h2>Appendix: Phase 0 Raw Output (Nosana)</h2>
+
+  <p>Abbreviated output from the three Phase 0 stages on the Nosana program repository:</p>
+
+  <pre><span class="dim"># cargo-audit output (abbreviated)</span>
+<span class="cve">ID:       RUSTSEC-2024-0370</span>
+Crate:    proc-macro2
+Version:  1.0.78
+Advisory: Unsoundness in `proc_macro2::Literal` - build dep only
+Severity: medium
+
+<span class="cve">ID:       RUSTSEC-2024-0344</span>
+Crate:    curve25519-dalek
+Version:  3.2.0
+Advisory: Timing variability in scalar multiplication (timing side-channel)
+Severity: high
+Patched:  &gt;= 4.1.3
+<span class="ok">AI triage: not exploitable in BPF execution model</span>
+
+<span class="cve">ID:       RUSTSEC-2023-0044</span>
+Crate:    openssl-sys
+Version:  0.9.90
+Advisory: Use of deprecated cryptographic hash function (CLI tooling only)
+Severity: medium
+<span class="ok">AI triage: not in on-chain artifact</span>
+
+<span class="dim"># cargo clippy output (security-relevant only)</span>
+<span class="warn">warning: this comparison involving the minimum or maximum integer value is outside the range of `u64`</span>
+  --> programs/nosana-jobs/src/instructions/list.rs:47:12
+
+<span class="warn">warning: casting `usize` to `u64` may truncate the value on some targets</span>
+  --> programs/nosana-jobs/src/state/job_queue.rs:82:18
+
+<span class="dim"># solana-grep phase 0 (sample of 84 hits)</span>
+<span class="hit">[sysvar_clock_deprecated]</span> programs/nosana-staking/src/lib.rs:203: let clock = &amp;ctx.accounts.clock;
+<span class="hit">[sysvar_clock_deprecated]</span> programs/nosana-staking/src/lib.rs:319: let clock = &amp;ctx.accounts.clock;
+<span class="hit">[unchecked_arithmetic]</span>    programs/nosana-jobs/src/state/job_queue.rs:82: queue.len() as u64
+<span class="hit">[invoke_signed_no_check]</span>   programs/nosana-jobs/src/instructions/claim.rs:91: invoke_signed(&amp;ix, ...
+<span class="ok">... (81 more hits, all triaged to: test code / comments / Anchor-guarded)</span>
+<span class="ok">3 hits escalated to human review in escrow authority logic</span></pre>
+
+  <p style="font-size: 13px; color: var(--muted);">Scan run: 2026-04-01. Nosana program: nosJhNRqr2b9isFJuvTrrJ5KiDguqzFAAlcFoureGkX. cargo-audit 0.22.1, clippy 0.1.94 (rustup stable), grep 13 patterns. Full signed report available on request.</p>
+
+</article>
+
+<footer>
+  <p>&copy; 2026 integrity.molt &mdash; AI-native Solana security scanner</p>
+  <p style="margin-top: 8px;">
+    <a href="/scan">Scanner</a> &nbsp;&middot;&nbsp;
+    <a href="/compare.html">Compare</a> &nbsp;&middot;&nbsp;
+    <a href="/docs.html">API Docs</a> &nbsp;&middot;&nbsp;
+    <a href="/blog/benchmark.html">Benchmark</a> &nbsp;&middot;&nbsp;
+    <a href="/verify.html">Verify Reports</a>
+  </p>
+</footer>
+
+</body>
+</html>

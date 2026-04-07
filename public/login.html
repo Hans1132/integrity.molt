@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18061030609"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — integrity.molt</title>
+  <meta name="robots" content="noindex">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0a0a0f;
+      --bg-card:  #0f0f18;
+      --bg-alt:   #12121e;
+      --border:   #1e1e2e;
+      --accent:   #4da6ff;
+      --green:    #3fb950;
+      --red:      #f85149;
+      --text:     #d0d8e8;
+      --text-dim: #6a7490;
+      --mono:     'JetBrains Mono', 'Fira Code', monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header { border-bottom: 1px solid var(--border); padding: 18px 24px; }
+    .logo { font-family: var(--mono); font-size: 18px; font-weight: 600; color: #fff; }
+    .logo span { color: var(--accent); }
+
+    main {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 40px 24px;
+    }
+
+    .login-card {
+      width: 100%; max-width: 400px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+
+    .login-header {
+      padding: 28px 28px 20px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .login-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: #0d1520; border: 1px solid var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin: 0 auto 14px;
+    }
+    .login-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .login-sub { font-size: 13px; color: var(--text-dim); }
+
+    .login-body { padding: 24px 28px; }
+
+    .social-btn {
+      display: flex; align-items: center; gap: 14px;
+      width: 100%; padding: 13px 18px; margin-bottom: 10px;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 14px;
+      font-weight: 500; cursor: pointer; transition: border-color .15s, background .15s;
+      text-decoration: none;
+    }
+    .social-btn:hover { border-color: var(--accent); background: #0d1520; color: var(--text); text-decoration: none; }
+    .social-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .social-btn-label { flex: 1; text-align: center; padding-right: 20px; }
+
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 18px 0; font-size: 12px; color: var(--text-dim);
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 0; }
+    .form-group input {
+      width: 100%; padding: 11px 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      font-family: inherit; font-size: 14px; outline: none;
+      transition: border-color .15s;
+    }
+    .form-group input:focus { border-color: var(--accent); }
+    .form-group input::placeholder { color: #3a3f54; }
+    .btn-primary {
+      width: 100%; padding: 12px; background: var(--accent); color: #000;
+      font-weight: 700; font-size: 14px; border: none;
+      border-radius: 6px; cursor: pointer; transition: opacity .15s;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-primary:disabled { opacity: .5; cursor: default; }
+    .form-error { font-size: 12px; color: var(--red); display: none; margin-top: 2px; }
+    .form-success { font-size: 12px; color: var(--green); display: none; margin-top: 2px; }
+    .tab-row {
+      display: flex; border-bottom: 1px solid var(--border); margin-bottom: 18px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px; background: transparent; border: none;
+      color: var(--text-dim); font-size: 13px; cursor: pointer;
+      border-bottom: 2px solid transparent; transition: color .15s, border-color .15s;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .form-link { font-size: 12px; color: var(--text-dim); text-align: right; }
+    .form-link a { color: var(--accent); }
+
+    .api-key-form { display: flex; flex-direction: column; gap: 8px; }
+    .api-key-form input {
+      width: 100%; padding: 11px 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      font-family: var(--mono); font-size: 13px; outline: none;
+      transition: border-color .15s;
+    }
+    .api-key-form input:focus { border-color: var(--accent); }
+    .api-key-form input::placeholder { color: #3a3f54; }
+    .btn-api {
+      padding: 11px; background: transparent;
+      border: 1px solid var(--border); color: var(--text-dim);
+      font-family: var(--mono); font-size: 13px; border-radius: 6px;
+      cursor: pointer; transition: border-color .15s, color .15s;
+    }
+    .btn-api:hover { border-color: var(--accent); color: var(--accent); }
+    .api-error { font-size: 12px; color: var(--red); display: none; }
+
+    .login-footer {
+      padding: 16px 28px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--text-dim); text-align: center;
+    }
+
+    footer { border-top: 1px solid var(--border); padding: 20px 24px; text-align: center; }
+    .footer-text { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+    .footer-text span { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" style="text-decoration:none">
+    <div class="logo">integrity<span>.</span>molt</div>
+  </a>
+</header>
+
+<main>
+  <div class="login-card">
+
+    <div class="login-header">
+      <div class="login-icon">🔐</div>
+      <div class="login-title">Sign in to your account</div>
+      <div class="login-sub">Access your dashboard, API keys, and watchlist</div>
+    </div>
+
+    <div class="login-body">
+
+      <!-- Google -->
+      <a class="social-btn" href="/auth/google" id="btnGoogle">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        <span class="social-btn-label">Continue with Google</span>
+      </a>
+
+      <!-- GitHub -->
+      <a class="social-btn" href="/auth/github" id="btnGitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+        </svg>
+        <span class="social-btn-label">Continue with GitHub</span>
+      </a>
+
+      <!-- Twitter/X -->
+      <a class="social-btn" href="/auth/twitter" id="btnTwitter">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        <span class="social-btn-label">Continue with X (Twitter)</span>
+      </a>
+
+      <div class="divider">or sign in with email</div>
+
+      <!-- Email + password tabs -->
+      <div class="tab-row">
+        <button class="tab-btn active" id="tabSignin" onclick="switchTab('signin')">Sign in</button>
+        <button class="tab-btn" id="tabRegister" onclick="switchTab('register')">Create account</button>
+      </div>
+
+      <!-- Sign in form -->
+      <div id="formSignin">
+        <div class="form-group">
+          <input type="email" id="signinEmail" placeholder="Email" autocomplete="email">
+          <input type="password" id="signinPassword" placeholder="Password" autocomplete="current-password">
+          <button class="btn-primary" onclick="localLogin()">Sign in →</button>
+          <span class="form-error" id="signinError"></span>
+        </div>
+        <div class="form-link" style="margin-top:8px"><a href="#" onclick="switchTab('forgot');return false">Forgot password?</a></div>
+      </div>
+
+      <!-- Register form -->
+      <div id="formRegister" style="display:none">
+        <div class="form-group">
+          <input type="text" id="regName" placeholder="Your name (optional)" autocomplete="name">
+          <input type="email" id="regEmail" placeholder="Email" autocomplete="email">
+          <input type="password" id="regPassword" placeholder="Password (min. 8 characters)" autocomplete="new-password">
+          <button class="btn-primary" onclick="localRegister()">Create account →</button>
+          <span class="form-error" id="registerError"></span>
+          <span class="form-success" id="registerSuccess"></span>
+        </div>
+      </div>
+
+      <!-- Forgot password form -->
+      <div id="formForgot" style="display:none">
+        <div class="form-group">
+          <input type="email" id="forgotEmail" placeholder="Your email address" autocomplete="email">
+          <button class="btn-primary" onclick="sendForgot()">Send reset link →</button>
+          <span class="form-error" id="forgotError"></span>
+          <span class="form-success" id="forgotSuccess"></span>
+        </div>
+        <div class="form-link" style="margin-top:8px"><a href="#" onclick="switchTab('signin');return false">← Back to sign in</a></div>
+      </div>
+
+      <div class="divider" style="margin-top:20px">or use API key</div>
+
+      <div class="api-key-form">
+        <input type="text" id="apiKeyInput" placeholder="im_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+        <button class="btn-api" onclick="loginWithApiKey()">Access dashboard with API key</button>
+        <span class="api-error" id="apiError"></span>
+      </div>
+
+    </div>
+
+    <div class="login-footer">
+      By signing in you agree to our <a href="/docs.html">Terms of Service</a>.<br>
+      Don't have an account? <a href="/#plans">Subscribe to get started</a>.
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="footer-text">integrity<span>.</span>molt — AI-native Solana security scanner</div>
+</footer>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('formSignin').style.display   = tab === 'signin'   ? '' : 'none';
+  document.getElementById('formRegister').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('formForgot').style.display   = tab === 'forgot'   ? '' : 'none';
+  document.getElementById('tabSignin').classList.toggle('active',   tab === 'signin');
+  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+}
+
+// ── Email / password login ─────────────────────────────────────────────────────
+async function localLogin() {
+  const email    = document.getElementById('signinEmail').value.trim();
+  const password = document.getElementById('signinPassword').value;
+  const errEl    = document.getElementById('signinError');
+  errEl.style.display = 'none';
+
+  if (!email || !password) { errEl.textContent = 'Vyplňte email a heslo.'; errEl.style.display = 'block'; return; }
+
+  try {
+    const res = await fetch('/auth/login/local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok && j.ok) {
+      location.href = nextParam || '/dashboard';
+    } else {
+      errEl.textContent = j.error || 'Přihlášení selhalo.';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Síťová chyba — zkuste to znovu.';
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Register ──────────────────────────────────────────────────────────────────
+async function localRegister() {
+  const name     = document.getElementById('regName').value.trim();
+  const email    = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const errEl    = document.getElementById('registerError');
+  const okEl     = document.getElementById('registerSuccess');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+
+  if (!email || !password) { errEl.textContent = 'Vyplňte email a heslo.'; errEl.style.display = 'block'; return; }
+  if (password.length < 8) { errEl.textContent = 'Heslo musí mít alespoň 8 znaků.'; errEl.style.display = 'block'; return; }
+
+  try {
+    const res = await fetch('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok && j.ok) {
+      okEl.textContent = 'Účet vytvořen! Přesměrování…';
+      okEl.style.display = 'block';
+      setTimeout(() => { location.href = nextParam || '/dashboard'; }, 800);
+    } else {
+      errEl.textContent = j.error || 'Registrace selhala.';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Síťová chyba — zkuste to znovu.';
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Forgot password ───────────────────────────────────────────────────────────
+async function sendForgot() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const errEl = document.getElementById('forgotError');
+  const okEl  = document.getElementById('forgotSuccess');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+
+  if (!email) { errEl.textContent = 'Zadejte email.'; errEl.style.display = 'block'; return; }
+
+  try {
+    await fetch('/auth/forgot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    okEl.textContent = 'Pokud email existuje, pošleme odkaz pro reset hesla.';
+    okEl.style.display = 'block';
+  } catch {
+    errEl.textContent = 'Síťová chyba.';
+    errEl.style.display = 'block';
+  }
+}
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('formSignin').style.display !== 'none') localLogin();
+  else if (document.getElementById('formRegister').style.display !== 'none') localRegister();
+  else if (document.getElementById('formForgot').style.display !== 'none') sendForgot();
+});
+
+// ── Propagate ?next= param to OAuth providers ──────────────────────────────────
+// Propagate ?next= param to OAuth providers
+const nextParam = new URLSearchParams(location.search).get('next');
+if (nextParam) {
+  document.querySelectorAll('.social-btn').forEach(btn => {
+    const href = btn.getAttribute('href');
+    if (href && href.startsWith('/auth/')) {
+      btn.setAttribute('href', href + '?next=' + encodeURIComponent(nextParam));
+    }
+  });
+}
+
+async function loginWithApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const errEl = document.getElementById('apiError');
+  errEl.style.display = 'none';
+
+  if (!key || !key.startsWith('im_')) {
+    errEl.textContent = 'API key must start with im_';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch('/dashboard/data', {
+      headers: { 'Authorization': 'Bearer ' + key }
+    });
+    if (res.ok) {
+      localStorage.setItem('im_api_key', key);
+      location.href = nextParam || '/dashboard';
+    } else {
+      const j = await res.json().catch(() => ({}));
+      errEl.textContent = j.error || 'Invalid or revoked API key';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Network error — please try again';
+    errEl.style.display = 'block';
+  }
+}
+
+document.getElementById('apiKeyInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loginWithApiKey();
+});
+
+// If already logged in, redirect
+fetch('/auth/me').then(r => r.json()).then(u => {
+  if (u.authenticated) location.href = nextParam || '/dashboard';
+}).catch(() => {});
+</script>
+
+</body>
+</html>

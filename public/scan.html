@@ -1,0 +1,2270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Free Token Rug Pull Checker — Solana &amp; EVM | integrity.molt</title>
+  <meta name="description" content="Check any Solana or EVM token for rug pulls, honeypots, and insider risk. AI-powered on-chain analysis. First 3 scans free — no wallet required.">
+  <meta name="keywords" content="Solana address scanner, Solana token security check, free Solana audit, rug pull checker, Solana honeypot detector, meme coin risk, token safety">
+  <link rel="canonical" href="https://intmolt.org/scan">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://intmolt.org/scan">
+  <meta property="og:title" content="Free Solana Security Scan — integrity.molt">
+  <meta property="og:description" content="Scan any Solana address for rug pulls and vulnerabilities. First 3 scans free, no wallet required.">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Free Solana Security Scan — integrity.molt">
+  <meta name="twitter:description" content="AI-powered rug pull and honeypot detection for any Solana address. First 3 scans free.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0f;
+      --bg-card:   #0f0f18;
+      --bg-alt:    #12121e;
+      --border:    #1e1e2e;
+      --accent:    #4da6ff;
+      --accent-dim:#2a6aaa;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --red:       #f85149;
+      --text:      #d0d8e8;
+      --text-dim:  #6a7490;
+      --text-faint:#3a3f54;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ── */
+    header { border-bottom: 1px solid var(--border); padding: 20px 0; }
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; }
+    .logo-text { font-family: var(--mono); font-size: 18px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+    .logo-text span { color: var(--accent); }
+    .badge {
+      font-family: var(--mono); font-size: 11px; padding: 3px 8px;
+      border: 1px solid var(--accent-dim); color: var(--accent); border-radius: 4px; white-space: nowrap;
+    }
+    nav { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    nav a { color: var(--text-dim); font-size: 13px; transition: color .15s; }
+    nav a:hover { color: var(--text); text-decoration: none; }
+    nav a.active { color: var(--accent); }
+
+    /* ── Page hero ── */
+    .page-hero { padding: 48px 0 36px; border-bottom: 1px solid var(--border); }
+    .page-eyebrow {
+      font-family: var(--mono); font-size: 11px; color: var(--accent);
+      letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px;
+    }
+    .page-hero h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 10px; letter-spacing: -0.3px; }
+    .page-hero p { color: var(--text-dim); font-size: 15px; max-width: 560px; }
+
+    /* ── Scan form ── */
+    .scan-section { padding: 40px 0; }
+
+    .quota-bar {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 28px;
+      padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; font-family: var(--mono); font-size: 13px;
+    }
+    .quota-dots { display: flex; gap: 6px; }
+    .quota-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--text-faint); border: 1px solid var(--border);
+      transition: background .3s;
+    }
+    .quota-dot.used { background: var(--accent); border-color: var(--accent-dim); }
+    .quota-dot.exhausted { background: var(--red); border-color: #8b2c27; }
+    .quota-label { color: var(--text-dim); }
+    .quota-label strong { color: var(--text); }
+    .quota-reset { margin-left: auto; color: var(--text-faint); font-size: 11px; }
+
+    .form-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 28px;
+    }
+
+    .form-row { margin-bottom: 20px; }
+    .form-row label {
+      display: block; font-family: var(--mono); font-size: 12px;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .form-row input[type="text"],
+    .form-row select {
+      width: 100%; padding: 12px 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      font-family: var(--mono); font-size: 14px;
+      transition: border-color .15s; outline: none;
+    }
+    .form-row input[type="text"]:focus,
+    .form-row select:focus { border-color: var(--accent-dim); }
+    .form-row input[type="text"]::placeholder { color: var(--text-faint); }
+    .form-row select { cursor: pointer; }
+    .form-row select option { background: var(--bg-alt); }
+
+    .scan-type-meta {
+      margin-top: 8px; font-size: 13px; color: var(--text-dim);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .price-tag {
+      font-family: var(--mono); font-size: 12px;
+      padding: 2px 8px; background: var(--bg-alt);
+      border: 1px solid var(--border); border-radius: 4px;
+      color: var(--accent);
+    }
+    .price-tag.free { color: var(--green); border-color: #1e3a2f; background: #0d1f18; }
+
+    .btn-submit {
+      width: 100%; padding: 13px;
+      background: var(--accent); color: #000; font-weight: 700;
+      font-family: var(--mono); font-size: 14px; border: none;
+      border-radius: 6px; cursor: pointer; transition: opacity .15s;
+      letter-spacing: 0.3px;
+    }
+    .btn-submit:hover { opacity: .88; }
+    .btn-submit:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Results ── */
+    .result-section { margin-top: 32px; }
+
+    /* Spinner */
+    .spinner-wrap {
+      display: flex; flex-direction: column; gap: 14px;
+      padding: 24px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .spinner-row { display: flex; align-items: center; gap: 14px; }
+    .spinner {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-text { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+    .spinner-elapsed { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
+    .spinner-progress {
+      width: 100%; height: 2px; background: var(--border); border-radius: 1px; overflow: hidden;
+    }
+    .spinner-progress-bar {
+      height: 100%; background: var(--accent); border-radius: 1px;
+      width: 0%; transition: width 1s linear;
+    }
+    .spinner-steps { display: flex; flex-direction: column; gap: 4px; }
+    .spinner-step {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--mono); font-size: 11px; color: var(--text-faint);
+      transition: color .3s;
+    }
+    .spinner-step.active  { color: var(--accent); }
+    .spinner-step.done    { color: var(--green); }
+    .spinner-step-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+      background: var(--text-faint); transition: background .3s;
+    }
+    .spinner-step.active .spinner-step-dot { background: var(--accent); }
+    .spinner-step.done   .spinner-step-dot { background: var(--green); }
+
+    /* Risk badge */
+    .risk-header {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+      padding: 16px 20px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 8px;
+      flex-wrap: wrap;
+    }
+    .risk-score-circle {
+      width: 52px; height: 52px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-weight: 700; font-size: 17px;
+      border: 2px solid var(--border); flex-shrink: 0;
+    }
+    .risk-score-circle.low    { background: #0d1f18; color: var(--green); border-color: #1e3a2f; }
+    .risk-score-circle.medium { background: #1f180d; color: var(--yellow); border-color: #3a2e1e; }
+    .risk-score-circle.high   { background: #1f0d0d; color: var(--red); border-color: #3a1e1e; }
+    .risk-score-circle.unknown{ background: var(--bg-alt); color: var(--text-dim); }
+    .risk-info { flex: 1; min-width: 0; }
+    .risk-level-label {
+      font-family: var(--mono); font-size: 12px; text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 4px;
+    }
+    .risk-level-label.low    { color: var(--green); }
+    .risk-level-label.medium { color: var(--yellow); }
+    .risk-level-label.high   { color: var(--red); }
+    .risk-level-label.unknown{ color: var(--text-dim); }
+    .risk-summary { font-size: 14px; color: var(--text); }
+    .risk-address {
+      font-family: var(--mono); font-size: 11px; color: var(--text-faint);
+      margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .signed-badge {
+      margin-left: auto; flex-shrink: 0;
+      font-family: var(--mono); font-size: 11px; padding: 4px 10px;
+      border: 1px solid #1e3a2f; background: #0d1f18; color: var(--green);
+      border-radius: 4px;
+    }
+
+    /* Check grid */
+    .checks-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px; margin-bottom: 20px;
+    }
+    .check-item {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px;
+    }
+    .check-item.risk-safe   { border-left: 3px solid var(--green); }
+    .check-item.risk-medium { border-left: 3px solid var(--yellow); }
+    .check-item.risk-high   { border-left: 3px solid var(--red); }
+    .check-name {
+      font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;
+    }
+    .check-value { font-size: 14px; color: var(--text); }
+    .check-detail { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+    /* Liquidity pools */
+    .pools-table {
+      width: 100%; border-collapse: collapse; margin-bottom: 20px;
+      font-size: 13px; font-family: var(--mono);
+    }
+    .pools-table th {
+      text-align: left; padding: 8px 12px;
+      background: var(--bg-alt); color: var(--text-dim);
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pools-table td {
+      padding: 8px 12px; border-bottom: 1px solid var(--text-faint);
+      color: var(--text);
+    }
+    .pools-table tr:last-child td { border-bottom: none; }
+
+    /* Text report */
+    .report-pre {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 20px; font-family: var(--mono);
+      font-size: 12px; line-height: 1.7; color: var(--text-dim);
+      white-space: pre-wrap; word-break: break-all;
+      max-height: 600px; overflow-y: auto; margin-bottom: 20px;
+    }
+
+    /* Section header within results */
+    .result-section-label {
+      font-family: var(--mono); font-size: 11px; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 1px;
+      margin: 20px 0 10px;
+    }
+
+    /* ── 402 / paywall ── */
+    .paywall-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .paywall-header {
+      padding: 20px 24px; background: #1a1218;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 14px;
+    }
+    .paywall-icon {
+      width: 40px; height: 40px; border-radius: 8px;
+      background: #2a1520; display: flex; align-items: center;
+      justify-content: center; font-size: 20px; flex-shrink: 0;
+    }
+    .paywall-title { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 3px; }
+    .paywall-sub { font-size: 13px; color: var(--text-dim); }
+
+    .paywall-body { padding: 24px; }
+
+    .pay-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 600px) { .pay-options { grid-template-columns: 1fr; } }
+
+    .pay-option {
+      border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+      cursor: pointer; transition: border-color .15s;
+    }
+    .pay-option:hover { border-color: var(--accent-dim); }
+    .pay-option.selected { border-color: var(--accent); background: #0d1520; }
+    .pay-option-name {
+      font-family: var(--mono); font-size: 13px; color: #fff; margin-bottom: 4px;
+    }
+    .pay-option-price {
+      font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 4px;
+    }
+    .pay-option-desc { font-size: 12px; color: var(--text-dim); }
+
+    .divider { text-align: center; color: var(--text-faint); font-size: 12px; margin: 20px 0; position: relative; }
+    .divider::before, .divider::after {
+      content: ''; position: absolute; top: 50%; width: calc(50% - 30px);
+      height: 1px; background: var(--border);
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+
+    .sub-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .sub-options { grid-template-columns: 1fr; } }
+
+    .sub-option {
+      border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+    }
+    .sub-option-name { font-family: var(--mono); font-size: 13px; color: #fff; margin-bottom: 4px; }
+    .sub-option-price { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .sub-option-desc { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
+    .btn-sub {
+      width: 100%; padding: 9px; background: transparent;
+      border: 1px solid var(--accent-dim); color: var(--accent);
+      font-family: var(--mono); font-size: 13px; border-radius: 5px;
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    .btn-sub:hover { background: var(--accent); color: #000; }
+    .btn-stripe {
+      width: 100%; padding: 11px; background: #635bff;
+      border: none; color: #fff;
+      font-family: var(--mono); font-size: 14px; font-weight: 600; border-radius: 5px;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn-stripe:hover { opacity: .88; }
+    .btn-stripe:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0; margin-top: 60px;
+    }
+    .footer-inner {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .footer-brand { font-family: var(--mono); font-size: 13px; color: var(--text-faint); }
+    .footer-brand span { color: var(--accent); }
+    .footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
+    .footer-links a { font-size: 13px; color: var(--text-faint); }
+    .footer-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Utils ── */
+    .hidden { display: none !important; }
+    .mt-4 { margin-top: 16px; }
+
+    /* x402 agent info */
+    .agent-info {
+      margin-top: 20px; padding: 14px 16px;
+      background: var(--bg-alt); border: 1px solid var(--border); border-radius: 6px;
+      font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+    }
+    .agent-info strong { color: var(--accent); display: block; margin-bottom: 6px; }
+    .agent-code {
+      background: var(--bg); border: 1px solid var(--text-faint); border-radius: 4px;
+      padding: 2px 6px; color: var(--text); font-size: 11px;
+    }
+
+    /* ── Critical / Orange risk levels ── */
+    .risk-score-circle.critical { background: #200a0a; color: #ff4444; border-color: #5a1a1a; }
+    .risk-score-circle.orange   { background: #1f130d; color: #e8822a; border-color: #4a2e1e; }
+    .risk-score-circle.low { width: 64px; height: 64px; font-size: 20px; }
+    .risk-level-label.critical  { color: #ff4444; }
+    .risk-level-label.orange    { color: #e8822a; }
+
+    /* ── Findings cards ── */
+    .finding-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 8px; overflow: hidden;
+    }
+    .finding-card.sev-safe     { border-left: 3px solid var(--green); }
+    .finding-card.sev-medium   { border-left: 3px solid var(--yellow); }
+    .finding-card.sev-high     { border-left: 3px solid var(--red); }
+    .finding-card.sev-critical { border-left: 3px solid #ff4444; }
+    .finding-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+    }
+    .finding-icon { font-size: 16px; flex-shrink: 0; }
+    .finding-title { flex: 1; font-size: 14px; color: var(--text); font-weight: 500; }
+    .finding-status { font-size: 12px; color: var(--text-dim); margin-right: 6px; }
+    .finding-badge {
+      font-family: var(--mono); font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 3px; text-transform: uppercase; flex-shrink: 0;
+    }
+    .finding-badge.safe     { background: rgba(63,185,80,.15); color: #3fb950; border: 1px solid rgba(63,185,80,.3); }
+    .finding-badge.medium   { background: rgba(210,153,34,.15); color: #d29922; border: 1px solid rgba(210,153,34,.3); }
+    .finding-badge.high     { background: rgba(248,81,73,.15);  color: #f85149; border: 1px solid rgba(248,81,73,.3); }
+    .finding-badge.critical { background: rgba(255,68,68,.2);   color: #ff4444; border: 1px solid rgba(255,68,68,.4); }
+    .finding-chevron {
+      font-size: 10px; color: var(--text-faint); transition: transform .2s; flex-shrink: 0;
+    }
+    .finding-detail {
+      padding: 0 16px 14px 44px; font-size: 13px; color: var(--text-dim);
+      border-top: 1px solid var(--text-faint);
+      display: none;
+    }
+    .finding-card.open .finding-detail { display: block; }
+    .finding-card.open .finding-chevron { transform: rotate(180deg); }
+
+    /* ── Holder bar chart ── */
+    .holder-chart { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .holder-row { display: flex; align-items: center; gap: 10px; }
+    .holder-label {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      width: 110px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .holder-bar-bg {
+      flex: 1; height: 16px; background: var(--bg-alt);
+      border-radius: 3px; overflow: hidden; border: 1px solid var(--border);
+    }
+    .holder-bar-fill {
+      height: 100%; border-radius: 3px;
+      background: var(--accent); transition: width .6s ease;
+    }
+    .holder-bar-fill.suspicious { background: var(--red); }
+    .holder-pct {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      width: 44px; text-align: right; flex-shrink: 0;
+    }
+
+    /* ── Risk breakdown bars ── */
+    .risk-breakdown { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .risk-bar-row { display: flex; align-items: center; gap: 12px; }
+    .risk-bar-label {
+      font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+      width: 140px; flex-shrink: 0;
+    }
+    .risk-bar-bg {
+      flex: 1; height: 8px; background: var(--bg-alt);
+      border-radius: 4px; overflow: hidden;
+    }
+    .risk-bar-fill {
+      height: 100%; border-radius: 4px; transition: width .8s ease;
+    }
+    .risk-bar-fill.low      { background: var(--green); }
+    .risk-bar-fill.medium   { background: var(--yellow); }
+    .risk-bar-fill.high     { background: var(--red); }
+    .risk-bar-fill.critical { background: #ff4444; }
+    .risk-bar-score {
+      font-family: var(--mono); font-size: 11px; color: var(--text-faint);
+      width: 36px; text-align: right; flex-shrink: 0;
+    }
+
+    /* ── Evidence section ── */
+    .evidence-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+    .evidence-tx {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px 14px; font-family: var(--mono); font-size: 12px;
+    }
+    .evidence-tx a { color: var(--accent); word-break: break-all; flex: 1; }
+    .evidence-tx .ev-err { color: var(--red); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .evidence-tx .ev-time { color: var(--text-faint); font-size: 11px; white-space: nowrap; }
+    .evidence-tx .ev-link { color: var(--accent-dim); font-size: 11px; white-space: nowrap; }
+
+    /* ── Report footer ── */
+    .report-footer {
+      margin-top: 24px; padding: 16px 20px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      font-family: var(--mono); font-size: 12px;
+    }
+    .report-footer-top {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .sig-label { color: var(--text-faint); text-transform: uppercase; letter-spacing: .8px; font-size: 11px; }
+    .sig-value { color: var(--text-dim); flex: 1; word-break: break-all; min-width: 0; }
+    .copy-btn {
+      background: var(--bg-alt); border: 1px solid var(--border); color: var(--text-dim);
+      font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 4px;
+      cursor: pointer; transition: border-color .15s, color .15s; white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+    .copy-btn.copied { border-color: var(--green); color: var(--green); }
+    .report-footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
+    .report-footer-links a { color: var(--accent-dim); font-size: 11px; }
+    .report-footer-links a:hover { color: var(--accent); }
+    .footer-brand-note { color: var(--text-faint); font-size: 11px; margin-top: 8px; }
+
+    /* ── Deep Audit specific ── */
+    .da-scorecard-bar { height: 6px; border-radius: 3px; background: var(--bg-alt); overflow: hidden; margin-top: 5px; }
+    .da-scorecard-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+    .da-agent-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+    .da-dim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    @media (max-width: 500px) { .da-dim-grid { grid-template-columns: 1fr; } }
+    .da-dim-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .da-flag { display: flex; gap: 10px; align-items: flex-start; padding: 9px 14px; border-radius: 6px; margin-bottom: 6px; font-size: 12px; }
+    .da-flag.ok   { background: #052e16; border: 1px solid #14532d; }
+    .da-flag.warn { background: #2d1a00; border: 1px solid #78350f; }
+    .da-flag.bad  { background: #2d0a0a; border: 1px solid #7f1d1d; }
+    .da-onchain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-bottom: 20px; }
+    .da-onchain-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+
+    /* ── Share buttons ── */
+    .share-row {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;
+    }
+    .share-btn {
+      background: var(--bg-alt); border: 1px solid var(--border); color: var(--text-dim);
+      font-family: var(--mono); font-size: 11px; padding: 6px 12px; border-radius: 4px;
+      cursor: pointer; transition: border-color .15s, color .15s; text-decoration: none;
+    }
+    .share-btn:hover { border-color: var(--accent-dim); color: var(--accent); text-decoration: none; }
+    .download-report-btn { border-color: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .download-report-btn:disabled { opacity: 0.5; cursor: wait; }
+    .download-report-btn:hover:not(:disabled) { background: var(--accent); color: #000; border-color: var(--accent); }
+
+    /* ── Upsell banner ── */
+    .upsell-banner {
+      margin-top: 20px; padding: 14px 18px;
+      background: linear-gradient(135deg, #0d0d1a 0%, #12121e 100%);
+      border: 1px solid #2a2a4a; border-radius: 8px;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .upsell-text { flex: 1; font-size: 13px; color: var(--text-dim); min-width: 200px; }
+    .upsell-text strong { color: var(--accent); }
+    .upsell-cta {
+      background: var(--accent); color: #000; font-family: var(--mono);
+      font-size: 12px; font-weight: 700; padding: 8px 16px; border-radius: 5px;
+      text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: opacity .15s;
+    }
+    .upsell-cta:hover { opacity: .88; text-decoration: none; }
+
+    /* ── HypeLab ad wrapper ── */
+    .hypelab-ad-wrap {
+      margin-top: 16px; display: flex; justify-content: center;
+    }
+
+    /* ── Sponsored card ── */
+    .sponsored-card {
+      margin-top: 16px; border: 1px solid #2a2a3a; border-radius: 8px;
+      background: #0c0c18; overflow: hidden;
+    }
+    .sponsored-label {
+      padding: 4px 10px; font-size: 10px; font-family: var(--mono);
+      color: var(--text-faint); text-transform: uppercase; letter-spacing: .8px;
+      border-bottom: 1px solid #1a1a2a;
+    }
+    .sponsored-body {
+      display: flex; align-items: center; gap: 14px; padding: 14px 16px; flex-wrap: wrap;
+    }
+    .sponsored-text { flex: 1; min-width: 160px; }
+    .sponsored-headline { font-size: 14px; font-weight: 600; color: #d0d8e8; line-height: 1.3; }
+    .sponsored-tagline { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+    .sponsored-cta {
+      padding: 8px 16px; background: transparent; border: 1px solid var(--accent);
+      color: var(--accent); font-family: var(--mono); font-size: 12px; font-weight: 600;
+      border-radius: 5px; text-decoration: none; white-space: nowrap; flex-shrink: 0;
+      transition: background .15s, color .15s;
+    }
+    .sponsored-cta:hover { background: var(--accent); color: #000; text-decoration: none; }
+
+    /* ── Reveal animation ── */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .reveal { animation: fadeInUp .35s ease both; }
+    .reveal-1 { animation-delay: .05s; }
+    .reveal-2 { animation-delay: .12s; }
+    .reveal-3 { animation-delay: .20s; }
+    .reveal-4 { animation-delay: .28s; }
+    .reveal-5 { animation-delay: .36s; }
+
+    /* ── Glassmorphism card ── */
+    .glass-card {
+      background: rgba(15,15,24,.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(78,166,255,.12);
+    }
+
+    /* ── Inline upsell (po výsledku scanu) ── */
+    .upsell-inline {
+      margin-top: 20px; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .upsell-inline.urgent { border-color: #5a2020; }
+    .upsell-inline-header {
+      padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+      background: #0d1520;
+    }
+    .upsell-inline.urgent .upsell-inline-header { background: #180d0d; }
+    .upsell-inline-icon { font-size: 20px; flex-shrink: 0; }
+    .upsell-inline-title { font-size: 15px; font-weight: 700; color: #fff; }
+    .upsell-inline-sub   { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+    .upsell-inline-body  { padding: 16px 18px; background: var(--bg-card); display: flex; gap: 10px; flex-wrap: wrap; }
+    .upsell-btn-primary {
+      flex: 1; min-width: 180px; padding: 11px 18px;
+      background: var(--accent); color: #000; font-weight: 700;
+      font-family: var(--mono); font-size: 13px; border: none;
+      border-radius: 6px; cursor: pointer; transition: opacity .15s; white-space: nowrap;
+    }
+    .upsell-btn-primary:hover { opacity: .88; }
+    .upsell-btn-primary.red { background: var(--red); color: #fff; }
+    .upsell-btn-secondary {
+      flex: 1; min-width: 140px; padding: 11px 18px;
+      background: transparent; color: var(--text-dim);
+      font-family: var(--mono); font-size: 13px; font-weight: 600;
+      border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+      transition: border-color .15s, color .15s; white-space: nowrap;
+    }
+    .upsell-btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Email modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      backdrop-filter: blur(4px); z-index: 1000;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-box {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 32px; max-width: 420px; width: 100%; position: relative;
+      animation: fadeInUp .2s ease both;
+    }
+    .modal-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; color: var(--text-dim);
+      font-size: 20px; cursor: pointer; line-height: 1;
+    }
+    .modal-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .modal-sub   { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.5; }
+    .modal-input {
+      width: 100%; padding: 12px 14px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 14px; outline: none;
+      margin-bottom: 12px; transition: border-color .15s;
+    }
+    .modal-input:focus { border-color: var(--accent-dim); }
+    .modal-btn {
+      width: 100%; padding: 13px; background: var(--accent); color: #000;
+      font-weight: 700; font-family: var(--mono); font-size: 14px; border: none;
+      border-radius: 6px; cursor: pointer; transition: opacity .15s;
+    }
+    .modal-btn:hover { opacity: .88; }
+    .modal-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .modal-fine { font-size: 11px; color: var(--text-faint); margin-top: 10px; text-align: center; }
+
+    /* ── Turnstile wrapper (skrytý pokud klíč není nastaven) ── */
+    .cf-turnstile { margin-top: 16px; min-height: 65px; }
+  </style>
+  <!-- HypeLab ad SDK -->
+  <script defer src="https://api.hypelab.com/v1/scripts/hp-sdk.js?v=0"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      window.HypeLab && HypeLab.initialize({
+        environment: "production",
+        propertySlug: "da56b1efcd",
+      });
+    });
+  </script>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo-wrap">
+        <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none">
+          <div class="logo-text">integrity<span>.</span>molt</div>
+        </a>
+        <span class="badge">v2.0</span>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/scan" class="active">Scan</a>
+        <a href="/docs.html">Docs</a>
+        <a href="/compare.html">Compare</a>
+        <a href="/blog/benchmark.html">Benchmark</a>
+        <a href="/verify.html">Verify</a>
+        <a href="/#plans" style="color:var(--accent)">Subscribe</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <div class="page-hero">
+      <div class="page-eyebrow">Security Scanner</div>
+      <h1>Is this token a rug pull?</h1>
+      <p>Paste any Solana or EVM token address to check for rug pulls, honeypots, and insider risk. <strong style="color:var(--text)">First 3 scans free</strong> — no wallet required.</p>
+    </div>
+
+    <div class="scan-section">
+
+      <!-- Social proof -->
+      <div id="socialProof" style="display:flex;gap:24px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="font-family:var(--mono);font-size:12px;color:var(--text-faint)">
+          <span id="statScans" style="color:var(--text)">—</span> addresses scanned
+        </span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--text-faint)">
+          <span style="color:var(--red)">⬤</span> live · results in ~10s
+        </span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--text-faint)">
+          Ed25519 signed reports
+        </span>
+      </div>
+
+      <!-- Quota bar -->
+      <div class="quota-bar" id="quotaBar">
+        <div class="quota-dots" id="quotaDots">
+          <div class="quota-dot" id="dot0"></div>
+          <div class="quota-dot" id="dot1"></div>
+          <div class="quota-dot" id="dot2"></div>
+        </div>
+        <span class="quota-label" id="quotaLabel">Loading quota…</span>
+        <span class="quota-reset" id="quotaReset"></span>
+      </div>
+
+      <!-- Form -->
+      <div class="form-card">
+        <div class="form-row">
+          <label for="addressInput" style="display:flex;align-items:center;justify-content:space-between">
+            <span>Token / Address</span>
+            <span style="font-family:var(--sans);font-size:12px;color:var(--text-faint);text-transform:none;letter-spacing:0">
+              Try:
+              <a href="#" onclick="fillExample('bonk');return false" style="color:var(--accent-dim)">BONK</a> ·
+              <a href="#" onclick="fillExample('jup');return false" style="color:var(--accent-dim)">JUP</a> ·
+              <a href="#" onclick="fillExample('usdc-evm');return false" style="color:var(--accent-dim)">USDC (Base)</a>
+            </span>
+          </label>
+          <input
+            type="text"
+            id="addressInput"
+            placeholder="Paste Solana or EVM address…"
+            autocomplete="off"
+            spellcheck="false"
+            autofocus
+          >
+          <div id="addrHint" style="margin-top:6px;font-size:12px;color:var(--text-faint);display:none"></div>
+        </div>
+
+        <div class="form-row">
+          <label for="typeSelect">Scan Type</label>
+          <select id="typeSelect">
+            <option value="quick">Quick Scan — Solana address, account info, basic risk</option>
+            <option value="token">Token Audit — Solana token, mint/freeze authority, holder distribution</option>
+            <option value="wallet">Wallet Profile — Solana wallet, age, activity, DeFi exposure</option>
+            <option value="pool">Pool Scan — Solana DEX pool, liquidity depth, LP distribution</option>
+            <option value="evm-token">EVM Token Scan — Base/ETH/Arbitrum, honeypot + source analysis</option>
+            <option value="deep">Deep Audit — full swarm analysis, multi-agent vulnerability report</option>
+          </select>
+          <div class="scan-type-meta">
+            <span id="typeDesc" style="color:var(--text-dim)">Fast on-chain check, results in ~10s</span>
+            <span class="price-tag free" id="priceBadge">FREE</span>
+          </div>
+        </div>
+
+        <!-- Chain selector — visible only for EVM token scan -->
+        <div class="form-row" id="chainRow" style="display:none">
+          <label for="chainSelect">Chain</label>
+          <select id="chainSelect">
+            <option value="base">Base (Coinbase L2)</option>
+            <option value="ethereum">Ethereum Mainnet</option>
+            <option value="arbitrum">Arbitrum One</option>
+          </select>
+        </div>
+
+        <!-- Cloudflare Turnstile — zobrazí se pouze pokud TURNSTILE_SITE_KEY je nastaven -->
+        <div id="turnstileWrap" style="display:none;margin-bottom:16px">
+          <div class="cf-turnstile" id="cfTurnstile" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired"></div>
+        </div>
+
+        <button class="btn-submit" id="scanBtn" onclick="startScan()">Run Scan</button>
+      </div>
+
+      <!-- Result area -->
+      <div class="result-section" id="resultSection" style="display:none">
+
+        <!-- Spinner -->
+        <div id="spinnerWrap" class="spinner-wrap">
+          <div class="spinner-row">
+            <div class="spinner"></div>
+            <span class="spinner-text" id="spinnerText">Initializing scan…</span>
+            <span class="spinner-elapsed" id="spinnerElapsed" style="margin-left:auto"></span>
+          </div>
+          <div class="spinner-progress">
+            <div class="spinner-progress-bar" id="spinnerProgressBar"></div>
+          </div>
+          <div class="spinner-steps" id="spinnerSteps"></div>
+        </div>
+
+        <!-- Result content -->
+        <div id="resultContent"></div>
+
+        <!-- Paywall -->
+        <div id="paywallContent"></div>
+
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">integrity<span>.</span>molt — AI-native Solana security scanner</div>
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/docs.html">API Docs</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/verify.html">Verify Report</a>
+        <a href="/.well-known/x402.json">x402</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────────
+const SCAN_TYPES = {
+  quick:       { desc: 'Multi-agent swarm scan, results in ~10s',                   priceUSD: 1.00, free: true,  addrType: 'solana' },
+  token:       { desc: 'Token rug risk analysis, ~15s',                             priceUSD: 1.00, free: true,  addrType: 'solana' },
+  wallet:      { desc: 'Wallet history & risk profile, ~15s',                       priceUSD: 1.00, free: true,  addrType: 'solana' },
+  pool:        { desc: 'DEX pool safety check, ~15s',                               priceUSD: 1.00, free: true,  addrType: 'solana' },
+  'evm-token': { desc: 'Honeypot + bytecode analysis on Base/ETH/Arbitrum, ~10s',   priceUSD: 1.00, free: true,  addrType: 'evm'    },
+  deep:        { desc: 'Full swarm audit, multi-agent AI analysis, ~30s',           priceUSD: 2.00, free: false, addrType: 'solana' }
+};
+
+// Steps: [label, cumulative seconds from start]
+// Steps: [label, cumulative seconds from start]
+const SPINNER_STEPS = {
+  quick:       [['Analyzing on-chain data…', 2], ['Running AI scanner agent…', 5], ['Running analyst + reputation agents…', 8], ['Signing report…', 10]],
+  token:       [['Fetching token metadata…', 2], ['Querying holder distribution…', 5], ['Running AI risk model…', 10], ['Signing report…', 14]],
+  wallet:      [['Fetching transaction history…', 2], ['Analyzing DeFi exposure…', 5], ['Running AI risk profile…', 10], ['Signing report…', 14]],
+  pool:        [['Fetching pool data…', 2], ['Analyzing LP distribution…', 5], ['Running AI analysis…', 10], ['Signing report…', 14]],
+  'evm-token': [['Fetching bytecode…', 1], ['Calling token metadata…', 3], ['Fetching source code from explorer…', 6], ['Running bytecode + pattern analysis…', 8], ['Simulating transfer (honeypot)…', 10]],
+  deep:        [['Initializing swarm agents…', 2], ['Scanner agent — on-chain data…', 8], ['Analyst + reputation agents…', 18], ['Compiling meta-scorecard…', 25], ['Signing report…', 30]]
+};
+
+let quotaData = { scans_used: 0, scans_limit: 3, scans_remaining: 3 };
+let spinnerInterval = null;
+let elapsedInterval = null;
+let progressInterval = null;
+let turnstileToken = null;
+let _modalTier = null;
+
+// ── Example addresses ─────────────────────────────────────────────────────────
+const EXAMPLES = {
+  bonk:     { address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', type: 'token',     chain: 'solana', label: 'BONK (Solana token)' },
+  jup:      { address: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',  type: 'token',     chain: 'solana', label: 'JUP (Solana token)' },
+  'usdc-evm': { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', type: 'evm-token', chain: 'base',   label: 'USDC (Base chain)' }
+};
+
+function fillExample(key) {
+  const ex = EXAMPLES[key];
+  if (!ex) return;
+  const inp = document.getElementById('addressInput');
+  inp.value = ex.address;
+  document.getElementById('typeSelect').value = ex.type;
+  if (ex.chain !== 'solana') document.getElementById('chainSelect').value = ex.chain;
+  updateTypeUI();
+  showAddrHint(ex.label + ' — known token, good for testing');
+  if (typeof gtag !== 'undefined') gtag('event', 'example_filled', { example: key });
+  startScan();
+}
+
+function detectAddressType(addr) {
+  if (/^0x[0-9a-fA-F]{40}$/.test(addr)) return 'evm';
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr)) return 'solana';
+  return null;
+}
+
+function showAddrHint(msg, color) {
+  const el = document.getElementById('addrHint');
+  el.textContent = msg;
+  el.style.color = color || 'var(--text-faint)';
+  el.style.display = 'block';
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+// Turnstile callbacks (globální — volá je CF SDK)
+function onTurnstileSuccess(token) { turnstileToken = token; }
+function onTurnstileExpired()      { turnstileToken = null; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadQuota();
+  loadStats();
+  initTurnstile();
+
+  const params      = new URLSearchParams(location.search);
+  const addrParam   = params.get('address') || '';
+  const typeParam   = params.get('type')    || '';
+
+  // Pre-select scan type from ?type= URL param
+  if (typeParam) {
+    const sel = document.getElementById('typeSelect');
+    if (Array.from(sel.options).some(o => o.value === typeParam)) sel.value = typeParam;
+  }
+
+  updateTypeUI();
+  document.getElementById('typeSelect').addEventListener('change', updateTypeUI);
+
+  // Enter key v address inputu spustí scan
+  document.getElementById('addressInput').addEventListener('keydown', e => { if (e.key === 'Enter') startScan(); });
+
+  // Auto-detekce typu adresy při vložení
+  document.getElementById('addressInput').addEventListener('input', () => {
+    const addr = document.getElementById('addressInput').value.trim();
+    const kind = detectAddressType(addr);
+    const hintEl = document.getElementById('addrHint');
+    if (!addr) { hintEl.style.display = 'none'; return; }
+    if (kind === 'evm') {
+      const curType = document.getElementById('typeSelect').value;
+      if (curType !== 'evm-token') {
+        document.getElementById('typeSelect').value = 'evm-token';
+        updateTypeUI();
+      }
+      showAddrHint('EVM address detected — switched to EVM Token Scan', 'var(--accent)');
+    } else if (kind === 'solana') {
+      const curType = document.getElementById('typeSelect').value;
+      if (curType === 'evm-token') {
+        document.getElementById('typeSelect').value = 'token';
+        updateTypeUI();
+      }
+      showAddrHint('Solana address detected', 'var(--green)');
+    } else if (addr.length > 10) {
+      showAddrHint('Unrecognized format — expected Solana (base58) or EVM (0x…) address', 'var(--red)');
+    } else {
+      hintEl.style.display = 'none';
+    }
+  });
+
+  // Auto-load cached result if ?address= is in URL
+  if (addrParam) {
+    document.getElementById('addressInput').value = addrParam;
+    loadCachedOrScan(addrParam, typeParam || 'quick');
+  }
+});
+
+async function loadCachedOrScan(address, type) {
+  try {
+    const r = await fetch(`/scan/cached?address=${encodeURIComponent(address)}&type=${encodeURIComponent(type)}`);
+    if (r.ok) {
+      const j = await r.json();
+      if (j.cached && j.data) {
+        // Zobrazit cached výsledek bez spuštění nového scanu
+        document.getElementById('resultSection').style.display = 'block';
+        document.getElementById('spinnerWrap').style.display = 'none';
+        renderResult(j.data, address, type);
+        return;
+      }
+    }
+  } catch {}
+  // Žádný cache — spustit scan automaticky
+  startScan();
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/stats');
+    if (!r.ok) return;
+    const s = await r.json();
+    const total = s.total_scans || s.totalScans || 0;
+    if (total > 0) {
+      document.getElementById('statScans').textContent = total.toLocaleString();
+    }
+  } catch {}
+}
+
+async function initTurnstile() {
+  try {
+    // Načti site key ze serveru
+    const r = await fetch('/scan/captcha-config');
+    if (!r.ok) return;
+    const { site_key } = await r.json();
+    if (!site_key || site_key === 'REPLACE_ME') return;
+    // Nastav data-sitekey a zobraz widget
+    const widget = document.getElementById('cfTurnstile');
+    widget.setAttribute('data-sitekey', site_key);
+    document.getElementById('turnstileWrap').style.display = 'block';
+    // Re-render turnstile (SDK mohl načíst dřív než jsme nastavili sitekey)
+    if (window.turnstile) window.turnstile.render(widget);
+  } catch {}
+}
+
+async function loadQuota() {
+  try {
+    const r = await fetch('/scan/quota');
+    if (r.ok) {
+      quotaData = await r.json();
+      renderQuota(quotaData);
+    }
+  } catch {}
+}
+
+function renderQuota(q) {
+  const { scans_used, scans_limit, scans_remaining } = q;
+  const allUsed = scans_remaining === 0;
+
+  for (let i = 0; i < scans_limit; i++) {
+    const dot = document.getElementById('dot' + i);
+    if (!dot) continue;
+    dot.className = 'quota-dot';
+    if (i < scans_used) dot.classList.add(allUsed ? 'exhausted' : 'used');
+  }
+
+  const label = document.getElementById('quotaLabel');
+  if (allUsed) {
+    label.innerHTML = '<strong style="color:var(--red)">All 3 free scans used today</strong>';
+  } else {
+    label.innerHTML = `<strong>${scans_remaining}</strong> free scan${scans_remaining !== 1 ? 's' : ''} remaining today`;
+  }
+  document.getElementById('quotaReset').textContent = 'Resets at midnight UTC';
+
+  // Disable button if quota exhausted
+  const btn = document.getElementById('scanBtn');
+  if (allUsed) {
+    btn.disabled = true;
+    btn.textContent = 'Quota exceeded — pay to continue';
+    btn.style.background = 'var(--bg-alt)';
+    btn.style.color = 'var(--text-dim)';
+    btn.style.border = '1px solid var(--border)';
+    btn.onclick = () => showPaywall(null, document.getElementById('typeSelect').value);
+  }
+}
+
+function updateTypeUI() {
+  const type = document.getElementById('typeSelect').value;
+  const info = SCAN_TYPES[type];
+  document.getElementById('typeDesc').textContent = info.desc;
+
+  const badge = document.getElementById('priceBadge');
+  if (info.free && quotaData.scans_remaining > 0) {
+    badge.textContent = 'FREE';
+    badge.className = 'price-tag free';
+  } else {
+    badge.textContent = '$' + info.priceUSD.toFixed(2) + ' USDC';
+    badge.className = 'price-tag';
+  }
+
+  // Přepnout chain row a placeholder adresy
+  const isEvm = info.addrType === 'evm';
+  document.getElementById('chainRow').style.display = isEvm ? 'block' : 'none';
+  const addrInput = document.getElementById('addressInput');
+  if (isEvm) {
+    addrInput.placeholder = 'Paste EVM address (0x…)';
+    addrInput.setAttribute('data-addrtype', 'evm');
+  } else {
+    addrInput.placeholder = 'Paste Solana or EVM address…';
+    addrInput.setAttribute('data-addrtype', 'solana');
+  }
+
+  // Pro deep scan: tlačítko vždy zobrazí platbu, ne "Run Scan"
+  const btn = document.getElementById('scanBtn');
+  if (!btn.disabled) {
+    btn.textContent = !info.free ? 'Pay & Run Deep Audit' : 'Run Scan';
+  }
+}
+
+// ── Scan ───────────────────────────────────────────────────────────────────────
+async function startScan() {
+  const address = document.getElementById('addressInput').value.trim();
+  const type    = document.getElementById('typeSelect').value;
+  const chain   = document.getElementById('chainSelect').value;
+  const isEvm   = SCAN_TYPES[type]?.addrType === 'evm';
+  window._lastScanAddress  = address;
+  window._lastScanType     = type;
+  window._lastScanChain    = chain;
+
+  // GA: track scan start
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'scan_started', { scan_type: type, chain: isEvm ? chain : 'solana' });
+  }
+
+  // Validace adresy
+  if (!address) {
+    document.getElementById('addressInput').focus();
+    document.getElementById('addressInput').style.borderColor = 'var(--red)';
+    setTimeout(() => document.getElementById('addressInput').style.borderColor = '', 1500);
+    return;
+  }
+  if (isEvm && !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    showError('Invalid EVM address', 'Must start with 0x followed by 40 hex characters');
+    return;
+  }
+
+  // Deep scan je vždy placený — rovnou na paywall
+  if (type === 'deep') {
+    showPaywall(null, 'deep');
+    return;
+  }
+
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.textContent = 'Scanning…';
+
+  const section = document.getElementById('resultSection');
+  section.style.display = 'block';
+  document.getElementById('spinnerWrap').style.display = 'flex';
+  document.getElementById('resultContent').innerHTML = '';
+  document.getElementById('paywallContent').innerHTML = '';
+  section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Animate spinner progress + steps
+  const steps = SPINNER_STEPS[type] || SPINNER_STEPS.quick;
+  const totalEstimatedSec = steps[steps.length - 1][1];
+  const spinnerText = document.getElementById('spinnerText');
+  const spinnerElapsed = document.getElementById('spinnerElapsed');
+  const spinnerBar = document.getElementById('spinnerProgressBar');
+  const spinnerStepsEl = document.getElementById('spinnerSteps');
+
+  // Build step list
+  spinnerStepsEl.innerHTML = steps.map((s, i) =>
+    `<div class="spinner-step" id="sstep${i}"><div class="spinner-step-dot"></div>${s[0]}</div>`
+  ).join('');
+
+  const scanStart = Date.now();
+  spinnerText.textContent = steps[0][0];
+
+  // Elapsed counter
+  elapsedInterval = setInterval(() => {
+    const sec = ((Date.now() - scanStart) / 1000).toFixed(1);
+    spinnerElapsed.textContent = sec + 's';
+  }, 100);
+
+  // Step + progress bar animation
+  progressInterval = setInterval(() => {
+    const elapsedSec = (Date.now() - scanStart) / 1000;
+    const pct = Math.min(96, (elapsedSec / totalEstimatedSec) * 100);
+    spinnerBar.style.width = pct + '%';
+
+    // Mark steps done/active
+    let activeIdx = 0;
+    for (let i = 0; i < steps.length; i++) {
+      const el = document.getElementById('sstep' + i);
+      if (!el) continue;
+      if (elapsedSec >= steps[i][1]) {
+        el.className = 'spinner-step done';
+        activeIdx = i + 1;
+      } else {
+        el.className = 'spinner-step' + (i === activeIdx ? ' active' : '');
+        break;
+      }
+    }
+    // Update main text to current active step
+    const cur = steps[Math.min(activeIdx, steps.length - 1)];
+    spinnerText.textContent = cur[0];
+  }, 250);
+
+  function stopSpinner() {
+    clearInterval(spinnerInterval);
+    clearInterval(elapsedInterval);
+    clearInterval(progressInterval);
+    spinnerBar.style.width = '100%';
+  }
+
+  try {
+    const body = { address, type, cf_token: turnstileToken || '' };
+    if (isEvm) body.chain = chain;
+
+    const res = await fetch('/scan/free', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    stopSpinner();
+    document.getElementById('spinnerWrap').style.display = 'none';
+
+    const json = await res.json();
+
+    if (res.status === 402) {
+      quotaData = { scans_used: json.scans_used || 3, scans_limit: 3, scans_remaining: 0 };
+      renderQuota(quotaData);
+      showPaywall(json, type);
+    } else if (res.ok) {
+      quotaData.scans_used      = json.scans_used;
+      quotaData.scans_remaining = json.scans_remaining;
+      renderQuota(quotaData);
+      // GA: track successful scan completion
+      if (typeof gtag !== 'undefined') {
+        const riskScore = json.data?.risk_score ?? json.risk_score ?? null;
+        const riskLevel = json.data?.risk_level ?? json.risk_level ?? null;
+        gtag('event', 'scan_complete', { scan_type: type, risk_level: riskLevel, risk_score: riskScore });
+        if (riskScore >= 70) gtag('event', 'high_risk_found', { scan_type: type, risk_score: riskScore });
+      }
+      renderResult(json, address, type);
+    } else {
+      showError(json.error || 'Scan failed', json.detail || '');
+    }
+  } catch (err) {
+    stopSpinner();
+    document.getElementById('spinnerWrap').style.display = 'none';
+    showError('Network error', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Scan';
+  }
+}
+
+// ── Render result ──────────────────────────────────────────────────────────────
+function renderResult(json, address, type) {
+  _lastScanJson     = json;    // for download
+  _lastScanAddress  = address; // for report filename
+  _lastScanType     = type;    // for report type label
+  const el = document.getElementById('resultContent');
+  const isFree = json.scans_remaining !== undefined;
+
+  // Extrahuj risk info pro context-aware upsell
+  const riskLevel = json.data?.risk_level || json.risk_level || null;
+  const riskScore = json.data?.risk_score ?? json.risk_score ?? null;
+
+  // EVM token scan
+  if (type === 'evm-token' || json.type === 'evm-token') {
+    el.innerHTML = renderEvmResult(json) + (isFree ? renderUpsellBanner(type, riskLevel, riskScore) : '');
+    if (isFree) fetchAndInjectAd(el);
+    return;
+  }
+
+  let html = '';
+  if (json.pipeline === 'swarm' && json.agents) {
+    html = renderDeepScanResult(json, address);
+  } else if (json.data && typeof json.data === 'object') {
+    html = renderStructuredData(json.data, address, json.signed, type);
+  } else if (json.report) {
+    html = renderTextReport(json.report, address, json.signed, json.decision, json.aggregate_score);
+  } else {
+    html = `<div class="report-pre">No report data returned.</div>`;
+  }
+
+  if (isFree) {
+    html += renderUpsellBanner(type, riskLevel, riskScore);
+  }
+  el.innerHTML = html;
+  if (isFree) fetchAndInjectAd(el);
+}
+
+// ── Sponsored ad injection (HypeLab) ──────────────────────────────────────────
+function fetchAndInjectAd(container) {
+  try {
+    const wrap = document.createElement('div');
+    wrap.className = 'hypelab-ad-wrap';
+    wrap.innerHTML = '<hype-banner placement="44e19c4ed5"></hype-banner>';
+    const upsell = container.querySelector('.upsell-banner');
+    if (upsell) container.insertBefore(wrap, upsell);
+    else container.appendChild(wrap);
+  } catch {}
+}
+
+function renderSponsoredCard(ad) {
+  const clickUrl = `/ads/click/${ad.id}`;
+  const imgHtml = ad.image_url
+    ? `<img src="${esc(ad.image_url)}" alt="${esc(ad.advertiser)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+    : `<div style="width:40px;height:40px;border-radius:8px;background:var(--bg-alt);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">📢</div>`;
+  return `
+    <div class="sponsored-card reveal reveal-5">
+      <div class="sponsored-label">Sponsored</div>
+      <div class="sponsored-body">
+        ${imgHtml}
+        <div class="sponsored-text">
+          <div class="sponsored-headline">${esc(ad.headline)}</div>
+          ${ad.tagline ? `<div class="sponsored-tagline">${esc(ad.tagline)}</div>` : ''}
+        </div>
+        <a href="${esc(clickUrl)}" target="_blank" rel="noopener" class="sponsored-cta">${esc(ad.cta_text)} →</a>
+      </div>
+    </div>`;
+}
+
+// ── EVM result renderer ────────────────────────────────────────────────────────
+function renderEvmResult(json) {
+  const score = json.score ?? 0;
+  const meta  = json.meta  || {};
+
+  // Score → risk class
+  const riskClass = score >= 60 ? 'high' : score >= 30 ? 'medium' : 'low';
+  const riskLabel = score >= 60 ? 'HIGH RISK' : score >= 30 ? 'MEDIUM RISK' : 'LOW RISK';
+
+  let html = `
+    <div class="risk-header">
+      <div class="risk-score-circle ${riskClass}">${score}</div>
+      <div class="risk-info">
+        <div class="risk-level-label ${riskClass}">${riskLabel}</div>
+        <div class="risk-summary">${esc(meta.name || 'Unknown')} (${esc(meta.symbol || '?')}) — ${esc(json.recommendation || '')}</div>
+        <div class="risk-address">${esc(json.address)} · ${esc(json.chain || 'base')}</div>
+      </div>
+      ${meta.verified ? '<div class="signed-badge">✓ Source Verified</div>' : ''}
+    </div>`;
+
+  // Meta grid
+  html += `<div class="result-section-label">Token Info</div>
+    <div class="checks-grid">
+      <div class="check-item ${meta.verified ? 'risk-safe' : 'risk-high'}">
+        <div class="check-name">Source Code</div>
+        <div class="check-value">${meta.verified ? 'Verified' : 'Not Verified'}</div>
+        ${meta.contractName ? `<div class="check-detail">${esc(meta.contractName)}</div>` : ''}
+      </div>
+      <div class="check-item">
+        <div class="check-name">Total Supply</div>
+        <div class="check-value">${esc(meta.totalSupply || 'N/A')}</div>
+        <div class="check-detail">Decimals: ${meta.decimals ?? 'N/A'}</div>
+      </div>
+      <div class="check-item ${meta.owner === 'renounced' ? 'risk-safe' : meta.owner ? 'risk-medium' : ''}">
+        <div class="check-name">Owner</div>
+        <div class="check-value">${meta.owner === 'renounced' ? '✓ Renounced' : meta.owner ? meta.owner.slice(0,12)+'…' : 'N/A'}</div>
+      </div>
+      <div class="check-item ${meta.isProxy ? 'risk-medium' : ''}">
+        <div class="check-name">Proxy</div>
+        <div class="check-value">${meta.isProxy ? 'Upgradeable' : 'No'}</div>
+      </div>
+      <div class="check-item ${meta.ageDays != null && meta.ageDays < 7 ? 'risk-high' : meta.ageDays != null && meta.ageDays < 30 ? 'risk-medium' : ''}">
+        <div class="check-name">Contract Age</div>
+        <div class="check-value">${meta.ageDays != null ? meta.ageDays + ' days' : 'N/A'}</div>
+      </div>
+      <div class="check-item">
+        <div class="check-name">Deployer</div>
+        <div class="check-value">${meta.deployer ? meta.deployer.slice(0,12)+'…' : 'N/A'}</div>
+      </div>
+    </div>`;
+
+  // Findings
+  const findings = json.findings || [];
+  const ORDER = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  const sorted = [...findings].sort((a, b) => (ORDER[a.severity] ?? 5) - (ORDER[b.severity] ?? 5));
+
+  const SEV_STYLE = {
+    critical: 'background:rgba(248,81,73,.15);color:#f85149;border:1px solid rgba(248,81,73,.35)',
+    high:     'background:rgba(227,179,65,.12);color:#e3b341;border:1px solid rgba(227,179,65,.35)',
+    medium:   'background:rgba(210,153,34,.12);color:#d29922;border:1px solid rgba(210,153,34,.35)',
+    low:      'background:rgba(63,185,80,.12);color:#3fb950;border:1px solid rgba(63,185,80,.35)',
+    info:     'background:rgba(88,166,255,.1);color:#58a6ff;border:1px solid rgba(88,166,255,.25)'
+  };
+
+  html += `<div class="result-section-label">Findings (${findings.length})</div>`;
+
+  if (!sorted.length) {
+    html += `<div style="padding:16px 20px;background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:8px;font-family:var(--mono);font-size:13px;color:var(--green)">✓ No risk patterns detected</div>`;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:8px">`;
+    for (const f of sorted) {
+      const st = SEV_STYLE[f.severity] || SEV_STYLE.info;
+      html += `<div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 16px">
+        <span style="flex-shrink:0;font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase;margin-top:2px;${st}">${esc(f.severity)}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;color:var(--text)">${esc(f.label)}</div>
+          <div style="font-size:11px;color:var(--text-faint);font-family:var(--mono);margin-top:2px">${esc(f.category)}</div>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  return html;
+}
+
+
+function renderStructuredData(data, address, signed, scanType) {
+  const rawRisk = (data.risk_level || 'unknown').toLowerCase();
+  const risk    = scoreToRiskClass(data.risk_score, rawRisk);
+  const score   = data.risk_score != null ? data.risk_score : '?';
+  const summary = data.summary || '';
+  const name    = data.name ? `<strong style="color:#fff">${esc(data.name)}</strong> (${esc(data.symbol || '')}) — ` : '';
+  const riskLabel = riskClassToLabel(risk);
+  const addrType = data.address_type ? ` · ${esc(data.address_type)}` : '';
+  const scanBadge = data.scan_type === 'quick-rpc' ? '<span style="font-family:var(--mono);font-size:10px;padding:2px 7px;background:rgba(78,166,255,.1);border:1px solid rgba(78,166,255,.2);color:var(--accent);border-radius:3px;margin-left:8px">Quick Scan</span>' : '';
+  const scanTypeName2 = { quick: 'Quick Scan', token: 'Token Audit', wallet: 'Wallet Profile', pool: 'Pool Scan', deep: 'Deep Audit' }[scanType] || (scanType || '');
+
+  let html = `
+    <div class="risk-header reveal reveal-1 glass-card" style="border-radius:10px">
+      <div class="risk-score-circle ${risk}" style="width:68px;height:68px;font-size:22px">${score}</div>
+      <div class="risk-info">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="risk-level-label ${risk}">${riskLabel} RISK</div>
+          ${scanBadge}
+          ${signed ? '<div class="signed-badge">✓ Ed25519 Signed</div>' : ''}
+        </div>
+        <div class="risk-summary">${name}${esc(summary)}</div>
+        <div class="risk-address">${esc(address)}${addrType}</div>
+      </div>
+    </div>`;
+
+  // ── Security check findings cards ──────────────────────────────────────────
+  if (data.checks && Object.keys(data.checks).length) {
+    const CHECK_EXPLANATIONS = {
+      mint_authority:    'Controls token minting. If active, new tokens can be created at any time — major rug risk.',
+      freeze_authority:  'Can freeze token accounts. If active, developer can block all transfers.',
+      holder_concentration: 'Measures how concentrated supply is. High HHI = few wallets dominate.',
+      liquidity:         'DEX pool depth. Low liquidity enables easy price manipulation.',
+      account_status:    'Whether this address exists and is active on-chain.',
+      account_type:      'Classification of this Solana account.',
+      sol_balance:       'Current SOL balance of this account.',
+      owner_program:     'The program that owns and controls this account.',
+      recent_activity:   'Transaction activity in recent slots.',
+      transfer_hook:     'Custom logic triggered on every transfer — can be used for fee extraction or blocking.',
+      insider_cluster:   'Group of wallets with a common funding source or coordinated behaviour.',
+      wash_trading:      'Artificial trading volume between related wallets.',
+    };
+
+    const checks = data.checks;
+    const liquidityData = checks.liquidity;
+
+    html += `<div class="result-section-label reveal reveal-2">Security Checks</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">`;
+
+    for (const [key, val] of Object.entries(checks)) {
+      if (key === 'liquidity') continue;
+      const rk      = (val?.risk || 'safe').toLowerCase();
+      const icon    = rk === 'high' ? '✗' : rk === 'medium' ? '⚠' : '✓';
+      const sevCls  = rk === 'high' ? 'high' : rk === 'medium' ? 'medium' : 'safe';
+      const label   = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const explain = CHECK_EXPLANATIONS[key] || '';
+
+      let valueText = '';
+      if (val?.status !== undefined) valueText = String(val.status);
+      else if (val?.standard === true)  valueText = 'Standard SPL';
+      else if (val?.detected === true)  valueText = 'Detected';
+      else if (val?.detected === false) valueText = 'Not detected';
+      else if (val?.hhi != null)        valueText = `HHI ${val.hhi.toFixed(3)} · Top: ${val.top_holder_pct?.toFixed(1)}%`;
+      else valueText = val?.risk || 'OK';
+
+      let detailHtml = '';
+      if (val?.holder) detailHtml += `<div>Holder: <code style="color:var(--text)">${esc(val.holder.slice(0,16))}…</code></div>`;
+      if (val?.transfer_hook) detailHtml += `<div style="color:var(--yellow)">⚠ Transfer hook active — custom code runs on every transfer</div>`;
+      if (val?.fresh_wallet_count != null) detailHtml += `<div>${val.fresh_wallet_count} fresh wallets (${val.fresh_wallet_pct?.toFixed(1)}%)</div>`;
+      if (val?.common_source) detailHtml += `<div>Common funder: <code style="color:var(--text)">${esc(val.common_source.slice(0,16))}…</code></div>`;
+      if (explain) detailHtml += `<div style="margin-top:6px;color:var(--text-faint);font-size:12px">${esc(explain)}</div>`;
+
+      html += `<div class="finding-card sev-${sevCls}" onclick="this.classList.toggle('open')">
+        <div class="finding-header">
+          <span class="finding-icon" style="color:${rk==='high'?'var(--red)':rk==='medium'?'var(--yellow)':'var(--green)'}">${icon}</span>
+          <span class="finding-title">${esc(label)}</span>
+          <span class="finding-status">${esc(valueText)}</span>
+          <span class="finding-badge ${sevCls}">${sevCls}</span>
+          <span class="finding-chevron">▼</span>
+        </div>
+        ${detailHtml ? `<div class="finding-detail">${detailHtml}</div>` : ''}
+      </div>`;
+    }
+    html += `</div>`;
+
+    // Liquidity pools table
+    if (liquidityData?.pools?.length) {
+      html += `<div class="result-section-label reveal reveal-3">Liquidity Pools</div>
+        <table class="pools-table" style="margin-bottom:20px">
+          <thead><tr><th>DEX</th><th>Liquidity (USD)</th><th>24h Volume</th><th>Locked</th></tr></thead>
+          <tbody>`;
+      for (const p of liquidityData.pools.slice(0,5)) {
+        html += `<tr>
+          <td>${esc(p.dex||'—')}</td>
+          <td>$${fmtNum(p.liquidity_usd)}</td>
+          <td>$${fmtNum(p.volume_h24)}</td>
+          <td>${p.locked?'<span style="color:var(--green)">Yes</span>':'<span style="color:var(--red)">No</span>'}</td>
+        </tr>`;
+      }
+      html += `</tbody></table>`;
+    }
+  } else if (!data.checks) {
+    html += `<div class="result-section-label">Raw Data</div>
+      <pre class="report-pre">${esc(JSON.stringify(data, null, 2))}</pre>`;
+  }
+
+  // ── Holder bar chart ───────────────────────────────────────────────────────
+  const topHolders = data.top_holders || data.checks?.holder_concentration?.top_holders;
+  if (topHolders?.length) {
+    html += `<div class="result-section-label reveal reveal-3">Top Holder Distribution</div>
+      <div class="holder-chart reveal reveal-3">`;
+    const maxPct = Math.max(...topHolders.map(h => h.pct || h.percentage || 0));
+    for (const h of topHolders.slice(0,10)) {
+      const pct       = h.pct || h.percentage || 0;
+      const barPct    = maxPct > 0 ? (pct / maxPct * 100) : pct;
+      const suspicious = pct > 20 || h.suspicious;
+      const addrShort = (h.address || h.owner || '').slice(0,8) + '…';
+      html += `<div class="holder-row">
+        <span class="holder-label" title="${esc(h.address||'')}">${esc(addrShort)}</span>
+        <div class="holder-bar-bg">
+          <div class="holder-bar-fill ${suspicious?'suspicious':''}" style="width:${barPct.toFixed(1)}%"></div>
+        </div>
+        <span class="holder-pct">${pct.toFixed(1)}%</span>
+      </div>`;
+    }
+    html += `</div>`;
+    if (data.insider_cluster_detected || data.checks?.insider_cluster?.detected) {
+      html += `<div style="padding:10px 14px;background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);border-radius:6px;font-size:13px;color:var(--red);margin-bottom:16px">⚠ Insider cluster detected — multiple holders share a common funding source</div>`;
+    }
+  }
+
+  // ── Risk breakdown ─────────────────────────────────────────────────────────
+  const categories = buildRiskBreakdown(data);
+  if (categories.length) {
+    html += `<div class="result-section-label reveal reveal-4">Risk Breakdown</div>
+      <div class="risk-breakdown reveal reveal-4">`;
+    for (const c of categories) {
+      const cls = c.score >= 71 ? 'critical' : c.score >= 46 ? 'high' : c.score >= 21 ? 'medium' : 'low';
+      html += `<div class="risk-bar-row">
+        <span class="risk-bar-label">${esc(c.label)}</span>
+        <div class="risk-bar-bg"><div class="risk-bar-fill ${cls}" style="width:${c.score}%"></div></div>
+        <span class="risk-bar-score">${c.score}</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // ── Evidence (recent transactions) ────────────────────────────────────────
+  const evidence = data.evidence || [];
+  if (evidence.length) {
+    html += `<div class="result-section-label reveal reveal-5">On-Chain Evidence</div>
+      <div class="evidence-list reveal reveal-5">`;
+    for (const ev of evidence) {
+      const ts = ev.blockTime ? new Date(ev.blockTime * 1000).toLocaleString() : '';
+      html += `<div class="evidence-tx">
+        <a href="https://solscan.io/tx/${esc(ev.signature)}" target="_blank" rel="noopener">${esc(ev.signature.slice(0,24)+'…')}</a>
+        ${ev.err ? '<span class="ev-err">failed</span>' : ''}
+        ${ts ? `<span class="ev-time">${esc(ts)}</span>` : ''}
+        <a href="https://explorer.solana.com/tx/${esc(ev.signature)}" target="_blank" rel="noopener" class="ev-link">Explorer ↗</a>
+        <a href="https://solscan.io/tx/${esc(ev.signature)}" target="_blank" rel="noopener" class="ev-link">Solscan ↗</a>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += renderSignedFooter(signed, address, scanTypeName2);
+  return html;
+}
+
+function renderDeepScanResult(json, address) {
+  const agg        = json.aggregate_score ?? '?';
+  const dec        = json.decision ?? 'unknown';
+  const agents     = json.agents ?? {};
+  const scanner    = agents.scanner    ?? {};
+  const analyst    = agents.analyst    ?? {};
+  const reputation = agents.reputation ?? {};
+  const scannerData = scanner.data ?? {};
+  const rugOverride = json.rug_override === true;
+  const scAgents   = (json.scorecard ?? {}).agents ?? {};
+
+  const decMap = {
+    'safe':      { cls: 'low',    label: 'SAFE',      color: 'var(--green)'  },
+    'caution':   { cls: 'medium', label: 'CAUTION',   color: 'var(--yellow)' },
+    'high-risk': { cls: 'high',   label: 'HIGH RISK', color: 'var(--red)'    },
+  };
+  const { cls: rClass, label: rLabel, color: rColor } = decMap[dec] ?? { cls: 'medium', label: 'UNKNOWN', color: 'var(--yellow)' };
+
+  function scoreColor(n) {
+    const v = Number(n) || 0;
+    return v >= 80 ? 'var(--green)' : v >= 55 ? 'var(--yellow)' : 'var(--red)';
+  }
+
+  // ── 1. Hero header ──────────────────────────────────────────────────────
+  const heroHtml = `
+    <div class="risk-header reveal reveal-1" style="border-radius:10px;position:relative;overflow:hidden;margin-bottom:20px">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${rColor},transparent)"></div>
+      <div class="risk-score-circle ${rClass}" style="width:72px;height:72px;font-size:24px;flex-shrink:0">${agg}</div>
+      <div class="risk-info">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:4px">
+          <div class="risk-level-label ${rClass}">${rLabel}</div>
+          <span style="font-family:var(--mono);font-size:10px;padding:2px 8px;background:rgba(78,166,255,.1);border:1px solid rgba(78,166,255,.2);color:var(--accent);border-radius:4px">DEEP AUDIT · 3 AI AGENTS</span>
+          ${rugOverride ? '<div style="font-size:11px;background:#ff4d4d22;color:#ff6b6b;padding:2px 8px;border-radius:4px;border:1px solid #ff4d4d44">⚠ RUG OVERRIDE</div>' : ''}
+          ${json.signed ? '<div class="signed-badge">✓ Signed</div>' : ''}
+        </div>
+        <div class="risk-summary">gemini-2.5-flash · gpt-4o-mini · reputation · weighted consensus</div>
+        <div class="risk-address">${esc(address)}</div>
+      </div>
+    </div>`;
+
+  // ── 2. Weighted Scorecard ───────────────────────────────────────────────
+  const agentDefs = [
+    { key: 'scanner',    label: 'Scanner Agent',    model: 'gemini-2.5-flash', pct: 30 },
+    { key: 'analyst',    label: 'Analyst Agent',    model: 'gpt-4o-mini',      pct: 50 },
+    { key: 'reputation', label: 'Reputation Agent', model: 'heuristics',       pct: 20 },
+  ];
+  const scorecardRows = agentDefs.map(({ key, label, model, pct }) => {
+    const ag      = agents[key] ?? {};
+    const sc      = scAgents[key] ?? {};
+    const score   = Number(ag.score ?? 0);
+    const conf    = ag.confidence ?? 0;
+    const contrib = Number(sc.contribution ?? (score * pct / 100)).toFixed(1);
+    const col     = scoreColor(score);
+    return `
+      <div class="da-agent-row reveal reveal-2">
+        <div style="min-width:140px">
+          <div style="font-size:13px;color:var(--text);font-weight:500">${esc(label)}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-top:2px">${esc(model)} · weight ${pct}%</div>
+        </div>
+        <div style="flex:1;min-width:80px">
+          <div class="da-scorecard-bar">
+            <div class="da-scorecard-fill" style="width:${score}%;background:${col}"></div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-top:3px">confidence: ${conf}%</div>
+        </div>
+        <div style="text-align:right;min-width:74px;flex-shrink:0">
+          <div style="font-size:19px;font-weight:700;color:${col};line-height:1">${score}<span style="font-size:11px;color:var(--text-faint);font-weight:400">/100</span></div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-top:2px">+${contrib} pts</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const scorecardHtml = `
+    <div class="result-section-label reveal reveal-2">Multi-Agent Scorecard</div>
+    <div style="margin-bottom:24px">
+      ${scorecardRows}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;margin-top:4px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Weighted Aggregate</span>
+        <span style="font-size:20px;font-weight:700;color:${rColor}">${agg}<span style="font-size:11px;color:var(--text-faint);font-weight:400"> / 100</span></span>
+      </div>
+    </div>`;
+
+  // ── 3. Token Security ───────────────────────────────────────────────────
+  let tokenSecHtml = '';
+  if (scannerData.account_type === 'mint') {
+    const mintOk   = scannerData.mint_authority   === 'null' || scannerData.mint_authority   == null;
+    const freezeOk = scannerData.freeze_authority === 'null' || scannerData.freeze_authority == null;
+    const isPumpfun = scannerData.is_pumpfun === true;
+    tokenSecHtml = `
+      <div class="result-section-label reveal reveal-2">Token Security</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px">
+        <div class="finding-card ${mintOk ? 'sev-safe' : 'sev-critical'}" style="flex:1;min-width:160px">
+          <div class="finding-header" style="cursor:default">
+            <span class="finding-icon">${mintOk ? '✓' : '!'}</span>
+            <span class="finding-title">Mint Authority</span>
+            <span class="finding-severity ${mintOk ? 'low' : 'critical'}">${mintOk ? 'RENOUNCED' : 'ACTIVE'}</span>
+          </div>
+          <div class="finding-desc">${mintOk ? 'Cannot create new tokens' : 'Deployer can mint unlimited tokens — rug risk'}</div>
+        </div>
+        <div class="finding-card ${freezeOk ? 'sev-safe' : 'sev-medium'}" style="flex:1;min-width:160px">
+          <div class="finding-header" style="cursor:default">
+            <span class="finding-icon">${freezeOk ? '✓' : '!'}</span>
+            <span class="finding-title">Freeze Authority</span>
+            <span class="finding-severity ${freezeOk ? 'low' : 'medium'}">${freezeOk ? 'RENOUNCED' : 'ACTIVE'}</span>
+          </div>
+          <div class="finding-desc">${freezeOk ? 'Tokens cannot be frozen' : 'Deployer can freeze tokens in wallets'}</div>
+        </div>
+        ${isPumpfun ? `
+        <div class="finding-card sev-medium" style="flex:1;min-width:160px">
+          <div class="finding-header" style="cursor:default">
+            <span class="finding-icon">~</span>
+            <span class="finding-title">Launch Platform</span>
+            <span class="finding-severity medium">PUMP.FUN</span>
+          </div>
+          <div class="finding-desc">Speculative bonding curve token</div>
+        </div>` : ''}
+      </div>`;
+  }
+
+  // ── 4. Scanner Finding ──────────────────────────────────────────────────
+  let scannerHtml = '';
+  if (scanner.reason) {
+    scannerHtml = `
+      <div class="result-section-label reveal reveal-2">Scanner Finding</div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-left:3px solid #2a4a6a;border-radius:8px;padding:14px 18px;margin-bottom:24px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px">gemini-2.5-flash · score ${scanner.score ?? '?'}/100 · conf ${scanner.confidence ?? '?'}%</div>
+        <div style="font-size:13px;color:var(--text-dim);line-height:1.6">${esc(scanner.reason)}</div>
+      </div>`;
+  }
+
+  // ── 5. Analyst Dimensions ───────────────────────────────────────────────
+  let dimsHtml = '';
+  const dims = analyst.dimensions ?? {};
+  if (Object.keys(dims).length) {
+    const dimMeta = {
+      mint_authority_risk:   { label: 'Mint Authority',   desc: 'Can new tokens be minted?' },
+      freeze_authority_risk: { label: 'Freeze Authority', desc: 'Can tokens be frozen?' },
+      owner_trust:           { label: 'Owner Trust',      desc: 'Owner program reputation' },
+      token_legitimacy:      { label: 'Legitimacy',       desc: 'Project legitimacy signals' },
+    };
+    dimsHtml = `
+      <div class="result-section-label reveal reveal-3">Risk Dimensions</div>
+      <div class="da-dim-grid reveal reveal-3">
+        ${Object.entries(dims).map(([k, v]) => {
+          const n = Number(v) || 0;
+          const col = scoreColor(n);
+          const m = dimMeta[k] || { label: k.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase()), desc: '' };
+          return `
+          <div class="da-dim-card">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+              <span style="font-family:var(--mono);font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px">${esc(m.label)}</span>
+              <span style="font-size:18px;font-weight:700;color:${col};line-height:1">${n}<span style="font-size:10px;color:var(--text-faint);font-weight:400">/100</span></span>
+            </div>
+            <div class="da-scorecard-bar"><div class="da-scorecard-fill" style="width:${n}%;background:${col}"></div></div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:7px">${esc(m.desc)}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  // ── 6. Analyst Analysis + Key Risks ─────────────────────────────────────
+  let analysisHtml = '';
+  const analysis  = analyst.analysis  ?? '';
+  const keyRisks  = analyst.key_risks ?? [];
+  if (analysis || keyRisks.length) {
+    analysisHtml = `
+      <div class="result-section-label reveal reveal-3">AI Analysis</div>
+      <div style="margin-bottom:24px">
+        ${analysis ? `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent-dim);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">gpt-4o-mini · score ${analyst.score ?? '?'}/100</div>
+          <div style="font-size:13px;color:var(--text-dim);line-height:1.7">${esc(analysis)}</div>
+        </div>` : ''}
+        ${keyRisks.length ? `<div style="display:flex;flex-direction:column;gap:5px">
+          ${keyRisks.map(r => `
+          <div style="display:flex;gap:9px;align-items:flex-start;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px">
+            <span style="color:var(--yellow);font-family:var(--mono);font-size:12px;flex-shrink:0;margin-top:1px">!</span>
+            <span style="font-size:12px;color:var(--text-dim);line-height:1.5">${esc(r)}</span>
+          </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+  }
+
+  // ── 7. Reputation Flags ─────────────────────────────────────────────────
+  const repFlags = reputation.flags ?? [];
+  let repHtml = '';
+  if (repFlags.length) {
+    function flagCls(f) {
+      const l = f.toLowerCase();
+      if (l.includes('renounced') || l.includes('known_safe') || l.includes('trusted_program')) return 'ok';
+      if (l.includes('rug') || l.includes('active:') || l.includes('unlimited') || l.includes('not_found')) return 'bad';
+      return 'warn';
+    }
+    const flagIconMap = { ok: '<span style="color:var(--green);font-weight:700;flex-shrink:0">✓</span>', bad: '<span style="color:var(--red);font-weight:700;flex-shrink:0">!</span>', warn: '<span style="color:var(--yellow);font-weight:700;flex-shrink:0">~</span>' };
+    repHtml = `
+      <div class="result-section-label reveal reveal-4">Reputation Flags</div>
+      <div style="margin-bottom:24px">
+        ${repFlags.map(f => {
+          const cls = flagCls(f);
+          const ci = f.indexOf(':');
+          const key  = ci > 0 ? f.slice(0, ci).replace(/_/g, ' ') : f;
+          const desc = ci > 0 ? f.slice(ci + 1).trim() : '';
+          return `<div class="da-flag ${cls}">
+            ${flagIconMap[cls]}
+            <div><span style="color:var(--text);font-weight:500">${esc(key)}</span>${desc ? `<span style="color:var(--text-dim)"> — ${esc(desc)}</span>` : ''}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  // ── 8. Raw On-Chain Data ─────────────────────────────────────────────────
+  let onChainHtml = '';
+  const sd = scannerData;
+  const facts = [
+    sd.account_type  != null && { label: 'Account Type',   val: sd.account_type },
+    sd.sol_balance   != null && { label: 'SOL Balance',    val: `${sd.sol_balance} SOL` },
+    sd.owner_name    != null && { label: 'Owner Program',  val: sd.owner_name },
+    sd.token_supply  != null && { label: 'Token Supply',   val: sd.token_supply },
+    sd.executable    != null && { label: 'Executable',     val: sd.executable ? 'Yes (smart contract)' : 'No' },
+    sd.is_pumpfun    === true && { label: 'Launch Platform', val: 'pump.fun' },
+  ].filter(Boolean);
+  if (facts.length) {
+    onChainHtml = `
+      <div class="result-section-label reveal reveal-4">On-Chain Data</div>
+      <div class="da-onchain-grid reveal reveal-4">
+        ${facts.map(f => `
+        <div class="da-onchain-item">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${esc(f.label)}</div>
+          <div style="font-size:12px;color:var(--text)">${esc(String(f.val))}</div>
+        </div>`).join('')}
+      </div>`;
+  }
+
+  // ── Assemble ─────────────────────────────────────────────────────────────
+  let html = heroHtml + scorecardHtml + tokenSecHtml + scannerHtml + dimsHtml + analysisHtml + repHtml + onChainHtml;
+
+  if (json.report) {
+    html += `
+      <div style="margin-top:12px">
+        <button class="share-btn" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.textContent.includes('Show')?'Hide raw report':'Show raw report'">Show raw report</button>
+        <pre class="report-pre" style="display:none;margin-top:8px">${esc(json.report)}</pre>
+      </div>`;
+  }
+
+  html += renderSignedFooter(json.signed, address, 'Deep Audit');
+  return html;
+}
+
+function renderTextReport(report, address, signed, decision, score) {
+  const lines = report.split('\n');
+  let riskLevel = 'unknown';
+  let summary = '';
+  for (const line of lines) {
+    const l = line.toLowerCase();
+    if (l.includes('risk: high')    || l.includes('high risk'))   riskLevel = 'high';
+    if (l.includes('risk: medium')  || l.includes('medium risk')) riskLevel = 'medium';
+    if (l.includes('risk: low')     || l.includes('low risk'))    riskLevel = 'low';
+    if (l.includes('risk: critical')|| l.includes('critical risk'))riskLevel = 'critical';
+    if (!summary && (l.includes('summary') || l.includes('verdict') || l.includes('conclusion'))) {
+      summary = line.replace(/^[^:]+:\s*/, '').trim();
+    }
+  }
+
+  const rClass = decision === 'safe' ? 'low' : decision === 'risky' ? 'high' : riskLevel;
+  const rLabel = riskClassToLabel(rClass);
+  const numScore = score != null ? score : '?';
+
+  let html = `
+    <div class="risk-header reveal reveal-1 glass-card" style="border-radius:10px">
+      <div class="risk-score-circle ${rClass}" style="width:68px;height:68px;font-size:22px">${numScore}</div>
+      <div class="risk-info">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="risk-level-label ${rClass}">${rLabel} RISK</div>
+          ${signed ? '<div class="signed-badge">✓ Ed25519 Signed</div>' : ''}
+        </div>
+        <div class="risk-summary">${esc(summary || 'AI analysis complete — see full report below')}</div>
+        <div class="risk-address">${esc(address)}</div>
+      </div>
+    </div>
+    <div class="result-section-label reveal reveal-2">Full Report</div>
+    <pre class="report-pre reveal reveal-2">${esc(report)}</pre>
+  `;
+  html += renderSignedFooter(signed, address, 'Deep Audit');
+  return html;
+}
+
+function renderSignedInfo(signed) {
+  if (!signed) return '';
+  const sig = signed.signature || signed.signedReport?.signature || '';
+  if (!sig) return '';
+  return renderSignedFooter(signed, '', '');
+}
+
+function renderSignedFooter(signed, address, scanTypeName3) {
+  const sig = signed?.signature || signed?.signedReport?.signature || '';
+  const now = new Date().toLocaleString();
+  const verifyUrl = `/verify.html${sig ? '?sig=' + encodeURIComponent(sig.slice(0,64)) : ''}`;
+  const shareUrl  = address ? `${location.origin}/scan?address=${encodeURIComponent(address)}` : location.href;
+
+  let sigSection = '';
+  if (sig) {
+    sigSection = `
+      <div class="report-footer-top">
+        <span class="sig-label">Ed25519 Sig</span>
+        <span class="sig-value" id="sigVal">${esc(sig.slice(0,40))}…</span>
+        <button class="copy-btn" onclick="copyText('${esc(sig)}', this)">Copy</button>
+      </div>
+      <div class="report-footer-links">
+        <a href="${esc(verifyUrl)}" target="_blank">Verify report ↗</a>
+        <a href="/verify.html">Verify manually</a>
+        <a href="/docs.html">API docs</a>
+      </div>`;
+  }
+
+  return `
+    <div class="report-footer reveal reveal-5">
+      ${sigSection}
+      <div class="share-row">
+        <button class="share-btn" onclick="copyText('${esc(shareUrl)}', this)">📋 Copy link</button>
+        <button class="share-btn download-report-btn" onclick="downloadReport('pdf')" id="dlPdfBtn">⬇ Download PDF</button>
+        <button class="share-btn download-report-btn" onclick="downloadReport('png')" id="dlPngBtn">🖼 Download PNG</button>
+        <button class="share-btn" onclick="downloadJson()" style="opacity:0.6;font-size:10px">JSON</button>
+        <a class="share-btn" href="/#plans">🚀 Upgrade plan</a>
+      </div>
+      <div class="footer-brand-note" style="margin-top:10px">Powered by <strong style="color:var(--accent)">integrity.molt</strong> — AI-native Solana security · ${esc(now)}</div>
+    </div>`;
+}
+
+function renderUpsellBanner(type, riskLevel, riskScore) {
+  const isHighRisk = riskLevel === 'high' || riskLevel === 'critical' || (riskScore && riskScore >= 60);
+  const isQuotaLast = quotaData.scans_remaining === 0;
+
+  if (isHighRisk) {
+    // Vysoké riziko → tlač Deep Audit ($2)
+    return `
+    <div class="upsell-inline urgent reveal reveal-5">
+      <div class="upsell-inline-header">
+        <div class="upsell-inline-icon">⚠️</div>
+        <div>
+          <div class="upsell-inline-title">High risk detected — get the full picture</div>
+          <div class="upsell-inline-sub">This Quick/Token Scan shows warning signs. Deep Audit runs 8 AI agents and reveals insider wallets, wash trading, and exploit vectors.</div>
+        </div>
+      </div>
+      <div class="upsell-inline-body">
+        <button class="upsell-btn-primary red" onclick="triggerDeepAudit()">Run Deep Audit — $2.00 →</button>
+        <button class="upsell-btn-secondary" onclick="openEmailModal('builder')">Unlimited plan ($79/mo)</button>
+      </div>
+    </div>`;
+  }
+
+  if (isQuotaLast) {
+    // Kvóta vyčerpána → tlač subscription
+    return `
+    <div class="upsell-inline reveal reveal-5">
+      <div class="upsell-inline-header">
+        <div class="upsell-inline-icon">🔒</div>
+        <div>
+          <div class="upsell-inline-title">You've used your 3 free scans</div>
+          <div class="upsell-inline-sub">Subscribe to scan unlimited tokens, wallets, and pools. API key included for CI/CD.</div>
+        </div>
+      </div>
+      <div class="upsell-inline-body">
+        <button class="upsell-btn-primary" onclick="openEmailModal('builder')">Subscribe Builder — $79/mo →</button>
+        <button class="upsell-btn-secondary" onclick="payWithStripe('${type}', window._lastScanAddress || '')">Pay per scan ($${(SCAN_TYPES[type]?.priceUSD || 0.10).toFixed(2)})</button>
+      </div>
+    </div>`;
+  }
+
+  // Zbývá ještě scan — jemný upsell na Deep Audit
+  return `
+    <div class="upsell-inline reveal reveal-5">
+      <div class="upsell-inline-header">
+        <div class="upsell-inline-icon">🔍</div>
+        <div>
+          <div class="upsell-inline-title">Want deeper analysis?</div>
+          <div class="upsell-inline-sub">Deep Audit runs 8 AI agents — insider clustering, wash trading, bytecode exploit detection. Full signed report.</div>
+        </div>
+      </div>
+      <div class="upsell-inline-body">
+        <button class="upsell-btn-primary" onclick="triggerDeepAudit()">Deep Audit — $2.00 →</button>
+        <button class="upsell-btn-secondary" onclick="openEmailModal('builder')">Unlimited ($79/mo)</button>
+      </div>
+    </div>`;
+}
+
+function triggerDeepAudit() {
+  const address = window._lastScanAddress || '';
+  if (!address) return;
+  if (typeof gtag !== 'undefined') gtag('event', 'deep_audit_clicked', { address: address.slice(0,8) });
+  showPaywall(null, 'deep');
+  // Pre-fill adresu v paywallové sekci
+  window._lastScanAddress = address;
+}
+
+// ── Paywall ────────────────────────────────────────────────────────────────────
+function showPaywall(json, type) {
+  const section = document.getElementById('resultSection');
+  section.style.display = 'block';
+  document.getElementById('spinnerWrap').style.display = 'none';
+
+  const PRICES = { quick: 0.10, token: 0.25, wallet: 0.15, pool: 0.25, 'evm-token': 0.10, deep: 2.00 };
+  const price   = PRICES[type] || 0.10;
+  const isDeep  = type === 'deep';
+
+  if (typeof gtag !== 'undefined') gtag('event', 'paywall_shown', { scan_type: type });
+
+  const html = `
+    <div class="paywall-card">
+      <div class="paywall-header">
+        <div class="paywall-icon">${isDeep ? '🔬' : '🔒'}</div>
+        <div>
+          <div class="paywall-title">${isDeep ? 'Deep Audit — full AI analysis' : 'Free quota reached'}</div>
+          <div class="paywall-sub">${isDeep
+            ? '8 AI agents · insider clustering · wash trading detection · signed report'
+            : 'You\'ve used all 3 free scans today. Continue with a single scan or unlimited plan.'
+          }</div>
+        </div>
+      </div>
+      <div class="paywall-body">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px">
+
+          <!-- Option A: Single scan -->
+          <div style="border:1px solid var(--border);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div>
+              <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:4px">SINGLE SCAN</div>
+              <div style="font-size:22px;font-weight:700;color:#fff">$${price.toFixed(2)}</div>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${scanTypeName(type)} · one-time</div>
+            </div>
+            <button class="btn-stripe" id="stripePayBtn" onclick="payWithStripe('${type}', window._lastScanAddress || '')">
+              Pay $${price.toFixed(2)} with Card →
+            </button>
+          </div>
+
+          <!-- Option B: Builder subscription -->
+          <div style="border:1px solid var(--accent-dim);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px;background:#0d1520">
+            <div>
+              <div style="font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:4px">BEST VALUE ✦</div>
+              <div style="font-size:22px;font-weight:700;color:#fff">$79<span style="font-size:14px;color:var(--text-dim)">/mo</span></div>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:2px">Unlimited scans · API key · CI/CD</div>
+            </div>
+            <button class="btn-stripe" style="background:var(--accent)" onclick="openEmailModal('builder')">
+              Subscribe Builder →
+            </button>
+          </div>
+
+        </div>
+
+        <div style="font-size:12px;color:var(--text-faint);text-align:center;margin-bottom:16px">
+          Stripe · card · no crypto wallet needed
+          &nbsp;·&nbsp;
+          <a href="/docs.html" style="color:var(--text-faint)">API / x402 for bots</a>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="font-size:12px;color:var(--text-dim)">Need team access or 100+ watchlist?</div>
+          <button class="upsell-btn-secondary" style="flex:none;padding:8px 16px;font-size:12px" onclick="openEmailModal('team')">Team plan — $299/mo</button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.getElementById('paywallContent').innerHTML = html;
+  section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function payWithStripe(type, address) {
+  // Fallback: vezmi adresu z inputu pokud není k dispozici
+  const addr = address || window._lastScanAddress || document.getElementById('addressInput')?.value?.trim() || '';
+
+  // Pokud stále chybí, zobraz inline input v paywallové sekci
+  if (!addr) {
+    const existing = document.getElementById('paywallAddrInput');
+    if (!existing) {
+      const wrap = document.getElementById('paywallContent');
+      if (wrap) {
+        const hint = document.createElement('div');
+        hint.style.cssText = 'margin-bottom:12px';
+        hint.innerHTML = `<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">Zadej adresu kterou chceš scanovat:</div>
+          <div style="display:flex;gap:8px">
+            <input id="paywallAddrInput" type="text" placeholder="Solana nebo EVM adresa…"
+              style="flex:1;padding:10px 12px;background:var(--bg);border:1px solid var(--accent-dim);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none">
+            <button onclick="payWithStripe('${type}', document.getElementById('paywallAddrInput').value.trim())"
+              style="padding:10px 16px;background:var(--accent);color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">Pokračovat →</button>
+          </div>`;
+        wrap.prepend(hint);
+        document.getElementById('paywallAddrInput').focus();
+      }
+    }
+    return;
+  }
+
+  const btn = document.getElementById('stripePayBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to Stripe…'; }
+  try {
+    const res = await fetch('/scan/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, address: addr })
+    });
+    const j = await res.json();
+    if (j.url) {
+      if (typeof gtag !== 'undefined') gtag('event', 'stripe_checkout_redirect', { scan_type: type });
+      location.href = j.url;
+    } else {
+      alert(j.error || 'Failed to create Stripe checkout');
+      if (btn) { btn.disabled = false; btn.textContent = 'Pay with Card →'; }
+    }
+  } catch {
+    alert('Network error — please try again');
+    if (btn) { btn.disabled = false; btn.textContent = 'Pay with Card →'; }
+  }
+}
+
+// ── Email modal ────────────────────────────────────────────────────────────────
+function openEmailModal(tier) {
+  _modalTier = tier;
+  const titles = { builder: 'Subscribe to Builder — $79/mo', team: 'Subscribe to Team — $299/mo' };
+  const subs   = {
+    builder: 'Unlimited scans, API key, 20 Deep Audits/mo, CI/CD integration. Cancel anytime.',
+    team:    'Unlimited everything, Slack/Telegram alerts, watchlist 100 addresses. Cancel anytime.'
+  };
+  document.getElementById('modalTitle').textContent = titles[tier] || 'Subscribe';
+  document.getElementById('modalSub').textContent   = subs[tier]   || '';
+  document.getElementById('modalEmail').value = '';
+  document.getElementById('modalBtn').disabled = false;
+  document.getElementById('modalBtn').textContent = 'Continue to Checkout →';
+  document.getElementById('emailModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('modalEmail').focus(), 100);
+  if (typeof gtag !== 'undefined') gtag('event', 'subscribe_modal_opened', { tier });
+}
+
+function closeEmailModal() {
+  document.getElementById('emailModal').style.display = 'none';
+}
+
+async function submitEmailModal() {
+  const email = document.getElementById('modalEmail').value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    document.getElementById('modalEmail').style.borderColor = 'var(--red)';
+    document.getElementById('modalEmail').focus();
+    setTimeout(() => document.getElementById('modalEmail').style.borderColor = '', 1500);
+    return;
+  }
+  const btn = document.getElementById('modalBtn');
+  btn.disabled = true;
+  btn.textContent = 'Redirecting to Stripe…';
+  try {
+    const r = await fetch('/subscribe/' + _modalTier, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, success_url: location.origin + '/subscribe/success', cancel_url: location.href })
+    });
+    const j = await r.json();
+    if (j.url) {
+      if (typeof gtag !== 'undefined') gtag('event', 'checkout_started', { tier: _modalTier });
+      location.href = j.url;
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Continue to Checkout →';
+      alert(j.error || 'Failed to start checkout. Please try again.');
+    }
+  } catch {
+    btn.disabled = false;
+    btn.textContent = 'Continue to Checkout →';
+    alert('Network error — please try again.');
+  }
+}
+
+// Enter v email inputu odešle modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('emailModal').style.display !== 'none') {
+    submitEmailModal();
+  }
+  if (e.key === 'Escape') closeEmailModal();
+});
+
+function startSubscription(tier) {
+  openEmailModal(tier);
+}
+
+// ── Error ──────────────────────────────────────────────────────────────────────
+function showError(title, detail) {
+  document.getElementById('resultContent').innerHTML = `
+    <div style="padding:20px;background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px">
+      <div style="font-family:var(--mono);font-size:13px;color:var(--red);margin-bottom:6px">${esc(title)}</div>
+      <div style="font-size:13px;color:var(--text-dim)">${esc(detail)}</div>
+    </div>
+  `;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtNum(n) {
+  if (n == null) return '—';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return Number(n).toFixed(0);
+}
+
+function mapRisk(risk) {
+  if (!risk) return '';
+  const r = risk.toLowerCase();
+  if (r === 'safe') return 'risk-safe';
+  if (r === 'medium') return 'risk-medium';
+  if (r === 'high') return 'risk-high';
+  return '';
+}
+
+function scanTypeName(type) {
+  return { quick: 'Quick Scan', token: 'Token Audit', wallet: 'Wallet Profile', pool: 'Pool Scan', 'evm-token': 'EVM Token Scan', deep: 'Deep Audit' }[type] || type;
+}
+
+function scoreToRiskClass(score, fallback) {
+  if (score == null) return fallback || 'unknown';
+  if (score >= 71) return 'critical';
+  if (score >= 46) return 'high';
+  if (score >= 21) return 'medium';
+  return 'low';
+}
+
+function riskClassToLabel(cls) {
+  return { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical', unknown: 'Unknown' }[cls] || cls.toUpperCase();
+}
+
+function buildRiskBreakdown(data) {
+  const cats = [];
+  if (data.checks) {
+    const RISK_SCORE = { safe: 5, low: 15, medium: 45, high: 75, critical: 90 };
+    for (const [key, val] of Object.entries(data.checks)) {
+      const rk = (val?.risk || 'safe').toLowerCase();
+      const sc = RISK_SCORE[rk] ?? 0;
+      cats.push({ label: key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()), score: sc });
+    }
+  } else if (data.risk_score != null) {
+    cats.push({ label: 'Overall Risk', score: data.risk_score });
+  }
+  return cats.slice(0, 8);
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+  }).catch(() => {
+    prompt('Copy this:', text);
+  });
+}
+
+let _lastScanJson = null;
+let _lastScanAddress = window._lastScanAddress || '';
+let _lastScanType    = '';
+
+function downloadJson() {
+  if (!_lastScanJson) return;
+  const blob = new Blob([JSON.stringify(_lastScanJson, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'scan-report.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadReport(fmt) {
+  if (!_lastScanJson) return;
+
+  const btn = document.getElementById(fmt === 'pdf' ? 'dlPdfBtn' : 'dlPngBtn');
+  const origText = btn.textContent;
+  btn.textContent = 'Generating…';
+  btn.disabled = true;
+
+  const address = _lastScanAddress || _lastScanJson.mint || _lastScanJson.token || _lastScanJson.address || '';
+  const type    = _lastScanType || _lastScanJson.type || 'scan';
+
+  try {
+    const resp = await fetch('/scan/report', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // Pošleme celý scan výsledek — server ho předá přímo buildHtml
+      body:    JSON.stringify({ format: fmt, type, address, result: _lastScanJson }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || err.error || 'Server error');
+    }
+    const blob     = await resp.blob();
+    const url      = URL.createObjectURL(blob);
+    const a        = document.createElement('a');
+    const safeAddr = address.slice(0, 12) || 'report';
+    a.href         = url;
+    a.download     = `intmolt-${type}-${safeAddr}.${fmt}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Report generation failed: ' + e.message);
+  } finally {
+    btn.textContent = origText;
+    btn.disabled    = false;
+  }
+}
+</script>
+
+<!-- ── Email modal pro subscribe ── -->
+<div id="emailModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEmailModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeEmailModal()">×</button>
+    <div class="modal-title" id="modalTitle">Subscribe to Builder</div>
+    <div class="modal-sub" id="modalSub">Unlimited scans, API key, CI/CD integration. Cancel anytime.</div>
+    <input class="modal-input" type="email" id="modalEmail" placeholder="you@example.com" autocomplete="email">
+    <button class="modal-btn" id="modalBtn" onclick="submitEmailModal()">Continue to Checkout →</button>
+    <div class="modal-fine">Secure checkout via Stripe. No free trial — billed immediately.</div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solana Security Scanner API — integrity.molt Developer Docs</title>
+  <meta name="description" content="integrity.molt REST API documentation. Scan Solana tokens, wallets, and pools programmatically. Python, TypeScript, curl examples. x402 micropayments and API key access.">
+  <meta name="keywords" content="Solana security API, Solana scanner API, blockchain security REST API, token audit API, x402 micropayments API, Solana developer tools">
+  <link rel="canonical" href="https://intmolt.org/docs">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://intmolt.org/docs">
+  <meta property="og:title" content="integrity.molt — Solana Security Scanner API Docs">
+  <meta property="og:description" content="Integrate Solana security scanning into your app or AI agent. REST API with Python, TypeScript, and curl examples.">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="integrity.molt API Docs — Solana Security Scanner">
+  <meta name="twitter:description" content="Integrate AI-powered Solana security scanning. x402 micropayments, Ed25519 signed reports, Python & TypeScript examples.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0a0a0f;
+      --bg-card:   #0f0f18;
+      --bg-alt:    #12121e;
+      --border:    #1e1e2e;
+      --accent:    #4da6ff;
+      --accent-dim:#2a6aaa;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --text:      #d0d8e8;
+      --text-dim:  #6a7490;
+      --text-faint:#3a3f54;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+    a { color:var(--accent); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .container { max-width:960px; margin:0 auto; padding:0 24px; }
+
+    header { border-bottom:1px solid var(--border); padding:20px 0; }
+    .header-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+    .logo-text { font-family:var(--mono); font-size:18px; font-weight:600; color:#fff; }
+    .logo-text span { color:var(--accent); }
+
+    /* ── Layout: sidebar + content ── */
+    .docs-layout { display:grid; grid-template-columns:220px 1fr; gap:0; min-height:calc(100vh - 70px); }
+    .sidebar {
+      border-right:1px solid var(--border);
+      padding:32px 0;
+      position:sticky; top:0; height:calc(100vh - 70px); overflow-y:auto;
+    }
+    .sidebar-section { margin-bottom:28px; }
+    .sidebar-label {
+      font-size:11px; font-weight:700; color:var(--text-faint);
+      text-transform:uppercase; letter-spacing:1px;
+      padding:0 20px; margin-bottom:8px;
+    }
+    .sidebar a {
+      display:block; padding:6px 20px;
+      font-size:13px; color:var(--text-dim);
+      transition:color .1s;
+    }
+    .sidebar a:hover { color:var(--text); text-decoration:none; }
+    .sidebar a.active { color:var(--accent); }
+
+    .content { padding:40px 48px; }
+
+    h1 { font-size:28px; font-weight:700; color:#fff; margin-bottom:12px; }
+    h2 {
+      font-size:20px; font-weight:700; color:#fff;
+      margin:48px 0 16px; padding-top:48px;
+      border-top:1px solid var(--border);
+    }
+    h2:first-of-type { margin-top:0; padding-top:0; border-top:none; }
+    h3 { font-size:15px; font-weight:700; color:var(--text); margin:24px 0 10px; }
+    p { color:var(--text-dim); margin-bottom:12px; line-height:1.7; }
+    ul { color:var(--text-dim); padding-left:20px; margin-bottom:12px; }
+    li { margin-bottom:4px; line-height:1.6; }
+
+    /* ── Endpoint pill ── */
+    .endpoint {
+      display:inline-flex; align-items:center; gap:10px;
+      background:var(--bg-alt); border:1px solid var(--border);
+      border-radius:8px; padding:10px 16px; margin-bottom:16px;
+    }
+    .method {
+      font-family:var(--mono); font-size:12px; font-weight:700;
+      padding:2px 8px; border-radius:4px;
+    }
+    .method.post { background:rgba(77,166,255,.15); color:var(--accent); }
+    .method.get  { background:rgba(63,185,80,.15);  color:var(--green); }
+    .path { font-family:var(--mono); font-size:13px; color:#fff; }
+    .price-badge {
+      font-family:var(--mono); font-size:11px;
+      padding:2px 8px; border:1px solid var(--accent-dim);
+      color:var(--accent); border-radius:4px; margin-left:auto;
+    }
+    .free-badge {
+      font-family:var(--mono); font-size:11px;
+      padding:2px 8px; border:1px solid rgba(63,185,80,.4);
+      color:var(--green); border-radius:4px; margin-left:auto;
+    }
+
+    /* ── Code blocks ── */
+    .tabs { display:flex; gap:2px; margin-bottom:0; flex-wrap:wrap; }
+    .tab-btn {
+      font-family:var(--mono); font-size:12px; font-weight:600;
+      padding:6px 14px; border:1px solid var(--border);
+      background:var(--bg-alt); color:var(--text-dim);
+      cursor:pointer; border-radius:6px 6px 0 0; border-bottom:none;
+      transition:color .1s;
+    }
+    .tab-btn.active { background:var(--bg-card); color:var(--accent); border-color:var(--border); }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    pre {
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:0 6px 6px 6px; padding:20px;
+      font-family:var(--mono); font-size:12px; line-height:1.7;
+      color:var(--text-dim); overflow-x:auto; margin-bottom:24px;
+      white-space:pre;
+    }
+    .tabs + pre { border-radius:0 6px 6px 6px; }
+    code {
+      font-family:var(--mono); font-size:12px;
+      background:var(--bg-alt); padding:2px 6px; border-radius:4px;
+      color:var(--text);
+    }
+
+    /* ── Response example ── */
+    .response-label {
+      font-size:11px; font-weight:700; color:var(--text-faint);
+      text-transform:uppercase; letter-spacing:1px; margin:16px 0 6px;
+    }
+
+    /* ── Param table ── */
+    .param-table { width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px; }
+    .param-table th {
+      text-align:left; padding:8px 12px;
+      font-size:11px; font-weight:700; color:var(--text-faint);
+      text-transform:uppercase; letter-spacing:.8px;
+      border-bottom:1px solid var(--border);
+    }
+    .param-table td { padding:10px 12px; border-bottom:1px solid var(--border); color:var(--text-dim); vertical-align:top; }
+    .param-table tr:last-child td { border-bottom:none; }
+    .param-name { font-family:var(--mono); font-size:12px; color:var(--text); }
+    .param-type { font-family:var(--mono); font-size:11px; color:var(--yellow); }
+    .param-req  { font-family:var(--mono); font-size:11px; color:var(--accent); }
+
+    /* ── Info box ── */
+    .info-box {
+      background:rgba(77,166,255,.07); border:1px solid rgba(77,166,255,.2);
+      border-radius:8px; padding:14px 18px; margin-bottom:20px;
+      font-size:13px; color:var(--text-dim);
+    }
+    .info-box strong { color:var(--accent); }
+
+    footer { border-top:1px solid var(--border); padding:28px 0; text-align:center; }
+    .footer-inner { color:var(--text-faint); font-size:13px; }
+    .footer-inner a { color:var(--text-dim); }
+
+    @media (max-width:720px) {
+      .docs-layout { grid-template-columns:1fr; }
+      .sidebar { display:none; }
+      .content { padding:28px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container" style="max-width:100%;padding:0 24px;">
+    <div class="header-inner">
+      <a href="/" class="logo-text">integrity<span>.molt</span></a>
+      <nav style="display:flex;gap:20px;align-items:center;">
+        <a href="/" style="color:var(--text-dim);font-size:13px;">Home</a>
+        <a href="/verify.html" style="color:var(--text-dim);font-size:13px;">Verify</a>
+        <a href="/compare.html" style="color:var(--text-dim);font-size:13px;">Compare</a>
+        <a href="/openapi.json" style="color:var(--text-dim);font-size:13px;" target="_blank" rel="noopener">OpenAPI JSON</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<div class="docs-layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Overview</div>
+      <a href="#overview">Introduction</a>
+      <a href="#auth">Authentication</a>
+      <a href="#x402">x402 payments</a>
+      <a href="#signed">Signed reports</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Scan endpoints</div>
+      <a href="#scan-quick">Quick Scan</a>
+      <a href="#scan-token">Token Audit</a>
+      <a href="#scan-wallet">Wallet Profile</a>
+      <a href="#scan-pool">Pool Scan</a>
+      <a href="#scan-deep">Deep Audit</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Watchlist</div>
+      <a href="#watchlist">Watchlist API</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Account</div>
+      <a href="#subscription">Subscription</a>
+      <a href="#apikeys">API keys</a>
+      <a href="#dashboard">Dashboard</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Utilities</div>
+      <a href="#health">Health / Stats</a>
+      <a href="#discovery">Discovery</a>
+    </div>
+  </aside>
+
+  <!-- ── Main content ── -->
+  <main class="content">
+
+    <!-- Overview -->
+    <section id="overview">
+      <h1>integrity.molt API</h1>
+      <p>AI-native Solana security scanner with Ed25519 signed reports and x402 micropayments. No account required for pay-per-scan — send USDC via x402 and receive a cryptographically verifiable security report.</p>
+
+      <div class="info-box">
+        <strong>Base URL:</strong> <code>https://intmolt.org/api/v2</code><br>
+        <strong>Protocol:</strong> x402 (HTTP 402 + X-PAYMENT header) or Bearer API key<br>
+        <strong>Payment asset:</strong> USDC on Solana mainnet (<code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code>)
+      </div>
+
+      <h3>Pricing</h3>
+      <table class="param-table">
+        <thead><tr><th>Endpoint</th><th>Price</th><th>Best for</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">/scan/quick</td><td class="param-type">0.10 USDC</td><td>Quick risk check, trading bots, AI agents</td></tr>
+          <tr><td class="param-name">/scan/wallet</td><td class="param-type">0.15 USDC</td><td>Wallet age, DeFi exposure, risk class</td></tr>
+          <tr><td class="param-name">/scan/token</td><td class="param-type">0.25 USDC</td><td>Token mint/freeze authority, holder distribution</td></tr>
+          <tr><td class="param-name">/scan/pool</td><td class="param-type">0.25 USDC</td><td>DeFi pool liquidity, LP distribution, rug risk</td></tr>
+          <tr><td class="param-name">/scan/deep</td><td class="param-type">2.00 USDC</td><td>Full AI swarm audit (4 agents, ~60s)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Auth -->
+    <section id="auth">
+      <h2>Authentication</h2>
+      <p>Two modes — choose based on your use case:</p>
+      <h3>x402 micropayments (no account)</h3>
+      <p>Send a base64-encoded JSON envelope in the <code>X-PAYMENT</code> header containing the Solana transaction signature. No registration, no API key.</p>
+      <h3>Bearer API key (subscription)</h3>
+      <p>Subscribers get an <code>im_</code>-prefixed API key. Pass it as <code>Authorization: Bearer im_xxx</code> to skip per-request payment.</p>
+      <pre>Authorization: Bearer im_a1b2c3d4e5f6...</pre>
+    </section>
+
+    <!-- x402 -->
+    <section id="x402">
+      <h2>x402 payments</h2>
+      <p>integrity.molt implements the x402 protocol. Without a payment header, endpoints return HTTP 402 with an <code>accepts</code> array describing what payment is required.</p>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'x402-curl')">curl</button>
+        <button class="tab-btn" onclick="switchTab(this,'x402-python')">Python</button>
+        <button class="tab-btn" onclick="switchTab(this,'x402-ts')">TypeScript</button>
+      </div>
+      <div id="x402-curl" class="tab-content active">
+<pre># 1. Probe — get payment requirements
+curl -s -X POST https://intmolt.org/api/v2/scan/quick \
+  -H "Content-Type: application/json" \
+  -d '{"address":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"}'
+# → HTTP 402 with accepts array
+
+# 2. Send USDC on-chain (via Solana CLI / wallet / SDK)
+# Get transaction signature, e.g.: 4kVs7...abc
+
+# 3. Build payment envelope and scan
+ENVELOPE=$(echo '{"transaction":"4kVs7...abc"}' | base64 -w0)
+curl -s -X POST https://intmolt.org/api/v2/scan/quick \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: $ENVELOPE" \
+  -d '{"address":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"}'</pre>
+      </div>
+      <div id="x402-python" class="tab-content">
+<pre>import base64, json, requests
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
+# pip install solders spl-token-py requests
+
+INTMOLT = "https://intmolt.org/api/v2"
+TARGET  = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+# 1. Probe
+r = requests.post(f"{INTMOLT}/scan/quick", json={"address": TARGET})
+assert r.status_code == 402
+req = r.json()["accepts"][0]
+print(f"Pay {int(req['maxAmountRequired'])/1_000_000:.2f} USDC to {req['payTo']}")
+
+# 2. Send USDC transfer on-chain and get tx signature
+tx_sig = send_usdc(req["payTo"], int(req["maxAmountRequired"]))  # your function
+
+# 3. Scan with payment
+envelope = base64.b64encode(json.dumps({"transaction": tx_sig}).encode()).decode()
+result = requests.post(
+    f"{INTMOLT}/scan/quick",
+    json={"address": TARGET},
+    headers={"X-PAYMENT": envelope}
+)
+data = result.json()
+print(data["report"])
+
+# 4. Verify Ed25519 signature
+import nacl.signing
+vk  = nacl.signing.VerifyKey(base64.b64decode(data["signed"]["verify_key"]))
+sig = base64.b64decode(data["signed"]["signature"])
+vk.verify(data["signed"]["report"].encode(), sig)
+print("✓ Report signature valid")</pre>
+      </div>
+      <div id="x402-ts" class="tab-content">
+<pre>// npm install @solana/web3.js @solana/spl-token tweetnacl
+import { Connection, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddress, createTransferInstruction } from "@solana/spl-token";
+import nacl from "tweetnacl";
+
+const INTMOLT  = "https://intmolt.org/api/v2";
+const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const TARGET    = "So11111111111111111111111111111111111111112";
+
+async function securityCheck(address: string) {
+  // 1. Probe for payment requirements
+  const probe = await fetch(`${INTMOLT}/scan/quick`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ address }),
+  });
+  const { accepts } = await probe.json();
+  const req = accepts[0];
+
+  // 2. Send USDC and get signature (your wallet/SDK)
+  const txSig = await sendUsdc(req.payTo, Number(req.maxAmountRequired));
+
+  // 3. Scan with payment envelope
+  const envelope = btoa(JSON.stringify({ transaction: txSig }));
+  const res = await fetch(`${INTMOLT}/scan/quick`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-PAYMENT": envelope },
+    body: JSON.stringify({ address }),
+  });
+  const data = await res.json();
+
+  // 4. Verify Ed25519 signature
+  const vkBytes  = Uint8Array.from(atob(data.signed.verify_key), c => c.charCodeAt(0));
+  const sigBytes = Uint8Array.from(atob(data.signed.signature),   c => c.charCodeAt(0));
+  const msgBytes = new TextEncoder().encode(data.signed.report);
+  const valid    = nacl.sign.detached.verify(msgBytes, sigBytes, vkBytes);
+  console.log(valid ? "✓ Valid report" : "✗ Invalid signature");
+
+  return data;
+}</pre>
+      </div>
+
+      <h3>API key (subscription bypass)</h3>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'apikey-curl')">curl</button>
+        <button class="tab-btn" onclick="switchTab(this,'apikey-python')">Python</button>
+      </div>
+      <div id="apikey-curl" class="tab-content active">
+<pre>curl -s -X POST https://intmolt.org/api/v2/scan/quick \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer im_your_key_here" \
+  -d '{"address":"So11111111111111111111111111111111111111112"}'</pre>
+      </div>
+      <div id="apikey-python" class="tab-content">
+<pre>import requests
+
+result = requests.post(
+    "https://intmolt.org/api/v2/scan/quick",
+    json={"address": "So11111111111111111111111111111111111111112"},
+    headers={"Authorization": "Bearer im_your_key_here"}
+)
+print(result.json()["report"])</pre>
+      </div>
+    </section>
+
+    <!-- Signed reports -->
+    <section id="signed">
+      <h2>Signed reports</h2>
+      <p>Every scan response includes a <code>signed</code> field — an Ed25519-signed envelope you can cryptographically verify. Reports become tamper-proof attestations that AI agents can trustlessly consume.</p>
+<pre>{
+  "report":     "=== integrity_molt Scan ===\n...",
+  "signature":  "base64-encoded-ed25519-signature",
+  "verify_key": "base64-encoded-public-key",
+  "key_id":     "first-16-chars-of-key-in-base64",
+  "signed_at":  "2026-03-29T12:00:00Z"
+}</pre>
+      <p>Verify online at <a href="/verify.html">/verify.html</a> or with Python (<code>pip install PyNaCl</code>). The current verify key is published at <a href="/services">/services</a>.</p>
+    </section>
+
+    <!-- Quick Scan -->
+    <section id="scan-quick">
+      <h2>Quick Scan</h2>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/scan/quick</span>
+        <span class="price-badge">0.10 USDC</span>
+      </div>
+      <p>Fast AI risk scan of any Solana address. Returns safety score, flags, and signed report. Best for trading bots and AI agents.</p>
+      <h3>Request</h3>
+      <table class="param-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">address</td><td class="param-type">string</td><td class="param-req">yes</td><td>Solana address (32–44 base58 chars)</td></tr>
+        </tbody>
+      </table>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'qs-curl')">curl</button>
+        <button class="tab-btn" onclick="switchTab(this,'qs-python')">Python</button>
+      </div>
+      <div id="qs-curl" class="tab-content active">
+<pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
+curl -s -X POST https://intmolt.org/api/v2/scan/quick \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: $ENVELOPE" \
+  -d '{"address":"So11111111111111111111111111111111111111112"}'</pre>
+      </div>
+      <div id="qs-python" class="tab-content">
+<pre>envelope = base64.b64encode(json.dumps({"transaction": tx_sig}).encode()).decode()
+r = requests.post(
+    "https://intmolt.org/api/v2/scan/quick",
+    json={"address": "So11111111111111111111111111111111111111112"},
+    headers={"X-PAYMENT": envelope}
+)
+print(r.json())</pre>
+      </div>
+      <div class="response-label">Response 200</div>
+<pre>{
+  "status":    "complete",
+  "address":   "So11111111111111111111111111111111111111112",
+  "report":    "=== integrity_molt Quick Scan ===\n...",
+  "signed":    { "report": "...", "signature": "...", "verify_key": "...", "key_id": "...", "signed_at": "..." },
+  "timestamp": "2026-03-29T12:00:00.000Z"
+}</pre>
+    </section>
+
+    <!-- Token Audit -->
+    <section id="scan-token">
+      <h2>Token Audit</h2>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/scan/token</span>
+        <span class="price-badge">0.25 USDC</span>
+      </div>
+      <p>Audit a token mint: mint authority status, freeze authority, top-10 holder distribution, supply analysis, rug risk rating.</p>
+      <h3>Request fields</h3>
+      <table class="param-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">address</td><td class="param-type">string</td><td>Token mint address</td></tr>
+        </tbody>
+      </table>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'ta-curl')">curl</button>
+        <button class="tab-btn" onclick="switchTab(this,'ta-python')">Python</button>
+      </div>
+      <div id="ta-curl" class="tab-content active">
+<pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
+curl -s -X POST https://intmolt.org/api/v2/scan/token \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: $ENVELOPE" \
+  -d '{"address":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"}'</pre>
+      </div>
+      <div id="ta-python" class="tab-content">
+<pre>r = requests.post(
+    "https://intmolt.org/api/v2/scan/token",
+    json={"address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
+    headers={"X-PAYMENT": envelope, "Authorization": "Bearer im_key"}
+)
+print(r.json()["report"])</pre>
+      </div>
+    </section>
+
+    <!-- Wallet Profile -->
+    <section id="scan-wallet">
+      <h2>Wallet Profile</h2>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/scan/wallet</span>
+        <span class="price-badge">0.15 USDC</span>
+      </div>
+      <p>Profile a wallet: age estimate, activity level, DeFi exposure, risk classification (fresh / whale / dormant / normal).</p>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'wp-curl')">curl</button>
+      </div>
+      <div id="wp-curl" class="tab-content active">
+<pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
+curl -s -X POST https://intmolt.org/api/v2/scan/wallet \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: $ENVELOPE" \
+  -d '{"address":"WALLET_ADDRESS_HERE"}'</pre>
+      </div>
+    </section>
+
+    <!-- Pool Scan -->
+    <section id="scan-pool">
+      <h2>DeFi Pool Scan</h2>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/scan/pool</span>
+        <span class="price-badge">0.25 USDC</span>
+      </div>
+      <p>Scan a Raydium / Orca / Meteora pool: liquidity depth, LP token distribution, withdrawal risk assessment.</p>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'ps-curl')">curl</button>
+      </div>
+      <div id="ps-curl" class="tab-content active">
+<pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
+curl -s -X POST https://intmolt.org/api/v2/scan/pool \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: $ENVELOPE" \
+  -d '{"address":"POOL_ADDRESS_HERE"}'</pre>
+      </div>
+    </section>
+
+    <!-- Deep Audit -->
+    <section id="scan-deep">
+      <h2>Deep Audit (Swarm)</h2>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/scan/deep</span>
+        <span class="price-badge">2.00 USDC</span>
+      </div>
+      <p>Full multi-agent swarm audit. Four AI agents run in parallel (scanner → analyst → reputation → meta-scorecard), cross-validate findings, and produce a consensus-based signed report. Allow ~60–120 seconds.</p>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'da-curl')">curl</button>
+        <button class="tab-btn" onclick="switchTab(this,'da-python')">Python</button>
+        <button class="tab-btn" onclick="switchTab(this,'da-ts')">TypeScript</button>
+      </div>
+      <div id="da-curl" class="tab-content active">
+<pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
+curl -s -X POST https://intmolt.org/api/v2/scan/deep \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: $ENVELOPE" \
+  -d '{"address":"TARGET_ADDRESS"}' | jq '{decision,aggregate_score,report}'</pre>
+      </div>
+      <div id="da-python" class="tab-content">
+<pre>r = requests.post(
+    "https://intmolt.org/api/v2/scan/deep",
+    json={"address": target},
+    headers={"X-PAYMENT": envelope},
+    timeout=130
+)
+data = r.json()
+print(f"Decision: {data['decision']}  Score: {data['aggregate_score']}/100")
+print(data["report"])</pre>
+      </div>
+      <div id="da-ts" class="tab-content">
+<pre>const res = await fetch("https://intmolt.org/api/v2/scan/deep", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "X-PAYMENT": envelope },
+  body: JSON.stringify({ address: target }),
+  signal: AbortSignal.timeout(130_000),
+});
+const { decision, aggregate_score, agents, report, signed } = await res.json();
+console.log(`${decision} (${aggregate_score}/100)`);
+// agents.scanner, agents.analyst, agents.reputation — individual results</pre>
+      </div>
+      <div class="response-label">Response 200</div>
+<pre>{
+  "status":          "complete",
+  "tier":            "deep-audit",
+  "pipeline":        "swarm",
+  "address":         "...",
+  "decision":        "safe | caution | avoid | critical",
+  "aggregate_score": 87,
+  "agents": {
+    "scanner":    { "score": 85, "confidence": 90, "reason": "...", "flags": [] },
+    "analyst":    { "score": 88, "confidence": 82, "risk_level": "low", "analysis": "..." },
+    "reputation": { "score": 90, "confidence": 75, "flags": [] }
+  },
+  "report":   "=== integrity_molt Swarm Scan ===\n...",
+  "signed":   { "signature": "...", "verify_key": "...", "key_id": "...", "signed_at": "..." },
+  "timestamp": "2026-03-29T12:00:00.000Z"
+}</pre>
+    </section>
+
+    <!-- Watchlist -->
+    <section id="watchlist">
+      <h2>Watchlist API</h2>
+      <p>Monitor addresses for risk level changes. Receive alerts via Telegram or email when integrity.molt detects a change.</p>
+
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/watchlist/add</span>
+        <span class="free-badge">free</span>
+      </div>
+      <table class="param-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">address</td><td class="param-type">string</td><td>Solana address to monitor</td></tr>
+          <tr><td class="param-name">label</td><td class="param-type">string?</td><td>Optional human-readable label</td></tr>
+          <tr><td class="param-name">telegram_chat_id</td><td class="param-type">string?</td><td>Telegram chat ID for alerts</td></tr>
+          <tr><td class="param-name">email</td><td class="param-type">string?</td><td>Email for alerts (requires one of the two)</td></tr>
+        </tbody>
+      </table>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'wl-curl')">curl</button>
+      </div>
+      <div id="wl-curl" class="tab-content active">
+<pre># Add to watchlist
+curl -s -X POST https://intmolt.org/api/v2/watchlist/add \
+  -H "Content-Type: application/json" \
+  -d '{"address":"So11111111111111111111111111111111111111112","label":"SOL System","telegram_chat_id":"123456789"}'
+
+# List watchlist
+curl -s "https://intmolt.org/api/v2/watchlist?telegram_chat_id=123456789"
+
+# Remove from watchlist
+curl -s -X DELETE https://intmolt.org/api/v2/watchlist/42 \
+  -H "Content-Type: application/json" \
+  -d '{"telegram_chat_id":"123456789"}'</pre>
+      </div>
+    </section>
+
+    <!-- Subscription -->
+    <section id="subscription">
+      <h2>Subscription</h2>
+      <p>Create a Stripe Checkout session for Builder ($79/mo) or Team ($299/mo) subscription. Returns a redirect URL.</p>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/subscribe/:tier</span>
+        <span class="free-badge">stripe</span>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'sub-curl')">curl</button>
+      </div>
+      <div id="sub-curl" class="tab-content active">
+<pre>curl -s -X POST https://intmolt.org/api/v2/subscribe/builder \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","success_url":"https://yourapp.com/success"}'
+# → { "url": "https://checkout.stripe.com/...", "session_id": "cs_..." }
+
+# Check subscription status
+curl -s "https://intmolt.org/api/v2/subscription/status?email=you@example.com"</pre>
+      </div>
+    </section>
+
+    <!-- API keys -->
+    <section id="apikeys">
+      <h2>API keys</h2>
+      <p>Generate an <code>im_</code>-prefixed API key that bypasses per-request x402 payment. Requires an active subscription.</p>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/api-keys/generate</span>
+        <span class="free-badge">subscription</span>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'ak-curl')">curl</button>
+      </div>
+      <div id="ak-curl" class="tab-content active">
+<pre># Generate key (requires active subscription)
+curl -s -X POST https://intmolt.org/api/v2/api-keys/generate \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","label":"ci-pipeline"}'
+# → { "ok": true, "key": "im_...", "tier": "builder", "id": 1 }
+
+# List keys
+curl -s "https://intmolt.org/api/v2/api-keys?email=you@example.com"
+
+# Revoke key
+curl -s -X DELETE https://intmolt.org/api/v2/api-keys/1 \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com"}'</pre>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dashboard">
+      <h2>Dashboard</h2>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/dashboard?email=you@example.com</span>
+        <span class="free-badge">subscription</span>
+      </div>
+<pre>curl -s "https://intmolt.org/api/v2/dashboard?email=you@example.com"
+# → { email, tier, status, current_period_end, api_keys: [...] }</pre>
+    </section>
+
+    <!-- Health / Stats -->
+    <section id="health">
+      <h2>Health &amp; Stats</h2>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/health</span>
+        <span class="free-badge">free</span>
+      </div>
+<pre>curl https://intmolt.org/api/v2/health
+# → { "status": "ok", "service": "integrity.molt security scanner", "version": "1.0" }</pre>
+
+      <div class="endpoint" style="margin-top:16px;">
+        <span class="method get">GET</span>
+        <span class="path">/stats</span>
+        <span class="free-badge">free</span>
+      </div>
+<pre>curl https://intmolt.org/api/v2/stats
+# → { total_scans, scans_today, success_rate_pct, average_response_time_ms }</pre>
+
+      <div class="endpoint" style="margin-top:16px;">
+        <span class="method get">GET</span>
+        <span class="path">/stats/funnel?days=30</span>
+        <span class="price-badge">STATS_TOKEN</span>
+      </div>
+<pre>curl -H "Authorization: Bearer $STATS_TOKEN" \
+  "https://intmolt.org/api/v2/stats/funnel?days=30"
+# → { funnel, payments, pageviews } — full funnel breakdown</pre>
+    </section>
+
+    <!-- Discovery -->
+    <section id="discovery">
+      <h2>Service discovery</h2>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/.well-known/x402.json</span>
+        <span class="free-badge">free</span>
+      </div>
+      <p>Standard x402 discovery document. AI agents and x402-aware clients can auto-discover payment requirements and the current Ed25519 verify key.</p>
+<pre>curl https://intmolt.org/api/v2/.well-known/x402.json</pre>
+
+      <div class="endpoint" style="margin-top:16px;">
+        <span class="method get">GET</span>
+        <span class="path">/services</span>
+        <span class="free-badge">free</span>
+      </div>
+<pre>curl https://intmolt.org/api/v2/services
+# → all scan endpoints, subscription tiers, Ed25519 verify key, x402 metadata</pre>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="container" style="max-width:100%;padding:0 24px;">
+    <div class="footer-inner">
+      <a href="/">integrity.molt</a> ·
+      <a href="/openapi.json">OpenAPI JSON</a> ·
+      <a href="/verify.html">Verify report</a> ·
+      <a href="/compare.html">Compare</a> ·
+      <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram bot</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+function switchTab(btn, contentId) {
+  // Deactivate all tabs in the same group
+  const group = btn.parentElement;
+  group.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Find sibling tab-content elements (next siblings until non-tab-content)
+  let el = group.nextElementSibling;
+  while (el && (el.classList.contains('tab-content') || el.tagName === 'PRE')) {
+    if (el.classList.contains('tab-content')) el.classList.remove('active');
+    el = el.nextElementSibling;
+  }
+
+  const target = document.getElementById(contentId);
+  if (target) target.classList.add('active');
+}
+
+// Highlight active sidebar link on scroll
+const sections = document.querySelectorAll('section[id]');
+const sidebarLinks = document.querySelectorAll('.sidebar a');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      sidebarLinks.forEach(a => a.classList.remove('active'));
+      const link = document.querySelector(`.sidebar a[href="#${e.target.id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18061030609"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — integrity.molt</title>
+  <meta name="robots" content="noindex">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0a0a0f;
+      --bg-card:   #0f0f18;
+      --bg-alt:    #12121e;
+      --border:    #1e1e2e;
+      --accent:    #4da6ff;
+      --accent-dim:#2a6aaa;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --red:       #f85149;
+      --text:      #d0d8e8;
+      --text-dim:  #6a7490;
+      --text-faint:#3a3f54;
+      --mono:      'JetBrains Mono', 'Fira Code', monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px; line-height: 1.6; min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Header ── */
+    .top-bar {
+      border-bottom: 1px solid var(--border); padding: 0 24px;
+      display: flex; align-items: center; gap: 16px; height: 56px;
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,15,.92); backdrop-filter: blur(10px);
+    }
+    .logo { font-family: var(--mono); font-size: 17px; font-weight: 600; color: #fff; }
+    .logo span { color: var(--accent); }
+    .top-spacer { flex: 1; }
+    .user-chip {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text-dim);
+    }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      object-fit: cover; flex-shrink: 0;
+    }
+    .user-name { font-size: 13px; color: var(--text); font-weight: 500; }
+    .plan-badge {
+      font-family: var(--mono); font-size: 10px; padding: 2px 7px;
+      border-radius: 3px; text-transform: uppercase; font-weight: 700;
+    }
+    .plan-badge.builder { background: rgba(78,166,255,.15); color: var(--accent); border: 1px solid rgba(78,166,255,.3); }
+    .plan-badge.team    { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+    .plan-badge.free    { background: rgba(106,116,144,.15); color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-logout {
+      font-family: var(--mono); font-size: 11px; padding: 5px 10px;
+      background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+      border-radius: 4px; cursor: pointer; transition: border-color .15s, color .15s;
+    }
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Layout ── */
+    .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+    main { padding: 32px 0 80px; }
+
+    /* ── Section ── */
+    .section { margin-bottom: 32px; }
+    .section-title {
+      font-family: var(--mono); font-size: 11px; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 12px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 24px;
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .status-item { display: flex; flex-direction: column; gap: 2px; }
+    .status-label { font-family: var(--mono); font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .8px; }
+    .status-value { font-size: 15px; font-weight: 600; color: var(--text); }
+    .status-value.green { color: var(--green); }
+    .status-sep { width: 1px; height: 32px; background: var(--border); }
+    .manage-link { margin-left: auto; font-family: var(--mono); font-size: 12px; }
+
+    /* ── API Keys ── */
+    .key-list { display: flex; flex-direction: column; gap: 8px; }
+    .key-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 7px; padding: 12px 16px;
+    }
+    .key-prefix {
+      font-family: var(--mono); font-size: 13px; color: var(--text); flex: 1;
+    }
+    .key-label { font-size: 12px; color: var(--text-dim); }
+    .key-usage { font-family: var(--mono); font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+    .btn-sm {
+      font-family: var(--mono); font-size: 11px; padding: 5px 10px;
+      background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+      border-radius: 4px; cursor: pointer; transition: border-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.danger:hover { border-color: var(--red); color: var(--red); }
+    .btn-sm.success { border-color: var(--green); color: var(--green); }
+    .btn-generate {
+      width: 100%; padding: 10px; margin-top: 10px;
+      background: transparent; border: 1px dashed var(--border); color: var(--text-dim);
+      font-family: var(--mono); font-size: 12px; border-radius: 6px;
+      cursor: pointer; transition: border-color .15s, color .15s;
+    }
+    .btn-generate:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Watchlist ── */
+    .watchlist-input-row {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .watchlist-input-row input {
+      flex: 1; padding: 9px 12px;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 13px;
+      outline: none; transition: border-color .15s;
+    }
+    .watchlist-input-row input:focus { border-color: var(--accent-dim); }
+    .watchlist-input-row input::placeholder { color: var(--text-faint); }
+    .btn-add {
+      padding: 9px 16px; background: var(--accent); color: #000;
+      font-family: var(--mono); font-size: 12px; font-weight: 700;
+      border: none; border-radius: 6px; cursor: pointer; transition: opacity .15s;
+    }
+    .btn-add:hover { opacity: .88; }
+    .watch-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 7px; padding: 12px 16px; margin-bottom: 6px;
+    }
+    .risk-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .risk-dot.low      { background: var(--green); }
+    .risk-dot.medium   { background: var(--yellow); }
+    .risk-dot.high     { background: var(--red); }
+    .risk-dot.critical { background: #ff4444; }
+    .risk-dot.unknown  { background: var(--text-faint); }
+    .watch-addr { font-family: var(--mono); font-size: 13px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .watch-label { font-size: 12px; color: var(--text-dim); }
+    .watch-score { font-family: var(--mono); font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+    .watch-time { font-family: var(--mono); font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+    .watch-checked { white-space: nowrap; }
+
+    /* ── Quick scan inline ── */
+    .quick-scan-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .quick-scan-form input {
+      flex: 1; min-width: 200px; padding: 10px 14px;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 13px;
+      outline: none; transition: border-color .15s;
+    }
+    .quick-scan-form input:focus { border-color: var(--accent-dim); }
+    .quick-scan-form input::placeholder { color: var(--text-faint); }
+    .quick-scan-form select {
+      padding: 10px 12px; background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 13px;
+      cursor: pointer; outline: none;
+    }
+    .quick-scan-form select option { background: var(--bg-alt); }
+    .btn-scan {
+      padding: 10px 18px; background: var(--accent); color: #000;
+      font-family: var(--mono); font-size: 13px; font-weight: 700;
+      border: none; border-radius: 6px; cursor: pointer; transition: opacity .15s;
+    }
+    .btn-scan:hover { opacity: .88; }
+    .btn-scan:disabled { opacity: .4; cursor: not-allowed; }
+    .inline-result {
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; font-family: var(--mono); font-size: 12px;
+      color: var(--text-dim); white-space: pre-wrap; word-break: break-all;
+      max-height: 300px; overflow-y: auto;
+    }
+
+    /* ── Scan history table ── */
+    .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .history-table th {
+      text-align: left; padding: 8px 12px;
+      background: var(--bg-alt); color: var(--text-dim);
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .history-table td {
+      padding: 10px 12px; border-bottom: 1px solid var(--text-faint);
+      font-family: var(--mono); color: var(--text-dim);
+    }
+    .history-table tr:last-child td { border-bottom: none; }
+    .history-table tr:hover td { background: rgba(78,166,255,.03); }
+    .score-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 3px;
+      font-size: 11px; font-weight: 700;
+    }
+    .score-badge.low      { background: rgba(63,185,80,.15); color: var(--green); }
+    .score-badge.medium   { background: rgba(210,153,34,.15); color: var(--yellow); }
+    .score-badge.high     { background: rgba(248,81,73,.15); color: var(--red); }
+    .score-badge.critical { background: rgba(255,68,68,.2); color: #ff4444; }
+
+    /* ── Usage chart ── */
+    .usage-chart {
+      display: flex; align-items: flex-end; gap: 3px;
+      height: 80px; padding: 0 4px;
+    }
+    .usage-bar-wrap {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      gap: 4px; height: 100%; justify-content: flex-end;
+    }
+    .usage-bar {
+      width: 100%; background: var(--accent); border-radius: 2px 2px 0 0;
+      min-height: 2px; transition: height .5s ease; opacity: .7;
+    }
+    .usage-bar:hover { opacity: 1; }
+    .usage-bar.risk-low      { background: var(--green); }
+    .usage-bar.risk-medium   { background: var(--yellow); }
+    .usage-bar.risk-high     { background: var(--red); }
+    .usage-bar.risk-critical { background: #ff4444; }
+    .usage-bar-date { font-family: var(--mono); font-size: 8px; color: var(--text-faint); }
+
+    /* ── Grid ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    /* ── Auth gate ── */
+    .auth-gate {
+      max-width: 440px; margin: 60px auto; text-align: center;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 40px 32px;
+    }
+    .auth-gate h2 { font-size: 20px; color: #fff; margin-bottom: 10px; }
+    .auth-gate p { color: var(--text-dim); font-size: 14px; margin-bottom: 20px; }
+    .btn-login {
+      display: inline-block; padding: 11px 24px;
+      background: var(--accent); color: #000;
+      font-family: var(--mono); font-size: 13px; font-weight: 700;
+      border-radius: 6px; text-decoration: none; margin: 4px;
+    }
+    .btn-login:hover { opacity: .88; text-decoration: none; }
+    .api-input-wrap { display: flex; gap: 8px; margin-top: 16px; }
+    .api-input-wrap input {
+      flex: 1; padding: 10px 12px;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 12px;
+      outline: none;
+    }
+    .api-input-wrap input:focus { border-color: var(--accent-dim); }
+    .api-input-wrap button {
+      padding: 10px 16px; background: transparent;
+      border: 1px solid var(--border); color: var(--text-dim);
+      font-family: var(--mono); font-size: 12px; border-radius: 6px;
+      cursor: pointer; transition: border-color .15s;
+    }
+    .api-input-wrap button:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Misc ── */
+    .empty-state { text-align: center; padding: 24px; color: var(--text-faint); font-size: 13px; }
+    .spinner-sm {
+      display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .alert-note {
+      padding: 10px 14px; background: rgba(248,81,73,.08);
+      border: 1px solid rgba(248,81,73,.2); border-radius: 6px;
+      font-size: 12px; color: #f88; margin-bottom: 8px;
+    }
+    .export-btn {
+      font-family: var(--mono); font-size: 11px; padding: 5px 10px; float: right;
+      background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+      border-radius: 4px; cursor: pointer; transition: border-color .15s;
+    }
+    .export-btn:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ─────────────────────────────────────────────────────────────── -->
+<div class="top-bar">
+  <a href="/" style="text-decoration:none"><div class="logo">integrity<span>.</span>molt</div></a>
+  <div class="top-spacer"></div>
+  <div class="user-chip" id="userChip" style="display:none">
+    <img class="user-avatar" id="userAvatar" src="" alt="">
+    <span class="user-name" id="userName"></span>
+    <span class="plan-badge" id="planBadge"></span>
+    <button class="btn-logout" onclick="doLogout()">Log out</button>
+  </div>
+</div>
+
+<!-- ── Auth gate (shown when not logged in) ─────────────────────────────────── -->
+<div id="authGate" class="container" style="display:none">
+  <div class="auth-gate">
+    <h2>Access your dashboard</h2>
+    <p>Sign in with social login or enter your API key to view your scan history, watchlist, and API keys.</p>
+    <a href="/login" class="btn-login">Sign in with social →</a>
+    <div class="api-input-wrap">
+      <input type="text" id="gateKeyInput" placeholder="im_xxxxxxxxxxxxxxxx" spellcheck="false" autocomplete="off">
+      <button onclick="gateLogin()">Access</button>
+    </div>
+    <div id="gateError" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
+  </div>
+</div>
+
+<!-- ── Main dashboard ─────────────────────────────────────────────────────── -->
+<main class="container" id="dashMain" style="display:none">
+
+  <!-- ── Subscription status bar ── -->
+  <div class="section">
+    <div class="section-title">Subscription</div>
+    <div class="card">
+      <div class="status-bar">
+        <div class="status-item">
+          <span class="status-label">Plan</span>
+          <span class="status-value green" id="subPlan">—</span>
+        </div>
+        <div class="status-sep"></div>
+        <div class="status-item">
+          <span class="status-label">Status</span>
+          <span class="status-value" id="subStatus">—</span>
+        </div>
+        <div class="status-sep"></div>
+        <div class="status-item">
+          <span class="status-label">Renews</span>
+          <span class="status-value" id="subRenews">—</span>
+        </div>
+        <div class="status-sep"></div>
+        <div class="status-item">
+          <span class="status-label">Quick Scans</span>
+          <span class="status-value" id="usageQuick">—</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Deep Audits</span>
+          <span class="status-value" id="usageDeep">—</span>
+        </div>
+        <a href="https://billing.stripe.com/p/login/test_00000" class="manage-link" id="manageLink" target="_blank" rel="noopener">Manage subscription ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Grid: Quick scan + API keys ── -->
+  <div class="grid-2" style="margin-bottom:32px">
+
+    <!-- Quick scan inline -->
+    <div>
+      <div class="section-title">Quick Scan</div>
+      <div class="card">
+        <div class="quick-scan-form">
+          <input type="text" id="qsAddress" placeholder="Solana address…" autocomplete="off" spellcheck="false">
+          <select id="qsType">
+            <option value="quick">Quick Scan</option>
+            <option value="token">Token Audit</option>
+            <option value="wallet">Wallet Profile</option>
+            <option value="pool">Pool Scan</option>
+          </select>
+          <button class="btn-scan" id="qsBtn" onclick="runQuickScan()">Scan</button>
+        </div>
+        <div id="qsResult" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- API Key management -->
+    <div>
+      <div class="section-title">API Keys</div>
+      <div class="card">
+        <div class="key-list" id="keyList">
+          <div class="empty-state">Loading…</div>
+        </div>
+        <button class="btn-generate" onclick="generateKey()">+ Generate new API key</button>
+        <div id="newKeyAlert" style="display:none;margin-top:10px;padding:12px;background:#0d1f18;border:1px solid #1e3a2f;border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--green)"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Watchlist ── -->
+  <div class="section">
+    <div class="section-title">Watchlist</div>
+    <div class="card">
+      <div class="watchlist-input-row">
+        <input type="text" id="watchAddr" placeholder="Add Solana address to monitor…" autocomplete="off" spellcheck="false">
+        <input type="text" id="watchLabel" placeholder="Label (optional)" style="max-width:160px">
+        <button class="btn-add" onclick="addWatchAddress()">+ Add</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-dim);margin:-4px 0 10px;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="watchEmailNotify" style="accent-color:var(--accent)" checked>
+        <label for="watchEmailNotify">Email me when risk changes (uses your account email)</label>
+      </div>
+      <div id="watchlistItems">
+        <div class="empty-state">Loading watchlist…</div>
+      </div>
+      <div id="alertHistory" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ── Scan history + Usage chart ── -->
+  <div class="grid-2">
+
+    <!-- Scan history -->
+    <div>
+      <div class="section-title">
+        Recent Scans
+        <button class="export-btn" onclick="exportCsv()">Export CSV</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Type</th>
+              <th>Score</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr><td colspan="4" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Usage chart -->
+    <div>
+      <div class="section-title">Scans per day (last 30 days)</div>
+      <div class="card">
+        <div class="usage-chart" id="usageChart">
+          <div class="empty-state" style="width:100%;align-self:center">Loading chart…</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let authToken = null;
+let dashData  = null;
+let scanHistory = [];
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+(async function init() {
+  // 1. Try session auth
+  try {
+    const r = await fetch('/auth/me');
+    if (r.ok) {
+      const me = await r.json();
+      if (me.authenticated) {
+        showUserChip(me);
+        await loadDashboard(null, me.email);
+        return;
+      }
+    }
+  } catch {}
+
+  // 2. Try localStorage API key
+  const storedKey = localStorage.getItem('im_api_key');
+  if (storedKey) {
+    const ok = await tryApiKey(storedKey);
+    if (ok) return;
+    localStorage.removeItem('im_api_key');
+  }
+
+  // 3. Show auth gate
+  showAuthGate();
+})();
+
+function showAuthGate() {
+  document.getElementById('authGate').style.display = 'block';
+}
+
+function showUserChip(user) {
+  const chip = document.getElementById('userChip');
+  chip.style.display = 'flex';
+  if (user.avatar_url) document.getElementById('userAvatar').src = user.avatar_url;
+  document.getElementById('userName').textContent = user.name || user.email || '';
+}
+
+function setPlanBadge(tier) {
+  const b = document.getElementById('planBadge');
+  b.textContent = (tier || 'free').toUpperCase();
+  b.className = 'plan-badge ' + (tier || 'free').toLowerCase();
+}
+
+async function gateLogin() {
+  const key = document.getElementById('gateKeyInput').value.trim();
+  const errEl = document.getElementById('gateError');
+  errEl.style.display = 'none';
+  if (!key.startsWith('im_')) {
+    errEl.textContent = 'API key must start with im_';
+    errEl.style.display = 'block';
+    return;
+  }
+  const ok = await tryApiKey(key);
+  if (!ok) {
+    errEl.textContent = 'Invalid or expired API key';
+    errEl.style.display = 'block';
+  }
+}
+document.getElementById('gateKeyInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') gateLogin(); });
+
+async function tryApiKey(key) {
+  try {
+    const r = await fetch('/dashboard/data', { headers: { Authorization: 'Bearer ' + key } });
+    if (!r.ok) return false;
+    authToken = key;
+    localStorage.setItem('im_api_key', key);
+    const data = await r.json();
+    showUserChip({ name: data.email, avatar_url: null });
+    renderDashboard(data);
+    return true;
+  } catch { return false; }
+}
+
+async function loadDashboard(token, email) {
+  const headers = {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const url = email ? `/dashboard/data?email=${encodeURIComponent(email)}` : '/dashboard/data';
+  try {
+    const r = await fetch(url, { headers });
+    if (!r.ok) { showAuthGate(); return; }
+    const data = await r.json();
+    renderDashboard(data);
+  } catch { showAuthGate(); }
+}
+
+function doLogout() {
+  localStorage.removeItem('im_api_key');
+  fetch('/auth/logout').finally(() => { location.href = '/login'; });
+}
+
+// ── Render dashboard ───────────────────────────────────────────────────────────
+function renderDashboard(data) {
+  dashData = data;
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('dashMain').style.display  = 'block';
+
+  // Subscription status
+  document.getElementById('subPlan').textContent    = (data.tier || 'builder').toUpperCase();
+  document.getElementById('subStatus').textContent  = data.status || 'active';
+  setPlanBadge(data.tier);
+  if (data.current_period_end) {
+    document.getElementById('subRenews').textContent = new Date(data.current_period_end).toLocaleDateString();
+  }
+  const limitsQuick = data.tier === 'team' ? 'unlimited' : 'unlimited';
+  const limitsDeep  = data.tier === 'team' ? '∞' : '20 / mo';
+  document.getElementById('usageQuick').textContent = limitsQuick;
+  document.getElementById('usageDeep').textContent  = limitsDeep;
+
+  // API keys
+  renderKeys(data.api_keys || []);
+
+  // Load additional data — chart musí čekat na history (používá scanHistory pole)
+  loadWatchlist();
+  loadScanHistory().then(() => loadUsageChart());
+}
+
+// ── API Keys ──────────────────────────────────────────────────────────────────
+function renderKeys(keys) {
+  const list = document.getElementById('keyList');
+  if (!keys.length) {
+    list.innerHTML = '<div class="empty-state">No API keys yet. Generate one below.</div>';
+    return;
+  }
+  list.innerHTML = keys.map(k => `
+    <div class="key-row" id="key-${k.id}">
+      <span class="key-prefix">${esc(k.prefix)}****</span>
+      <span class="key-label">${esc(k.label || 'default')}</span>
+      <span class="key-usage">${k.usage_count || 0} uses</span>
+      <button class="btn-sm" onclick="copyKeyPrefix('${esc(k.prefix)}')">Copy prefix</button>
+      <button class="btn-sm danger" onclick="revokeKey(${k.id})">Revoke</button>
+    </div>
+  `).join('');
+}
+
+function copyKeyPrefix(prefix) {
+  navigator.clipboard.writeText(prefix).catch(() => {});
+  event.target.textContent = 'Copied!';
+  setTimeout(() => { event.target.textContent = 'Copy prefix'; }, 1200);
+}
+
+async function generateKey() {
+  if (!dashData?.email) return;
+  const label = prompt('Label for this key (optional):') || 'default';
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  try {
+    const r = await fetch('/api-keys/generate', {
+      method: 'POST', headers,
+      body: JSON.stringify({ email: dashData.email, label })
+    });
+    const j = await r.json();
+    if (j.key) {
+      const alertEl = document.getElementById('newKeyAlert');
+      alertEl.innerHTML = `✓ New key created — save it now, it won't be shown again:<br><br><strong style="color:#fff">${esc(j.key)}</strong>`;
+      alertEl.style.display = 'block';
+      navigator.clipboard.writeText(j.key).catch(() => {});
+      // Refresh key list
+      await loadDashboard(authToken, dashData.email);
+    } else {
+      alert(j.error || 'Failed to generate key');
+    }
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function revokeKey(id) {
+  if (!confirm('Revoke this API key? All requests using it will be rejected.')) return;
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  try {
+    await fetch(`/api-keys/${id}`, {
+      method: 'DELETE', headers,
+      body: JSON.stringify({ email: dashData?.email })
+    });
+    document.getElementById('key-' + id)?.remove();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ── Watchlist ─────────────────────────────────────────────────────────────────
+async function loadWatchlist() {
+  const el = document.getElementById('watchlistItems');
+  try {
+    const headers = {};
+    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+    const r = await fetch('/watchlist/user', { headers });
+    if (!r.ok) throw new Error('not ok');
+    const j = await r.json();
+    const items = j.entries || j.items || [];
+    if (!items.length) {
+      el.innerHTML = '<div class="empty-state" style="font-size:12px;color:var(--text-faint)">Add addresses to monitor for risk changes.</div>';
+      return;
+    }
+    el.innerHTML = '';
+    for (const item of items) {
+      const addr  = item.address || '';
+      const label = item.label || '';
+      const risk  = item.last_risk_level || 'unknown';
+      const score = item.last_risk_score ?? '?';
+      const div = document.createElement('div');
+      div.className = 'watch-row';
+      div.id = 'watch-' + addr.slice(0,8);
+      const checkedStr = item.last_checked_at
+        ? 'Checked ' + new Date(item.last_checked_at).toLocaleString(undefined, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
+        : 'Not checked yet';
+      div.innerHTML = `
+        <div class="risk-dot ${esc(risk)}"></div>
+        <span class="watch-addr" title="${esc(addr)}">${esc(addr.slice(0,20))}…</span>
+        <span class="watch-label">${esc(label)}</span>
+        <span class="watch-score score-badge ${esc(risk)}" style="font-size:11px">${esc(String(score))}</span>
+        <span class="watch-checked" title="${esc(checkedStr)}" style="font-size:11px;color:var(--text-faint);margin-left:auto">${esc(checkedStr)}</span>
+        <button class="btn-sm danger" onclick="removeWatch('${esc(addr)}', ${item.id})">Remove</button>`;
+      el.appendChild(div);
+    }
+  } catch {
+    el.innerHTML = '<div class="empty-state" style="font-size:12px;color:var(--text-faint)">Add addresses to monitor for risk changes.</div>';
+  }
+}
+
+async function addWatchAddress() {
+  const addr  = document.getElementById('watchAddr').value.trim();
+  const label = document.getElementById('watchLabel').value.trim();
+  if (!addr) return;
+  const el = document.getElementById('watchlistItems');
+
+  // Add to UI optimistically
+  const div = document.createElement('div');
+  div.className = 'watch-row';
+  div.id = 'watch-' + addr.slice(0,8);
+  div.innerHTML = `
+    <div class="risk-dot unknown"></div>
+    <span class="watch-addr" title="${esc(addr)}">${esc(addr.slice(0,20))}…</span>
+    <span class="watch-label">${esc(label || '')}</span>
+    <span class="watch-score">Scanning…</span>
+    <button class="btn-sm danger" onclick="removeWatch('${esc(addr)}', this._watchId)">Remove</button>`;
+  const empty = el.querySelector('.empty-state');
+  if (empty) empty.remove();
+  el.appendChild(div);
+
+  document.getElementById('watchAddr').value = '';
+  document.getElementById('watchLabel').value = '';
+
+  // Save to server and run a quick scan to get current risk
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+    // Persist to watchlist
+    const emailNotify = document.getElementById('watchEmailNotify')?.checked ?? true;
+    const wr = await fetch('/watchlist/user/add', {
+      method: 'POST', headers,
+      body: JSON.stringify({ address: addr, label, email_notify: emailNotify })
+    });
+    if (wr.ok) {
+      const wj = await wr.json();
+      const watchId = wj.id;
+      div.querySelector('button').onclick = () => removeWatch(addr, watchId);
+    }
+    // Quick scan for current risk score
+    const r = await fetch('/scan/free', {
+      method: 'POST', headers,
+      body: JSON.stringify({ address: addr, type: 'quick' })
+    });
+    if (r.ok) {
+      const j = await r.json();
+      const risk = j.data?.risk_level || 'unknown';
+      const score = j.data?.risk_score ?? '?';
+      div.querySelector('.risk-dot').className = 'risk-dot ' + risk;
+      div.querySelector('.watch-score').textContent = `Score: ${score}`;
+    }
+  } catch {}
+}
+
+async function removeWatch(addr, id) {
+  const el = document.getElementById('watch-' + addr.slice(0,8));
+  el?.remove();
+  if (!id) return;
+  try {
+    const headers = {};
+    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+    await fetch('/watchlist/user/' + id, { method: 'DELETE', headers });
+  } catch {}
+}
+
+// ── Quick scan inline ─────────────────────────────────────────────────────────
+async function runQuickScan() {
+  const addr = document.getElementById('qsAddress').value.trim();
+  const type = document.getElementById('qsType').value;
+  if (!addr) { document.getElementById('qsAddress').focus(); return; }
+
+  const btn = document.getElementById('qsBtn');
+  btn.disabled = true; btn.textContent = 'Scanning…';
+  const resultEl = document.getElementById('qsResult');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div style="padding:12px;font-family:var(--mono);font-size:12px;color:var(--text-faint)"><span class="spinner-sm"></span>Running scan…</div>';
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+    const r = await fetch('/scan/free', {
+      method: 'POST', headers,
+      body: JSON.stringify({ address: addr, type })
+    });
+    const j = await r.json();
+    if (r.ok) {
+      const d = j.data || {};
+      const risk   = d.risk_level || 'unknown';
+      const score  = d.risk_score ?? '?';
+      const RISK_COL = { low: '#3fb950', medium: '#d29922', high: '#f85149', critical: '#ff4444', unknown: '#6a7490' };
+      const col = RISK_COL[risk] || '#6a7490';
+      resultEl.innerHTML = `
+        <div style="padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <span style="font-family:var(--mono);font-size:20px;font-weight:700;color:${col}">${score}</span>
+            <span style="font-size:13px;color:${col};text-transform:uppercase;font-weight:600">${risk} risk</span>
+            <a href="/scan?address=${encodeURIComponent(addr)}&type=${encodeURIComponent(type)}" target="_blank" style="margin-left:auto;font-family:var(--mono);font-size:11px">Full report ↗</a>
+          </div>
+          <div style="font-size:13px;color:var(--text-dim)">${esc(d.summary || 'Scan complete')}</div>
+        </div>`;
+      // Add to history
+      scanHistory.unshift({ address: addr, type, score, risk, time: new Date() });
+      renderHistory();
+    } else {
+      resultEl.innerHTML = `<div class="inline-result" style="color:var(--red)">${esc(j.error || 'Scan failed')}</div>`;
+    }
+  } catch (e) {
+    resultEl.innerHTML = `<div class="inline-result" style="color:var(--red)">Network error: ${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Scan';
+  }
+}
+document.getElementById('qsAddress')?.addEventListener('keydown', e => { if (e.key === 'Enter') runQuickScan(); });
+
+// ── Scan history ──────────────────────────────────────────────────────────────
+async function loadScanHistory() {
+  try {
+    const headers = {};
+    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+    const r = await fetch('/scan/history', { headers });
+    if (!r.ok) throw new Error('not ok');
+    const j = await r.json();
+    const items = j.history || [];
+    if (items.length) {
+      scanHistory = items.map(s => ({
+        address:  s.address,
+        type:     s.scan_type,
+        score:    s.risk_score,
+        risk:     s.risk_level,
+        time:     s.created_at
+      }));
+    }
+  } catch {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const tbody = document.getElementById('historyBody');
+  if (!scanHistory.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state" style="padding:20px">No scans yet — use the Quick Scan above</td></tr>';
+    return;
+  }
+  tbody.innerHTML = scanHistory.slice(0,20).map(s => {
+    const riskCls = s.risk || 'unknown';
+    const d = s.time ? new Date(s.time) : null;
+    const isToday = d && d.toDateString() === new Date().toDateString();
+    const timeStr = d ? (isToday ? d.toLocaleTimeString() : d.toLocaleDateString(undefined, {month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})) : '—';
+    const typeName = { quick: 'Quick', token: 'Token', wallet: 'Wallet', pool: 'Pool', deep: 'Deep' }[s.type] || s.type;
+    return `<tr>
+      <td><a href="/scan?address=${encodeURIComponent(s.address)}" style="font-family:var(--mono);font-size:12px" target="_blank">${esc(s.address.slice(0,16)+'…')}</a></td>
+      <td style="color:var(--text-dim)">${esc(typeName)}</td>
+      <td><span class="score-badge ${riskCls}">${s.score ?? '?'}</span></td>
+      <td style="color:var(--text-faint)">${esc(timeStr)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportCsv() {
+  if (!scanHistory.length) { alert('No scan history to export'); return; }
+  const lines = ['Address,Type,Score,Risk,Timestamp'];
+  for (const s of scanHistory) {
+    lines.push([s.address, s.type, s.score ?? '', s.risk || '', s.time ? new Date(s.time).toISOString() : ''].join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a'); a.href = url; a.download = 'scan-history.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Usage chart ───────────────────────────────────────────────────────────────
+async function loadUsageChart() {
+  const el = document.getElementById('usageChart');
+  const days = 30;
+
+  // Build per-day buckets — track count + worst risk level
+  const RISK_ORDER = { low: 1, medium: 2, high: 3, critical: 4 };
+  const buckets = {};
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    buckets[d.toISOString().slice(0, 10)] = { count: 0, maxScore: 0, worstRisk: null };
+  }
+  for (const s of scanHistory) {
+    const k = new Date(s.time).toISOString().slice(0, 10);
+    if (!buckets[k]) continue;
+    buckets[k].count++;
+    if ((s.score ?? 0) > buckets[k].maxScore) buckets[k].maxScore = s.score ?? 0;
+    if (!buckets[k].worstRisk || (RISK_ORDER[s.risk] ?? 0) > (RISK_ORDER[buckets[k].worstRisk] ?? 0)) {
+      buckets[k].worstRisk = s.risk || null;
+    }
+  }
+
+  const entries = Object.entries(buckets);
+  const maxVal  = Math.max(...entries.map(([, b]) => b.count), 1);
+  el.innerHTML = entries.map(([date, b]) => {
+    const pct      = Math.max((b.count / maxVal) * 100, b.count > 0 ? 5 : 0);
+    const dayLabel = date.slice(5); // MM-DD
+    const riskCls  = b.worstRisk ? `risk-${b.worstRisk}` : '';
+    const tooltip  = b.count > 0
+      ? `${date}: ${b.count} scan${b.count > 1 ? 's' : ''}, max score ${b.maxScore}`
+      : date;
+    return `<div class="usage-bar-wrap" title="${tooltip}">
+      <div class="usage-bar ${riskCls}" style="height:${pct}%"></div>
+      <span class="usage-bar-date">${b.count > 0 ? dayLabel : ''}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+</body>
+</html>

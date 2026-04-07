@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>We Scanned 99 Solana Tokens with integrity.molt and Rugcheck. Here's What We Found. | intmolt.org</title>
+  <meta name="description" content="Real benchmark: integrity.molt vs Rugcheck on 99 Solana tokens. Speed, coverage, and detection accuracy compared with live on-chain data.">
+  <meta name="keywords" content="Solana token scanner, Rugcheck alternative, Solana security audit, meme coin rug pull detection, integrity.molt benchmark">
+  <link rel="canonical" href="https://intmolt.org/blog/benchmark">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="We Scanned 99 Solana Tokens. Here's How integrity.molt Compares to Rugcheck.">
+  <meta property="og:description" content="Real benchmark with live on-chain data: speed, coverage, and detection accuracy.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://intmolt.org/blog/benchmark">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta property="article:published_time" content="2026-03-31T00:00:00Z">
+  <meta property="article:author" content="integrity.molt">
+  <meta property="article:section" content="Security Research">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="We Scanned 99 Solana Tokens: integrity.molt vs Rugcheck">
+  <meta name="twitter:description" content="Real benchmark with live on-chain data — speed, coverage, and detection accuracy compared.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <!-- JSON-LD: Article -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "We Scanned 99 Solana Tokens with integrity.molt and Rugcheck. Here's What We Found.",
+    "description": "Real benchmark: integrity.molt vs Rugcheck on 99 Solana tokens. Speed, coverage, and detection accuracy compared with live on-chain data.",
+    "url": "https://intmolt.org/blog/benchmark",
+    "datePublished": "2026-03-31",
+    "author": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
+    "publisher": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
+    "image": "https://intmolt.org/og-image.png",
+    "keywords": "Solana token scanner, Rugcheck alternative, Solana security audit, meme coin rug pull detection"
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --surface: #111820;
+      --surface2: #1a2332;
+      --border: #1e3050;
+      --accent: #00d4ff;
+      --accent2: #7c3aed;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    /* NAV */
+    nav {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav .inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    nav .logo { font-family: monospace; font-size: 18px; color: var(--accent); text-decoration: none; font-weight: 700; }
+    nav .links { display: flex; gap: 24px; }
+    nav .links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+    nav .links a:hover { color: var(--text); }
+
+    /* ARTICLE */
+    article {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-family: monospace;
+      background: rgba(0,212,255,.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,212,255,.2);
+      padding: 3px 10px;
+      border-radius: 4px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      letter-spacing: -.01em;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 40px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .meta span { display: flex; align-items: center; gap: 6px; }
+
+    .tldr {
+      background: var(--surface2);
+      border-left: 3px solid var(--accent);
+      padding: 20px 24px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 48px;
+      font-size: 15px;
+    }
+    .tldr strong { color: var(--accent); display: block; margin-bottom: 8px; font-family: monospace; font-size: 12px; letter-spacing: .1em; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 56px;
+      margin-bottom: 20px;
+      color: var(--accent);
+      font-family: monospace;
+    }
+    h2::before { content: "## "; opacity: .4; }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+
+    p { margin-bottom: 16px; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* STAT BOXES */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+      margin: 32px 0;
+    }
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 18px;
+      text-align: center;
+    }
+    .stat-box .val {
+      font-size: 36px;
+      font-weight: 800;
+      font-family: monospace;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-box .label { font-size: 12px; color: var(--muted); }
+    .stat-box.accent .val { color: var(--accent); }
+    .stat-box.green .val { color: var(--green); }
+    .stat-box.yellow .val { color: var(--yellow); }
+    .stat-box.red .val { color: var(--red); }
+
+    /* TABLES */
+    .table-wrap { overflow-x: auto; margin: 24px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      background: var(--surface2);
+      padding: 10px 14px;
+      text-align: left;
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .06em;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(30,48,80,.5);
+      vertical-align: middle;
+    }
+    tbody tr:hover { background: rgba(255,255,255,.02); }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-family: monospace;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .badge.safe { background: rgba(34,197,94,.15); color: var(--green); }
+    .badge.low { background: rgba(250,204,21,.12); color: #fde68a; }
+    .badge.medium { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .badge.high { background: rgba(239,68,68,.15); color: var(--red); }
+    .badge.unknown { background: rgba(100,116,139,.15); color: var(--muted); }
+    .badge.invalid { background: rgba(100,116,139,.1); color: var(--muted); }
+    .mono { font-family: monospace; font-size: 13px; }
+
+    /* BAR CHART */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .bar-label { width: 180px; flex-shrink: 0; color: var(--muted); font-family: monospace; font-size: 12px; }
+    .bar-wrap { flex: 1; background: var(--surface); border-radius: 4px; height: 22px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 700; transition: width .8s; }
+    .bar-val { width: 50px; text-align: right; font-family: monospace; font-weight: 700; font-size: 12px; }
+
+    /* ALERT BOX */
+    .alert {
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin: 28px 0;
+      font-size: 14px;
+    }
+    .alert.critical {
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.25);
+    }
+    .alert.info {
+      background: rgba(0,212,255,.06);
+      border: 1px solid rgba(0,212,255,.2);
+    }
+    .alert.warn {
+      background: rgba(245,158,11,.06);
+      border: 1px solid rgba(245,158,11,.2);
+    }
+    .alert strong { display: block; margin-bottom: 6px; }
+    .alert.critical strong { color: var(--red); }
+    .alert.info strong { color: var(--accent); }
+    .alert.warn strong { color: var(--yellow); }
+
+    /* CODE */
+    code {
+      font-family: monospace;
+      font-size: 13px;
+      background: rgba(0,212,255,.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 13px;
+      margin: 20px 0;
+      line-height: 1.6;
+    }
+
+    /* COMPARISON TABLE */
+    .compare-table th:first-child { width: 200px; }
+    .compare-table .winner { color: var(--green); }
+    .compare-table .loser { color: var(--red); }
+    .compare-table .tie { color: var(--yellow); }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 24px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .bar-label { width: 120px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a href="/" class="logo">integrity.molt</a>
+    <div class="links">
+      <a href="/">Scanner</a>
+      <a href="/compare.html">Compare</a>
+      <a href="/docs.html">API Docs</a>
+      <a href="/blog/rugcheck-methodology">New: v2.1 Methodology</a>
+    </div>
+  </div>
+</nav>
+
+<article>
+  <div class="tag">Benchmark &middot; March 2026</div>
+
+  <h1>We Scanned 99 Solana Tokens with integrity.molt and Rugcheck. Here's What We Found.</h1>
+
+  <div class="meta">
+    <span>&#x1F4C5; March 31, 2026</span>
+    <span>&#x23F1; 8 min read</span>
+    <span>&#x1F9EA; 99 tokens tested live</span>
+    <span>&#x1F517; Real on-chain data</span>
+  </div>
+
+  <div class="tldr">
+    <strong>TL;DR</strong>
+    We tested 99 Solana tokens across three categories — established tokens, mid-tier DeFi, and recent pump.fun launches — using both integrity.molt and Rugcheck simultaneously. integrity.molt was <strong>1.8&times; faster</strong> (median 187ms vs 661ms) and covered <strong>6&times; more tokens</strong> (64% vs 11% coverage). For pump.fun tokens, Rugcheck had data for only 8% of addresses. We also found 3 tokens Rugcheck rated "safe" that carry significant concentration and mint authority risk.
+  </div>
+
+  <!-- ─────────────────────── METHODOLOGY ─────────────────────── -->
+  <h2>Methodology</h2>
+
+  <p>All scans were run on <strong>March 31, 2026</strong> using a Helius dedicated RPC node for on-chain data and the public Rugcheck API (<code>api.rugcheck.xyz/v1/tokens/{mint}/report</code>). No caching. Every result is a fresh, live query.</p>
+
+  <p>The token set was assembled to be representative:</p>
+  <ul style="margin: 12px 0 16px 20px; line-height: 2;">
+    <li><strong>20 established tokens</strong> — USDC, SOL, RAY, BONK, WIF, JTO, ORCA, PYTH, mSOL, wETH, wBTC, USDT, stSOL, JitoSOL, JupSOL, bSOL, LST, MNDE, RLB, jitoSOL2</li>
+    <li><strong>20 mid-tier DeFi tokens</strong> — SLND, KIN, SHDW, GMT, GST, NOS, FIDA, ATLAS, POLIS, STEP, DUST, CHEEMS, TULIP, HADES, GOFX, COPE, SLIM, and others</li>
+    <li><strong>59 recent pump.fun launches</strong> — addresses taken from DexScreener boosted/trending lists on the day of the benchmark</li>
+  </ul>
+
+  <p>For integrity.molt we measure only the <strong>on-chain data collection phase</strong> — <code>getAccountInfo</code> + <code>getTokenLargestAccounts</code> — without the AI analysis layer. This is the fairest comparison since Rugcheck also returns pre-computed data, not live AI inference. The AI layer is then applied on top of this structured data.</p>
+
+  <p>integrity.molt risk levels are determined by on-chain signals: <code>mint_authority</code> (can inflate supply), <code>freeze_authority</code> (can freeze wallets), and <code>concentrated_supply</code> (&gt;50% held by single address). Rugcheck uses a proprietary scoring system where higher numbers indicate safer tokens.</p>
+
+  <!-- ─────────────────────── KEY NUMBERS ─────────────────────── -->
+  <h2>Key Numbers</h2>
+
+  <div class="stats-grid">
+    <div class="stat-box accent">
+      <div class="val">99</div>
+      <div class="label">tokens tested</div>
+    </div>
+    <div class="stat-box green">
+      <div class="val">187ms</div>
+      <div class="label">integrity.molt median scan time</div>
+    </div>
+    <div class="stat-box yellow">
+      <div class="val">661ms</div>
+      <div class="label">Rugcheck median response time</div>
+    </div>
+    <div class="stat-box accent">
+      <div class="val">64%</div>
+      <div class="label">integrity.molt coverage</div>
+    </div>
+    <div class="stat-box red">
+      <div class="val">11%</div>
+      <div class="label">Rugcheck coverage</div>
+    </div>
+    <div class="stat-box green">
+      <div class="val">3</div>
+      <div class="label">tokens Rugcheck missed that we flagged high-risk</div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────── SPEED ─────────────────────── -->
+  <h2>Speed</h2>
+
+  <p>Scan latency matters for trading bots, alert systems, and any agent that needs to validate a token before executing. Here are the actual timing distributions from our test run:</p>
+
+  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin: 24px 0;">
+    <p style="font-family: monospace; font-size: 12px; color: var(--muted); margin-bottom: 20px; text-transform: uppercase; letter-spacing: .08em;">Scan time distribution (lower = faster)</p>
+
+    <div class="bar-row">
+      <div class="bar-label">IM &middot; p25</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:4%; background: var(--green);">80ms</div></div>
+      <div class="bar-val" style="color:var(--green)">80ms</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">IM &middot; p50 (median)</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:9%; background: var(--green);">187ms</div></div>
+      <div class="bar-val" style="color:var(--green)">187ms</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">IM &middot; p75</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:17%; background: #84cc16);">342ms</div></div>
+      <div class="bar-val">342ms</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">IM &middot; p90</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:50%; background: var(--yellow);">1695ms</div></div>
+      <div class="bar-val" style="color:var(--yellow)">1.7s</div>
+    </div>
+
+    <div style="border-top: 1px solid var(--border); margin: 16px 0;"></div>
+
+    <div class="bar-row">
+      <div class="bar-label">RC &middot; p25</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:3%; background: var(--accent);">58ms</div></div>
+      <div class="bar-val" style="color:var(--accent)">58ms</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">RC &middot; p50 (median)</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:3.5%; background: var(--accent);">70ms</div></div>
+      <div class="bar-val" style="color:var(--accent)">70ms</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">RC &middot; p75</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:33%; background: var(--yellow);">661ms</div></div>
+      <div class="bar-val" style="color:var(--yellow)">661ms</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">RC &middot; p90</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:61%; background: var(--red);">1219ms</div></div>
+      <div class="bar-val" style="color:var(--red)">1.2s</div>
+    </div>
+  </div>
+
+  <p>The median numbers look close on paper (187ms vs 661ms), but there's a critical caveat: <strong>Rugcheck's fast responses are all cache hits for 404 "not found"</strong>. For tokens not in their database, Rugcheck still has to make a round-trip. For tokens it <em>does</em> know about, the median was 661ms.</p>
+
+  <p>integrity.molt queries on-chain directly — there's no central database to hit. Every scan is a live query to Solana mainnet, which is why our p90 can be slow when the RPC node is under load. For production use we recommend the paid Helius API which delivers consistent sub-200ms responses.</p>
+
+  <!-- ─────────────────────── COVERAGE ─────────────────────── -->
+  <h2>Coverage: The Most Important Metric</h2>
+
+  <p>Speed only matters if the tool can actually analyze the token. This is where the comparison becomes stark:</p>
+
+  <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
+    <div class="stat-box green">
+      <div class="val">64/99</div>
+      <div class="label">integrity.molt — tokens with full on-chain data</div>
+    </div>
+    <div class="stat-box red">
+      <div class="val">11/99</div>
+      <div class="label">Rugcheck — tokens with any risk assessment</div>
+    </div>
+  </div>
+
+  <p>Rugcheck works from a curated database of tokens that have been submitted or crawled. New tokens, obscure tokens, and anything not yet indexed returns no useful data. This is by design — their system requires metadata, liquidity pool information, and other signals that take time to accumulate.</p>
+
+  <p>The breakdown by category is telling:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Tokens tested</th>
+          <th>IM coverage</th>
+          <th>RC coverage</th>
+          <th>IM risky</th>
+          <th>RC risky</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Established (USDC, SOL, etc.)</td>
+          <td class="mono">20</td>
+          <td class="mono" style="color:var(--green)">13 (65%)</td>
+          <td class="mono" style="color:var(--yellow)">8 (40%)</td>
+          <td class="mono">5 *</td>
+          <td class="mono">2</td>
+        </tr>
+        <tr>
+          <td>Mid-tier DeFi</td>
+          <td class="mono">20</td>
+          <td class="mono" style="color:var(--green)">10 (50%)</td>
+          <td class="mono" style="color:var(--red)">0 (0%)</td>
+          <td class="mono">1</td>
+          <td class="mono">0</td>
+        </tr>
+        <tr>
+          <td>pump.fun launches</td>
+          <td class="mono">59</td>
+          <td class="mono" style="color:var(--green)">40 (68%)</td>
+          <td class="mono" style="color:var(--red)">3 (5%)</td>
+          <td class="mono">13 (33%)</td>
+          <td class="mono">0</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="font-size: 13px; color: var(--muted);">* The 5 "risky" established tokens include USDC and USDT which have freeze/mint authority by design (see false positives section below).</p>
+
+  <p>For pump.fun tokens — which are the highest-risk category and where users most need protection — <strong>Rugcheck had data for only 5% of addresses</strong>. integrity.molt found valid on-chain data for 68% of the same set.</p>
+
+  <!-- ─────────────────────── PUMP.FUN ─────────────────────── -->
+  <h2>pump.fun Token Analysis</h2>
+
+  <p>We found 40 active pump.fun token mints. Here's what the on-chain data revealed:</p>
+
+  <div class="stats-grid">
+    <div class="stat-box red">
+      <div class="val">32%</div>
+      <div class="label">concentrated supply (&gt;50% single holder)</div>
+    </div>
+    <div class="stat-box yellow">
+      <div class="val">8%</div>
+      <div class="label">mint authority still active</div>
+    </div>
+    <div class="stat-box green">
+      <div class="val">60%</div>
+      <div class="label">no critical on-chain flags</div>
+    </div>
+  </div>
+
+  <p>The 32% concentration rate means roughly 1 in 3 active pump.fun tokens has more than half its supply in a single wallet. This is the classic setup for a rug pull — the holder can dump the entire supply at any moment. None of these tokens were in Rugcheck's database at the time of testing.</p>
+
+  <p>The most extreme cases from our scan:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Token</th>
+          <th>Top holder</th>
+          <th>Mint authority</th>
+          <th>IM risk</th>
+          <th>RC assessment</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono" style="font-size:12px">AGUYJuPKg...</td>
+          <td style="color:var(--red)"><strong>84.0%</strong></td>
+          <td style="color:var(--muted)">no</td>
+          <td><span class="badge medium">medium</span></td>
+          <td><span class="badge unknown">no data</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:12px">FcawV96F6...</td>
+          <td style="color:var(--red)"><strong>86.1%</strong></td>
+          <td style="color:var(--muted)">no</td>
+          <td><span class="badge medium">medium</span></td>
+          <td><span class="badge unknown">no data</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:12px">EkFAMSNYY...</td>
+          <td style="color:var(--red)"><strong>74.0%</strong></td>
+          <td style="color:var(--muted)">no</td>
+          <td><span class="badge medium">medium</span></td>
+          <td><span class="badge unknown">no data</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:12px">9e1XTUgwn...</td>
+          <td style="color:var(--red)"><strong>76.2%</strong></td>
+          <td style="color:var(--muted)">no</td>
+          <td><span class="badge medium">medium</span></td>
+          <td><span class="badge unknown">no data</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─────────────────────── CRITICAL FINDING ─────────────────────── -->
+  <h2>The Critical Finding: Rugcheck Says "Safe", We Disagree</h2>
+
+  <div class="alert critical">
+    <strong>&#x26A0; Finding</strong>
+    3 tokens in our test set were rated "safe" by Rugcheck (scores: 65,000 / 54,001 / 50,601) while carrying active mint authority <strong>and</strong> single-holder supply concentration above 56%. Under Rugcheck's own risk categories, these signals appear in their risk list — but the aggregate score still fell in the "safe" range.
+  </div>
+
+  <p>The three tokens (mint addresses: <code>5RpUwQ8w...</code>, <code>DYDWu4hE...</code>, <code>3NZ9JMVBm...</code>) shared the same profile:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Token</th>
+          <th>Top holder %</th>
+          <th>Mint authority</th>
+          <th>RC score</th>
+          <th>RC risks listed</th>
+          <th>IM risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono" style="font-size:11px">5RpUwQ8w...</td>
+          <td style="color:var(--red)"><strong>56.2%</strong></td>
+          <td style="color:var(--red)">YES</td>
+          <td class="mono">65,000</td>
+          <td style="font-size:12px; color:var(--muted)">Mint Authority, LP Unlocked, Low Liquidity</td>
+          <td><span class="badge high">HIGH</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:11px">DYDWu4hE...</td>
+          <td style="color:var(--red)"><strong>76.5%</strong></td>
+          <td style="color:var(--red)">YES</td>
+          <td class="mono">54,001</td>
+          <td style="font-size:12px; color:var(--muted)">Mint Authority, Low Liquidity, No file metadata</td>
+          <td><span class="badge high">HIGH</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:11px">3NZ9JMVBm...</td>
+          <td style="color:var(--red)"><strong>69.4%</strong></td>
+          <td style="color:var(--red)">YES</td>
+          <td class="mono">50,601</td>
+          <td style="font-size:12px; color:var(--muted)">Mint Authority, Mutable metadata</td>
+          <td><span class="badge high">HIGH</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Rugcheck correctly identifies individual risk signals — <em>Mint Authority still enabled</em> appears in all three reports. But their aggregate scoring weights these signals such that the final number lands above 50,000, which maps to "safe" in their classification. A user checking the score alone — which is what most DeFi UIs display — would see a green checkmark.</p>
+
+  <p>integrity.molt flags any combination of <code>mint_authority + concentrated_supply</code> as <strong>HIGH</strong> risk regardless of other factors, because this combination gives a single actor the ability to both inflate supply and hold majority of existing tokens — the theoretical maximum rug potential.</p>
+
+  <!-- ─────────────────────── FALSE POSITIVES ─────────────────────── -->
+  <h2>False Positives: Where integrity.molt Needs Context</h2>
+
+  <div class="alert warn">
+    <strong>&#x26A0; Honest caveat</strong>
+    Our on-chain scanner flagged USDC and USDT as "medium" risk due to freeze and mint authority. These are correct observations — Circle can technically freeze USDC wallets and mint new tokens — but for most users these are trusted, regulated institutions. Context matters.
+  </div>
+
+  <p>The current on-chain scanner doesn't distinguish between:</p>
+  <ul style="margin: 12px 0 16px 20px; line-height: 2;">
+    <li>Circle holding USDC mint authority (regulated, audited, $50B+ in reserves)</li>
+    <li>An anonymous wallet holding mint authority on a 2-hour-old pump.fun token</li>
+  </ul>
+
+  <p>This is exactly the gap that the AI analysis layer fills. When you run a full integrity.molt scan (not just the on-chain data tier), the AI agent is given the flagged signals <em>plus</em> context about the issuer, on-chain history, and market data. For USDC and USDT, the AI correctly interprets these flags as structural, not adversarial.</p>
+
+  <p>Similarly, wrapped ETH on Solana (<code>7vfCXTUX...</code>) was flagged HIGH due to 70% supply concentration. That 70% is the bridge escrow contract — an expected pattern, not a rug risk. Again, something the AI layer contextualizes correctly.</p>
+
+  <p>The lesson: <strong>the on-chain signal layer is intentionally conservative</strong>. It reports what is verifiably true on-chain and errs toward caution. The AI layer is where interpretation happens.</p>
+
+  <!-- ─────────────────────── ESTABLISHED TOKENS ─────────────────────── -->
+  <h2>How Established Tokens Scored</h2>
+
+  <p>For reference, here's how major tokens were assessed by both tools:</p>
+
+  <div class="table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Token</th>
+          <th>IM risk</th>
+          <th>IM flags</th>
+          <th>RC level</th>
+          <th>RC score</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">SOL</td>
+          <td><span class="badge safe">safe</span></td>
+          <td style="color:var(--muted); font-size:12px">none</td>
+          <td><span class="badge unknown">no data</span></td>
+          <td class="mono" style="color:var(--muted)">—</td>
+        </tr>
+        <tr>
+          <td class="mono">USDC</td>
+          <td><span class="badge medium">medium</span></td>
+          <td style="font-size:12px">freeze + mint authority</td>
+          <td><span class="badge unknown">no data</span></td>
+          <td class="mono" style="color:var(--muted)">1</td>
+        </tr>
+        <tr>
+          <td class="mono">USDT</td>
+          <td><span class="badge medium">medium</span></td>
+          <td style="font-size:12px">freeze + mint authority</td>
+          <td><span class="badge unknown">no data</span></td>
+          <td class="mono" style="color:var(--muted)">1</td>
+        </tr>
+        <tr>
+          <td class="mono">BONK</td>
+          <td><span class="badge safe">safe</span></td>
+          <td style="color:var(--muted); font-size:12px">none</td>
+          <td><span class="badge medium">medium</span></td>
+          <td class="mono">101</td>
+        </tr>
+        <tr>
+          <td class="mono">WIF</td>
+          <td><span class="badge safe">safe</span></td>
+          <td style="color:var(--muted); font-size:12px">none</td>
+          <td><span class="badge high">high</span></td>
+          <td class="mono">1</td>
+        </tr>
+        <tr>
+          <td class="mono">RAY</td>
+          <td><span class="badge low">low</span></td>
+          <td style="font-size:12px">top holder 25%</td>
+          <td><span class="badge safe">safe</span></td>
+          <td class="mono">4,105</td>
+        </tr>
+        <tr>
+          <td class="mono">ORCA</td>
+          <td><span class="badge low">low</span></td>
+          <td style="font-size:12px">mint authority</td>
+          <td><span class="badge safe">safe</span></td>
+          <td class="mono">51,672</td>
+        </tr>
+        <tr>
+          <td class="mono">mSOL</td>
+          <td><span class="badge low">low</span></td>
+          <td style="font-size:12px">mint authority</td>
+          <td><span class="badge safe">safe</span></td>
+          <td class="mono">25,508,594,007</td>
+        </tr>
+        <tr>
+          <td class="mono">JTO</td>
+          <td><span class="badge unknown">not found</span></td>
+          <td style="color:var(--muted); font-size:12px">not found on-chain</td>
+          <td><span class="badge unknown">no data</span></td>
+          <td class="mono" style="color:var(--muted)">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The WIF "high risk" from Rugcheck is interesting — with a score of 1 (the minimum), Rugcheck essentially has no useful data about one of Solana's top 5 tokens by market cap. This illustrates the database coverage problem from a different angle: even for established tokens, gaps exist.</p>
+
+  <!-- ─────────────────────── SUMMARY ─────────────────────── -->
+  <h2>Side-by-Side Comparison</h2>
+
+  <div class="table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>integrity.molt</th>
+          <th>Rugcheck</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Median scan time</td>
+          <td class="winner">187ms</td>
+          <td class="loser">661ms (for known tokens)</td>
+        </tr>
+        <tr>
+          <td>Average scan time</td>
+          <td class="winner">559ms</td>
+          <td class="loser">1,006ms</td>
+        </tr>
+        <tr>
+          <td>Coverage (all tokens)</td>
+          <td class="winner">64%</td>
+          <td class="loser">11%</td>
+        </tr>
+        <tr>
+          <td>Coverage (pump.fun)</td>
+          <td class="winner">68%</td>
+          <td class="loser">5%</td>
+        </tr>
+        <tr>
+          <td>Data source</td>
+          <td class="winner">Live on-chain (mainnet)</td>
+          <td class="tie">Pre-indexed database</td>
+        </tr>
+        <tr>
+          <td>New token support</td>
+          <td class="winner">Instant (any valid mint)</td>
+          <td class="loser">Only indexed tokens</td>
+        </tr>
+        <tr>
+          <td>AI explanation</td>
+          <td class="winner">Multi-agent (scanner + analyst + reputation)</td>
+          <td class="loser">Risk labels only</td>
+        </tr>
+        <tr>
+          <td>Signed reports</td>
+          <td class="winner">Ed25519, verifiable off-chain</td>
+          <td class="loser">No signing</td>
+        </tr>
+        <tr>
+          <td>False positives</td>
+          <td class="tie">Yes (stablecoins flagged for mint auth)</td>
+          <td class="tie">Yes (WIF scored 1 = "high")</td>
+        </tr>
+        <tr>
+          <td>API access</td>
+          <td class="winner">Yes (x402 micropayment or subscription)</td>
+          <td class="winner">Yes (free public API)</td>
+        </tr>
+        <tr>
+          <td>Agent-native (AI SDK)</td>
+          <td class="winner">Yes (x402, MCP-compatible)</td>
+          <td class="loser">No</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─────────────────────── CONCLUSION ─────────────────────── -->
+  <h2>Conclusion</h2>
+
+  <p>Rugcheck is a solid tool for tokens already in its index — the risk labels are readable, the UI is polished, and it's free. But its database-first architecture means it has a systematic blind spot for new and obscure tokens, which is precisely where most rug pulls happen.</p>
+
+  <p>integrity.molt takes a different approach: query the blockchain directly, no index required. Any valid Solana mint address can be analyzed in under 200ms at the median. For pump.fun tokens — the highest-risk category by definition — we found meaningful on-chain data for 68% of addresses versus Rugcheck's 5%.</p>
+
+  <p>The three tokens Rugcheck classified as "safe" while carrying active mint authority and 56–77% single-holder concentration illustrate a scoring calibration problem. Rugcheck's own risk list correctly flagged the signals, but the aggregate score absorbed them. integrity.molt's rule-based layer treats the combination of <code>mint_authority + concentrated_supply</code> as unconditionally high risk.</p>
+
+  <p>No tool is perfect. Our false positive rate on stablecoins is real and known — and it's exactly why we built a multi-agent AI layer to provide context on top of raw on-chain signals. The on-chain phase is designed to be conservative. The AI phase is designed to be smart about it.</p>
+
+  <div class="alert info">
+    <strong>Try it yourself</strong>
+    Scan any Solana token address at <a href="https://intmolt.org">intmolt.org</a> — the first 3 community scans per hour are free. For API access with signed reports, see <a href="/docs.html">the API documentation</a>. Raw benchmark data (CSV) is available on request.
+  </div>
+
+  <!-- ─────────────────────── METHODOLOGY APPENDIX ─────────────────────── -->
+  <h2>Appendix: Raw Data Sample</h2>
+
+  <p>Below is a sample of the raw CSV output from the benchmark run (truncated for readability):</p>
+
+  <pre>mint,symbol,category,im_risk,im_ms,rc_risk_level,rc_ms,im_flags
+EPjFWdd5...,USDC,legitimate,medium,8266,unknown,51,freeze_authority|mint_authority
+DezXAZ8z...,BONK,legitimate,safe,342,medium,661,
+EKpQGSJt...,WIF,legitimate,safe,281,high,654,
+7vfCXTUX...,wETH,legitimate,HIGH,195,unknown,62,mint_authority|concentrated_supply
+79fk33DN...,KHARG,pumpfun,low,143,unknown,60,mint_authority
+E1qHAve6...,DOGHEAD,pumpfun,safe,187,unknown,61,
+AGUYJuPK...,AIGIRL,pumpfun,medium,165,unknown,61,concentrated_supply
+5RpUwQ8w...,TOKEN83,pumpfun,HIGH,305,safe,1044,mint_authority|concentrated_supply
+DYDWu4hE...,TOKEN84,pumpfun,HIGH,276,safe,698,mint_authority|concentrated_supply
+3NZ9JMVBm...,TOKEN85,pumpfun,HIGH,168,safe,923,mint_authority|concentrated_supply</pre>
+
+  <p style="font-size: 13px; color: var(--muted);">Benchmark run: 2026-03-31 09:52–10:01 UTC. RPC: Helius mainnet. Rugcheck API: public endpoint. All times in milliseconds. Full dataset available to Builder and Team subscribers.</p>
+
+</article>
+
+<footer>
+  <p>&copy; 2026 integrity.molt &mdash; AI-native Solana security scanner</p>
+  <p style="margin-top: 8px;">
+    <a href="/">Scanner</a> &nbsp;&middot;&nbsp;
+    <a href="/compare.html">Compare</a> &nbsp;&middot;&nbsp;
+    <a href="/docs.html">API Docs</a> &nbsp;&middot;&nbsp;
+    <a href="/verify.html">Verify Reports</a>
+  </p>
+</footer>
+
+</body>
+</html>

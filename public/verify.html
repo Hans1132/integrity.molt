@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Signed Security Report — integrity.molt</title>
+  <meta name="description" content="Verify the authenticity of integrity.molt security reports. Ed25519 cryptographic signatures ensure tamper-proof, independently verifiable Solana audit results.">
+  <meta name="keywords" content="verify Solana audit report, Ed25519 signed report, tamper-proof security report, blockchain audit verification, cryptographic attestation">
+  <link rel="canonical" href="https://intmolt.org/verify">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://intmolt.org/verify">
+  <meta property="og:title" content="Verify Signed Security Report — integrity.molt">
+  <meta property="og:description" content="Cryptographically verify any integrity.molt security report. Ed25519 signatures guarantee tamper-proof audit results.">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Verify Signed Security Report — integrity.molt">
+  <meta name="twitter:description" content="Ed25519 signed Solana audit reports — independently verifiable.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0f;
+      --bg-card:   #0f0f18;
+      --bg-alt:    #12121e;
+      --border:    #1e1e2e;
+      --accent:    #4da6ff;
+      --accent-dim:#2a6aaa;
+      --green:     #3fb950;
+      --red:       #f85149;
+      --yellow:    #d29922;
+      --text:      #d0d8e8;
+      --text-dim:  #6a7490;
+      --text-faint:#3a3f54;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .logo-text {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .logo-text span { color: var(--accent); }
+
+    .page-hero {
+      padding: 56px 0 40px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .page-eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: clamp(24px, 3.5vw, 36px);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+    .hero-sub {
+      color: var(--text-dim);
+      font-size: 15px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* ── Verify form ── */
+    .verify-section {
+      padding: 48px 0;
+    }
+
+    .verify-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+    }
+
+    .verify-card label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+    }
+
+    .json-input {
+      width: 100%;
+      min-height: 220px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      padding: 16px;
+      resize: vertical;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .json-input:focus { border-color: var(--accent-dim); }
+
+    .verify-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s;
+      text-decoration: none;
+    }
+    .btn:hover { opacity: .85; text-decoration: none; }
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+
+    /* ── Result ── */
+    #result {
+      margin-top: 28px;
+      display: none;
+    }
+
+    .result-banner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 22px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+    .result-banner.valid {
+      background: rgba(63, 185, 80, 0.1);
+      border: 1px solid rgba(63, 185, 80, 0.35);
+      color: var(--green);
+    }
+    .result-banner.invalid {
+      background: rgba(248, 81, 73, 0.1);
+      border: 1px solid rgba(248, 81, 73, 0.35);
+      color: var(--red);
+    }
+    .result-banner.warning {
+      background: rgba(210, 153, 34, 0.1);
+      border: 1px solid rgba(210, 153, 34, 0.35);
+      color: var(--yellow);
+    }
+
+    .result-icon { font-size: 22px; }
+
+    .result-meta {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .meta-row {
+      display: flex;
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: flex-start;
+    }
+    .meta-row:last-child { border-bottom: none; }
+    .meta-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+    .meta-value {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .meta-value.green { color: var(--green); }
+    .meta-value.red   { color: var(--red); }
+
+    .report-content {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-dim);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Delta changes ── */
+    .delta-section { margin-top: 28px; }
+    .delta-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .delta-title { font-size: 15px; font-weight: 700; color: #fff; }
+    .delta-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+    .badge-critical { background: rgba(248,81,73,.15);  border: 1px solid rgba(248,81,73,.4);  color: var(--red);    }
+    .badge-warning  { background: rgba(210,153,34,.15); border: 1px solid rgba(210,153,34,.4); color: var(--yellow); }
+    .badge-info     { background: rgba(77,166,255,.10); border: 1px solid rgba(77,166,255,.3); color: var(--accent); }
+    .badge-safe     { background: rgba(63,185,80,.10);  border: 1px solid rgba(63,185,80,.3);  color: var(--green);  }
+
+    .change-list { display: flex; flex-direction: column; gap: 10px; }
+    .change-card {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .change-card.critical { border-left-color: var(--red);    }
+    .change-card.warning  { border-left-color: var(--yellow); }
+    .change-card.info     { border-left-color: var(--accent); }
+
+    .change-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .change-field { font-weight: 600; font-size: 13px; color: var(--text); }
+    .change-cat { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+
+    .change-diff { display: flex; gap: 8px; font-family: var(--mono); font-size: 11px; flex-wrap: wrap; margin-bottom: 8px; }
+    .diff-old { background: rgba(248,81,73,.12); border: 1px solid rgba(248,81,73,.25); color: #f8a1a0; padding: 3px 8px; border-radius: 4px; word-break: break-all; }
+    .diff-new { background: rgba(63,185,80,.12); border: 1px solid rgba(63,185,80,.25); color: #85e89d; padding: 3px 8px; border-radius: 4px; word-break: break-all; }
+    .diff-arrow { color: var(--text-faint); align-self: center; }
+
+    .change-explanation { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+    .snapshot-hashes {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+    }
+    .hash-row { display: flex; gap: 12px; padding: 5px 0; align-items: flex-start; }
+    .hash-label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; min-width: 72px; padding-top: 1px; }
+    .hash-val { font-family: var(--mono); font-size: 11px; color: var(--text-dim); word-break: break-all; }
+
+    /* ── How it works ── */
+    .how-section {
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+    }
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+    .steps { display: flex; flex-direction: column; gap: 16px; }
+    .step {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .step-body {}
+    .step-title { font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .step-desc { color: var(--text-dim); font-size: 14px; }
+
+    .code-block {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-dim);
+      margin-top: 12px;
+      overflow-x: auto;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      text-align: center;
+    }
+    .footer-inner { color: var(--text-faint); font-size: 13px; }
+    .footer-inner a { color: var(--text-dim); }
+
+    @media (max-width: 600px) {
+      .verify-card { padding: 20px 16px; }
+      .meta-row { flex-direction: column; gap: 4px; }
+      .meta-label { min-width: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <a href="/" class="logo-text">integrity<span>.molt</span></a>
+      <nav style="display:flex;gap:20px;align-items:center;">
+        <a href="/" style="color:var(--text-dim);font-size:13px;">← Home</a>
+        <a href="/openapi.json" style="color:var(--text-dim);font-size:13px;">API Docs</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <div class="page-eyebrow">Ed25519 Cryptographic Verification</div>
+    <h1>Verify Signed Security Report</h1>
+    <p class="hero-sub">Every integrity.molt report is cryptographically signed with Ed25519. Paste the signed JSON below to verify authenticity and tamper-proof integrity — entirely in your browser.</p>
+  </div>
+</section>
+
+<section class="verify-section">
+  <div class="container">
+    <div class="verify-card">
+      <label for="json-input">Paste signed report JSON (.signed.json)</label>
+      <textarea class="json-input" id="json-input" placeholder='{
+  "report": "=== integrity_molt Scan ===\n...",
+  "signature": "base64-encoded-ed25519-signature",
+  "verify_key": "base64-encoded-public-key",
+  "key_id": "first-16-chars-of-verify-key",
+  "signed_at": "2026-03-29T12:00:00Z"
+}'></textarea>
+
+      <div class="verify-actions">
+        <button class="btn btn-primary" onclick="verifyReport()">Verify Report</button>
+        <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+        <span id="loading" style="display:none;color:var(--text-dim);font-size:13px;">Verifying...</span>
+      </div>
+    </div>
+
+    <div id="result">
+      <div id="result-banner" class="result-banner"></div>
+
+      <div class="result-meta" id="result-meta" style="display:none;"></div>
+
+      <!-- delta report specific output -->
+      <div id="delta-section" class="delta-section" style="display:none;">
+        <div class="delta-header">
+          <div class="delta-title">Verified Delta — Changes detected</div>
+          <div class="delta-badges" id="delta-badges"></div>
+        </div>
+        <div class="snapshot-hashes" id="snapshot-hashes"></div>
+        <div class="change-list" id="change-list"></div>
+      </div>
+
+      <div id="report-section" style="display:none;">
+        <div class="section-label" style="margin-bottom:10px;">Report Content</div>
+        <div class="report-content" id="report-content"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how-section">
+  <div class="container">
+    <h2>How signing works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Report is generated</div>
+          <div class="step-desc">integrity.molt scans the address using multi-agent AI swarm. The report text is produced as a structured analysis.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Ed25519 signature is applied</div>
+          <div class="step-desc">The report text is signed using integrity.molt's Ed25519 private key (stored in HSM-equivalent secure storage). The signature is deterministic and covers the exact report bytes.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Verify key is published</div>
+          <div class="step-desc">The corresponding public verify key is published at <a href="/services">/services</a> and <a href="/.well-known/x402.json">/.well-known/x402.json</a>. Anyone can verify any report against the public key.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">key_id enables key rollover</div>
+          <div class="step-desc">Each report contains <code>key_id</code> (first 16 chars of the verify key in base64). This allows verifying older reports even after key rotation.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;">
+      <h2 style="margin-bottom:12px;">Verify with Python</h2>
+      <div class="code-block">pip install PyNaCl
+
+python3 verify-report.py report.signed.json
+
+# Or inline:
+python3 - &lt;&lt;'EOF'
+import json, base64, nacl.signing
+
+with open('report.signed.json') as f:
+    envelope = json.load(f)
+
+verify_key_bytes = base64.b64decode(envelope['verify_key'])
+signature_bytes  = base64.b64decode(envelope['signature'])
+report_bytes     = envelope['report'].encode('utf-8')
+
+vk = nacl.signing.VerifyKey(verify_key_bytes)
+try:
+    vk.verify(report_bytes, signature_bytes)
+    print("✓ VALID — report is authentic and untampered")
+except Exception as e:
+    print(f"✗ INVALID — {e}")
+EOF</div>
+    </div>
+
+    <div style="margin-top:32px;">
+      <h2 style="margin-bottom:12px;">Use in your AI agent</h2>
+      <div class="code-block"># AI agents can verify reports before executing trades
+# Ed25519 verification is supported by all major crypto libraries
+
+import nacl.signing, base64, json
+
+def verify_intmolt_report(report_json: dict) -> bool:
+    """Returns True if report is valid and untampered."""
+    try:
+        vk = nacl.signing.VerifyKey(base64.b64decode(report_json['verify_key']))
+        vk.verify(
+            report_json['report'].encode('utf-8'),
+            base64.b64decode(report_json['signature'])
+        )
+        return True
+    except Exception:
+        return False
+
+# Fetch signed report via x402 micropayment, then verify before acting
+if verify_intmolt_report(report):
+    agent.execute_trade(token_address)</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <a href="/">integrity.molt</a> — AI-native Solana security ·
+      <a href="/openapi.json">API</a> ·
+      <a href="/.well-known/x402.json">x402</a> ·
+      <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Ed25519 verification using WebCrypto API (SubtleCrypto)
+// No external dependencies — runs entirely in the browser.
+// Supports both standard scan reports and Verified Delta Reports.
+
+// Signing fields added by sign-report.py / signDeltaReport — excluded when reconstructing payload.
+const SIGNING_FIELDS = ['signature', 'verify_key', 'key_id', 'signed_at', 'signer', 'algorithm'];
+
+async function importVerifyKey(base64Key) {
+  const keyBytes = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
+  return await crypto.subtle.importKey('raw', keyBytes, { name: 'Ed25519' }, false, ['verify']);
+}
+
+async function verifyEd25519(verifyKeyB64, signatureB64, message) {
+  try {
+    const cryptoKey = await importVerifyKey(verifyKeyB64);
+    const sigBytes  = Uint8Array.from(atob(signatureB64), c => c.charCodeAt(0));
+    const msgBytes  = new TextEncoder().encode(message);
+    return await crypto.subtle.verify('Ed25519', cryptoKey, sigBytes, msgBytes);
+  } catch (e) {
+    console.warn('WebCrypto Ed25519 not available:', e);
+    return null; // null = browser unsupported
+  }
+}
+
+async function verifyReport() {
+  const input   = document.getElementById('json-input').value.trim();
+  const loading = document.getElementById('loading');
+  const result  = document.getElementById('result');
+
+  if (!input) { alert('Please paste the signed report JSON first.'); return; }
+
+  loading.style.display = 'inline';
+  result.style.display  = 'none';
+  await new Promise(r => setTimeout(r, 50));
+
+  let envelope;
+  try {
+    envelope = JSON.parse(input);
+  } catch {
+    showResult('invalid', '✗ Invalid JSON', 'Could not parse the input as JSON.', null, null);
+    loading.style.display = 'none';
+    return;
+  }
+
+  // Route to appropriate verifier
+  if (envelope.type === 'delta_report') {
+    await verifyDeltaReport(envelope);
+  } else {
+    await verifyStandardReport(envelope);
+  }
+  loading.style.display = 'none';
+}
+
+// ── Standard scan report ───────────────────────────────────────────────────────
+
+async function verifyStandardReport(envelope) {
+  const required = ['report', 'signature', 'verify_key'];
+  const missing  = required.filter(k => !envelope[k]);
+  if (missing.length) {
+    showResult('warning', '⚠ Incomplete envelope', `Missing fields: ${missing.join(', ')}.`, envelope, null);
+    return;
+  }
+  const valid = await verifyEd25519(envelope.verify_key, envelope.signature, envelope.report);
+  if (valid === null) {
+    showResult('warning', '⚠ Browser unsupported',
+      'Your browser does not support Ed25519 (WebCrypto). Use Chrome 113+ or verify via Python.', envelope, false);
+  } else if (valid) {
+    showResult('valid', '✓ Valid — Report is authentic and untampered',
+      'The signature is cryptographically valid. This report was produced by integrity.molt and has not been modified.', envelope, true);
+  } else {
+    showResult('invalid', '✗ Invalid signature',
+      'Signature does not match report content. The report may have been tampered with.', envelope, false);
+  }
+}
+
+// ── Delta report ───────────────────────────────────────────────────────────────
+
+async function verifyDeltaReport(envelope) {
+  if (!envelope.signature || !envelope.verify_key) {
+    showResult('warning', '⚠ Unsigned delta report', 'Delta report is missing signature or verify_key fields.', envelope, null);
+    return;
+  }
+
+  // Reconstruct the payload that was signed: the report object minus signing fields.
+  const payload = {};
+  for (const [k, v] of Object.entries(envelope)) {
+    if (!SIGNING_FIELDS.includes(k)) payload[k] = v;
+  }
+  const payloadStr = JSON.stringify(payload, null, 2);
+
+  const valid = await verifyEd25519(envelope.verify_key, envelope.signature, payloadStr);
+
+  const changes   = envelope.changes || [];
+  const summary   = envelope.summary || {};
+  const critical  = summary.critical || 0;
+  const warnings  = summary.warnings || 0;
+  const total     = summary.total_changes || changes.length;
+
+  if (valid === null) {
+    showResult('warning', '⚠ Browser unsupported',
+      'Ed25519 WebCrypto not available. Use Chrome 113+ or verify via Python.', envelope, false);
+  } else if (valid) {
+    const msg = total === 0
+      ? 'No changes detected between the two scans.'
+      : `${total} change${total !== 1 ? 's' : ''} detected — ${critical} critical, ${warnings} warning${warnings !== 1 ? 's' : ''}.`;
+    showResult('valid', '✓ Valid Delta Report — Signature authentic', msg, envelope, true);
+  } else {
+    showResult('invalid', '✗ Invalid signature',
+      'Signature does not match the delta report content. The report may have been tampered with.', envelope, false);
+    return; // Don't render changes from a tampered report
+  }
+
+  // Render delta-specific UI
+  renderDeltaChanges(envelope);
+}
+
+function renderDeltaChanges(envelope) {
+  const changes   = envelope.changes || [];
+  const baseline  = envelope.baseline || {};
+  const current   = envelope.current  || {};
+  const summary   = envelope.summary  || {};
+
+  const deltaSection = document.getElementById('delta-section');
+  const badgesEl     = document.getElementById('delta-badges');
+  const hashesEl     = document.getElementById('snapshot-hashes');
+  const listEl       = document.getElementById('change-list');
+
+  // Badges
+  badgesEl.innerHTML = '';
+  if ((summary.critical || 0) > 0)
+    badgesEl.innerHTML += `<span class="badge badge-critical">${summary.critical} critical</span>`;
+  if ((summary.warnings || 0) > 0)
+    badgesEl.innerHTML += `<span class="badge badge-warning">${summary.warnings} warning${summary.warnings !== 1 ? 's' : ''}</span>`;
+  if ((summary.info || 0) > 0)
+    badgesEl.innerHTML += `<span class="badge badge-info">${summary.info} info</span>`;
+  if (changes.length === 0)
+    badgesEl.innerHTML += `<span class="badge badge-safe">No changes</span>`;
+
+  // Snapshot hashes
+  hashesEl.innerHTML = `
+    <div class="hash-row">
+      <div class="hash-label">Baseline</div>
+      <div class="hash-val">${escapeHtml(baseline.timestamp || '—')} &nbsp;·&nbsp; SHA-256: ${escapeHtml((baseline.contentHash || '—').slice(0, 24))}…</div>
+    </div>
+    <div class="hash-row">
+      <div class="hash-label">Current</div>
+      <div class="hash-val">${escapeHtml(current.timestamp || '—')} &nbsp;·&nbsp; SHA-256: ${escapeHtml((current.contentHash || '—').slice(0, 24))}…</div>
+    </div>`;
+
+  // Change cards
+  listEl.innerHTML = '';
+  if (changes.length === 0) {
+    listEl.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:12px 0;">No changes detected between the two snapshots.</div>';
+  }
+  for (const c of changes) {
+    const sev = c.severity || 'info';
+    listEl.innerHTML += `
+      <div class="change-card ${sev}">
+        <div class="change-top">
+          <span class="badge badge-${sev}">${sev}</span>
+          <span class="change-field">${escapeHtml(c.field || '')}</span>
+          <span class="change-cat">${escapeHtml(c.category || '')}</span>
+        </div>
+        <div class="change-diff">
+          <span class="diff-old">${escapeHtml(String(c.old_value || '').slice(0, 80))}</span>
+          <span class="diff-arrow">→</span>
+          <span class="diff-new">${escapeHtml(String(c.new_value || '').slice(0, 80))}</span>
+        </div>
+        ${c.explanation ? `<div class="change-explanation">${escapeHtml(c.explanation)}</div>` : ''}
+      </div>`;
+  }
+
+  deltaSection.style.display = 'block';
+}
+
+// ── Shared result renderer ─────────────────────────────────────────────────────
+
+function showResult(status, title, message, envelope, signatureValid) {
+  const resultEl  = document.getElementById('result');
+  const bannerEl  = document.getElementById('result-banner');
+  const metaEl    = document.getElementById('result-meta');
+  const reportEl  = document.getElementById('report-content');
+  const reportSec = document.getElementById('report-section');
+  const deltaEl   = document.getElementById('delta-section');
+
+  resultEl.style.display = 'block';
+  bannerEl.className     = `result-banner ${status}`;
+  deltaEl.style.display  = 'none'; // reset; renderDeltaChanges will re-show if needed
+
+  const icon = status === 'valid' ? '✓' : status === 'invalid' ? '✗' : '⚠';
+  bannerEl.innerHTML = `<span class="result-icon">${icon}</span><div><strong>${escapeHtml(title)}</strong><br><span style="font-size:13px;font-weight:400;opacity:.85;">${escapeHtml(message)}</span></div>`;
+
+  if (envelope) {
+    let rows = '';
+    if (signatureValid !== null && signatureValid !== undefined) {
+      const cls = signatureValid ? 'green' : 'red';
+      rows += `<div class="meta-row"><div class="meta-label">Signature</div><div class="meta-value ${cls}">${signatureValid ? '✓ VALID' : '✗ INVALID'}</div></div>`;
+    }
+    if (envelope.type)       rows += `<div class="meta-row"><div class="meta-label">Report Type</div><div class="meta-value">${escapeHtml(envelope.type)}</div></div>`;
+    if (envelope.address)    rows += `<div class="meta-row"><div class="meta-label">Address</div><div class="meta-value">${escapeHtml(envelope.address)}</div></div>`;
+    if (envelope.key_id)     rows += `<div class="meta-row"><div class="meta-label">Key ID</div><div class="meta-value">${escapeHtml(envelope.key_id)}</div></div>`;
+    if (envelope.verify_key) rows += `<div class="meta-row"><div class="meta-label">Verify Key</div><div class="meta-value">${escapeHtml(envelope.verify_key)}</div></div>`;
+    if (envelope.signature)  rows += `<div class="meta-row"><div class="meta-label">Signature (hex)</div><div class="meta-value">${escapeHtml(envelope.signature.substring(0, 48))}…</div></div>`;
+    if (envelope.signed_at)  rows += `<div class="meta-row"><div class="meta-label">Signed at</div><div class="meta-value">${escapeHtml(envelope.signed_at)}</div></div>`;
+    if (envelope.generated_at) rows += `<div class="meta-row"><div class="meta-label">Generated at</div><div class="meta-value">${escapeHtml(envelope.generated_at)}</div></div>`;
+
+    // For standard reports only: show scalar envelope fields
+    if (envelope.type !== 'delta_report') {
+      for (const [k, v] of Object.entries(envelope)) {
+        if (['report','signature','verify_key','key_id','signed_at','type','address'].includes(k)) continue;
+        if (typeof v === 'string' || typeof v === 'number') {
+          rows += `<div class="meta-row"><div class="meta-label">${escapeHtml(k)}</div><div class="meta-value">${escapeHtml(String(v).substring(0, 120))}</div></div>`;
+        }
+      }
+    }
+
+    if (rows) { metaEl.innerHTML = rows; metaEl.style.display = 'block'; }
+
+    // Report text (standard reports)
+    if (envelope.report && typeof envelope.report === 'string') {
+      reportEl.textContent   = envelope.report;
+      reportSec.style.display = 'block';
+    } else {
+      reportSec.style.display = 'none';
+    }
+  }
+
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function clearAll() {
+  document.getElementById('json-input').value = '';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('delta-section').style.display = 'none';
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>

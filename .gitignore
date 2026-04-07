@@ -1,0 +1,32 @@
+# ── Secrets & credentials ──────────────────────────────────────────────────────
+.env
+.secrets/
+*.pem
+*.key
+*.secret
+wallet.json
+keypair.json
+signing_key.bin
+verify_key.bin
+
+# ── Dependencies ───────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Runtime data ───────────────────────────────────────────────────────────────
+data/
+logs/
+*.log
+server.log
+
+# ── Solana local validator artifacts ──────────────────────────────────────────
+ledger/
+test-ledger/
+adversarial-ledger-*/
+
+# ── OS & editor ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

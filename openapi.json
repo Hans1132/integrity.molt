@@ -1,0 +1,77 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "integrity.molt Security Scanner",
+    "description": "AI-powered Solana security scanner. All reports Ed25519 cryptographically signed. Pay per scan via x402 protocol.",
+    "version": "1.0.0",
+    "contact": {"url": "https://t.me/intmolt_bot"}
+  },
+  "servers": [{"url": "https://intmolt.org/api/v1"}],
+  "paths": {
+    "/scan/quick": {
+      "post": {
+        "summary": "Quick on-chain security scan (0.10 USDC)",
+        "description": "Scans any Solana address for basic risk assessment - account info, balance, owner program, Ed25519 signed report.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string", "description": "Solana address to scan"}}, "required": ["address"]}}}},
+        "responses": {"200": {"description": "Scan report", "content": {"application/json": {"schema": {"type": "object", "properties": {"status": {"type": "string"}, "report": {"type": "string"}, "signed": {"type": "object"}, "timestamp": {"type": "string"}}}}}}, "402": {"description": "Payment required"}}
+      }
+    },
+    "/scan/deep": {
+      "post": {
+        "summary": "Comprehensive security audit (2.00 USDC)",
+        "description": "Full security review with multi-agent swarm analysis - scanner, analyst, and reputation agents.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string"}}, "required": ["address"]}}}},
+        "responses": {"200": {"description": "Deep audit report"}, "402": {"description": "Payment required"}}
+      }
+    },
+    "/scan/token": {
+      "post": {
+        "summary": "Token launch audit (0.25 USDC)",
+        "description": "Analyzes token mint - mint authority, freeze authority, top holder distribution, supply analysis, rug risk rating.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string", "description": "Token mint address"}}, "required": ["address"]}}}},
+        "responses": {"200": {"description": "Token audit report"}, "402": {"description": "Payment required"}}
+      }
+    },
+    "/scan/wallet": {
+      "post": {
+        "summary": "Wallet profiling (0.15 USDC)",
+        "description": "Wallet age estimate, activity level, DeFi exposure, token holdings, risk classification.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string", "description": "Wallet address"}}, "required": ["address"]}}}},
+        "responses": {"200": {"description": "Wallet profile report"}, "402": {"description": "Payment required"}}
+      }
+    },
+    "/scan/pool": {
+      "post": {
+        "summary": "DeFi pool safety scan (0.25 USDC)",
+        "description": "Liquidity depth, LP token distribution, Raydium/Orca/Meteora analysis, withdrawal risk.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string", "description": "Pool address"}}, "required": ["address"]}}}},
+        "responses": {"200": {"description": "Pool safety report"}, "402": {"description": "Payment required"}}
+      }
+    },
+    "/scan/evm-token": {
+      "post": {
+        "summary": "EVM token risk scan (0.10 USDC)",
+        "description": "Scans an EVM token contract on Base, Ethereum, or Arbitrum. Performs honeypot detection, source code analysis (blacklist, fees, mint, pause, selfdestruct, proxy), ownership check, and contract age. Returns risk score 0-100 with Ed25519 signed report.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string", "description": "EVM contract address (0x…)"}, "chain": {"type": "string", "enum": ["base", "ethereum", "arbitrum"], "default": "base"}}, "required": ["address"]}}}},
+        "responses": {
+          "200": {"description": "EVM token scan report", "content": {"application/json": {"schema": {"type": "object", "properties": {"status": {"type": "string"}, "chain": {"type": "string"}, "address": {"type": "string"}, "score": {"type": "integer", "minimum": 0, "maximum": 100}, "recommendation": {"type": "string"}, "findings": {"type": "array", "items": {"type": "object", "properties": {"label": {"type": "string"}, "severity": {"type": "string", "enum": ["critical","high","medium","low","info"]}, "category": {"type": "string"}}}}, "meta": {"type": "object"}, "report": {"type": "string"}, "signed": {"type": "object"}, "timestamp": {"type": "string"}}}}}},
+          "402": {"description": "Payment required (0.10 USDC via x402)"}
+        }
+      }
+    },
+    "/services": {
+      "get": {
+        "summary": "Service discovery (free)",
+        "description": "Lists all available services, pricing, and payment details.",
+        "responses": {"200": {"description": "Service list"}}
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check (free)",
+        "description": "Returns service status.",
+        "responses": {"200": {"description": "Status OK"}}
+      }
+    }
+  }
+}

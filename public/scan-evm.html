@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EVM Token Security Scanner — Honeypot & Rug Pull Detector | integrity.molt</title>
+  <meta name="description" content="Scan EVM tokens on Base, Ethereum, and Arbitrum for honeypots, hidden fees, and rug pulls. Bytecode analysis, source code audit, and transfer simulation. Free.">
+  <meta name="keywords" content="EVM token scanner, honeypot detector, Base token scan, Ethereum rug pull checker, Arbitrum token audit, EVM smart contract security, token honeypot check">
+  <link rel="canonical" href="https://intmolt.org/scan-evm">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://intmolt.org/scan-evm">
+  <meta property="og:title" content="EVM Token Honeypot & Rug Pull Scanner — integrity.molt">
+  <meta property="og:description" content="Free EVM token security scan on Base, Ethereum, Arbitrum. Bytecode analysis, honeypot detection, source code audit.">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="EVM Token Honeypot Scanner — Base, ETH, Arbitrum">
+  <meta name="twitter:description" content="Detect honeypots, rug pulls, and dangerous functions in EVM tokens. Bytecode-level analysis, no source code needed.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0f;
+      --bg-card:   #0f0f18;
+      --bg-alt:    #12121e;
+      --border:    #1e1e2e;
+      --accent:    #4da6ff;
+      --accent-dim:#2a6aaa;
+      --text:      #d0d8e8;
+      --text-dim:  #6a7490;
+      --text-faint:#3a3f54;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --c-critical:#f85149;
+      --c-high:    #e3b341;
+      --c-medium:  #d29922;
+      --c-low:     #3fb950;
+      --c-info:    #58a6ff;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+    header { border-bottom: 1px solid var(--border); padding: 20px 0; }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; }
+    .logo-text { font-family: var(--mono); font-size: 18px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+    .logo-text span { color: var(--accent); }
+    .badge { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border: 1px solid var(--accent-dim); color: var(--accent); border-radius: 4px; }
+    nav { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    nav a { color: var(--text-dim); font-size: 13px; transition: color .15s; }
+    nav a:hover { color: var(--text); text-decoration: none; }
+
+    .hero { padding: 60px 0 48px; text-align: center; border-bottom: 1px solid var(--border); }
+    .hero-eyebrow { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; }
+    h1 { font-size: clamp(24px, 4vw, 40px); font-weight: 700; color: #fff; line-height: 1.2; letter-spacing: -0.5px; margin-bottom: 16px; }
+    .tagline { font-size: 15px; color: var(--text-dim); max-width: 520px; margin: 0 auto; }
+
+    .scan-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 32px; margin: 40px 0; }
+    .scan-panel h2 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 20px; }
+
+    .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .form-group { flex: 1; min-width: 200px; }
+    .form-group label { display: block; font-size: 12px; font-family: var(--mono); color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .form-group input, .form-group select {
+      width: 100%; background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 14px; color: var(--text); font-size: 14px;
+      font-family: var(--mono); outline: none; transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent-dim); }
+    .form-group select option { background: var(--bg-alt); }
+
+    .btn-scan {
+      width: 100%; padding: 13px; background: var(--accent); color: #0a0a0f;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+      font-family: var(--mono); letter-spacing: 0.5px; cursor: pointer;
+      transition: background .15s, opacity .15s;
+    }
+    .btn-scan:hover { background: #66b5ff; }
+    .btn-scan:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .note { font-size: 12px; color: var(--text-faint); margin-top: 12px; text-align: center; }
+
+    /* Results */
+    #results { display: none; margin-bottom: 48px; }
+
+    .score-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 28px; margin-bottom: 20px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+    }
+    .gauge-wrap { flex-shrink: 0; }
+    .gauge-svg { display: block; }
+    .score-info h3 { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .score-val { font-size: 36px; font-weight: 700; font-family: var(--mono); line-height: 1; margin-bottom: 8px; }
+    .recommendation { font-size: 13px; color: var(--text-dim); max-width: 480px; }
+
+    .meta-grid {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px 24px; margin-bottom: 20px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px;
+    }
+    .meta-item label { font-size: 11px; font-family: var(--mono); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
+    .meta-item span { font-size: 13px; color: var(--text); font-family: var(--mono); word-break: break-all; }
+
+    .findings-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .findings-wrap h3 { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; color: #fff; }
+    .finding-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    .finding-item:last-child { border-bottom: none; }
+    .sev-badge {
+      flex-shrink: 0; font-size: 10px; font-family: var(--mono); font-weight: 700;
+      padding: 2px 7px; border-radius: 3px; text-transform: uppercase; margin-top: 2px;
+    }
+    .sev-critical { background: rgba(248,81,73,.15); color: var(--c-critical); border: 1px solid rgba(248,81,73,.3); }
+    .sev-high     { background: rgba(227,179,65,.12); color: var(--c-high);     border: 1px solid rgba(227,179,65,.3); }
+    .sev-medium   { background: rgba(210,153,34,.12); color: var(--c-medium);   border: 1px solid rgba(210,153,34,.3); }
+    .sev-low      { background: rgba(63,185,80,.12);  color: var(--c-low);      border: 1px solid rgba(63,185,80,.3);  }
+    .sev-info     { background: rgba(88,166,255,.1);  color: var(--c-info);     border: 1px solid rgba(88,166,255,.25);}
+    .finding-text { flex: 1; }
+    .finding-label { font-size: 13px; color: var(--text); }
+    .finding-cat   { font-size: 11px; color: var(--text-faint); font-family: var(--mono); margin-top: 2px; }
+
+    .no-findings { padding: 24px 20px; font-size: 13px; color: var(--c-low); font-family: var(--mono); }
+
+    .verify-link {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 20px; font-size: 13px; color: var(--text-dim); margin-bottom: 20px;
+    }
+    .verify-link a { color: var(--accent); }
+
+    .error-box {
+      background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.3);
+      border-radius: 8px; padding: 16px 20px; color: var(--c-critical); font-size: 14px;
+    }
+
+    .loading { text-align: center; padding: 40px; color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
+    .spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .chains-note { padding: 40px 0; }
+    .chains-note h2 { font-size: 16px; color: #fff; margin-bottom: 16px; }
+    .chains-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .chain-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+    .chain-card .chain-name { font-family: var(--mono); font-size: 13px; color: #fff; font-weight: 600; margin-bottom: 4px; }
+    .chain-card .chain-info { font-size: 12px; color: var(--text-dim); }
+
+    footer { border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 12px; color: var(--text-faint); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo-wrap">
+        <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none">
+          <div class="logo-text">integrity<span>.</span>molt</div>
+        </a>
+        <span class="badge">EVM SCANNER</span>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/scan">Solana Scan</a>
+        <a href="/openapi.json">API Docs</a>
+        <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="hero">
+    <div class="hero-eyebrow">EVM Token Risk Scanner</div>
+    <h1>Detect Honeypots &amp;<br>Hidden Contract Risks</h1>
+    <p class="tagline">Analyzes EVM token contracts on Base, Ethereum, and Arbitrum for honeypots, dangerous functions, adjustable fees, and ownership risks. Reports signed with Ed25519.</p>
+  </div>
+
+  <div class="scan-panel">
+    <h2>Scan a Token Contract</h2>
+    <div class="form-row">
+      <div class="form-group" style="flex:2;">
+        <label>Contract Address</label>
+        <input type="text" id="addr" placeholder="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="form-group" style="flex:0 0 160px;">
+        <label>Chain</label>
+        <select id="chain">
+          <option value="base">Base</option>
+          <option value="ethereum">Ethereum</option>
+          <option value="arbitrum">Arbitrum</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-scan" id="scanBtn" onclick="runScan()">SCAN TOKEN</button>
+    <p class="note">0.10 USDC via x402 · API key holders scan free · Ed25519 signed report</p>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="chains-note">
+    <h2>Supported Chains</h2>
+    <div class="chains-grid">
+      <div class="chain-card">
+        <div class="chain-name">Base</div>
+        <div class="chain-info">Coinbase L2 · mainnet.base.org · Basescan explorer</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Ethereum</div>
+        <div class="chain-info">Ethereum Mainnet · eth.llamarpc.com · Etherscan explorer</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Arbitrum</div>
+        <div class="chain-info">Arbitrum One · arb1.arbitrum.io · Arbiscan explorer</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    integrity.molt — AI-native security scanner · <a href="https://intmolt.org">intmolt.org</a> · Ed25519 signed reports · <a href="/openapi.json">API docs</a>
+  </div>
+</footer>
+
+<script>
+// Score color thresholds
+function scoreColor(s) {
+  if (s >= 60) return '#f85149';
+  if (s >= 30) return '#e3b341';
+  if (s >= 10) return '#d29922';
+  return '#3fb950';
+}
+
+function buildGaugeSVG(score) {
+  const r = 44, cx = 52, cy = 52;
+  const circ = 2 * Math.PI * r;
+  const filled = circ * (score / 100);
+  const color = scoreColor(score);
+  return `<svg class="gauge-svg" width="104" height="104" viewBox="0 0 104 104">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1e1e2e" stroke-width="10"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="10"
+      stroke-dasharray="${filled} ${circ - filled}" stroke-dashoffset="${circ * 0.25}"
+      stroke-linecap="round" transform="rotate(-90 ${cx} ${cy})"/>
+    <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="20" font-weight="700"
+      font-family="monospace" fill="${color}">${score}</text>
+  </svg>`;
+}
+
+function severityClass(sev) {
+  return 'sev-' + (sev || 'info');
+}
+
+function renderResults(data) {
+  const el = document.getElementById('results');
+  el.style.display = 'block';
+
+  if (data.error) {
+    el.innerHTML = `<div class="error-box">${escHtml(data.error)}${data.detail ? ': ' + escHtml(data.detail) : ''}</div>`;
+    return;
+  }
+
+  // Score card
+  const color = scoreColor(data.score);
+  let html = `<div class="score-card">
+    <div class="gauge-wrap">${buildGaugeSVG(data.score)}</div>
+    <div class="score-info">
+      <h3>${escHtml(data.meta?.name || 'Unknown Token')} (${escHtml(data.meta?.symbol || '?')})</h3>
+      <div class="score-val" style="color:${color}">${data.score}<span style="font-size:16px;color:var(--text-dim)"> / 100</span></div>
+      <div class="recommendation">${escHtml(data.recommendation)}</div>
+    </div>
+  </div>`;
+
+  // Meta
+  const m = data.meta || {};
+  html += `<div class="meta-grid">
+    <div class="meta-item"><label>Chain</label><span>${escHtml(data.chain)}</span></div>
+    <div class="meta-item"><label>Contract</label><span title="${escHtml(data.address)}">${escHtml(data.address.slice(0,10))}…${escHtml(data.address.slice(-6))}</span></div>
+    <div class="meta-item"><label>Verified</label><span style="color:${m.verified ? 'var(--c-low)' : 'var(--c-critical)'}">${m.verified ? 'Yes' : 'No'}</span></div>
+    <div class="meta-item"><label>Contract Name</label><span>${escHtml(m.contractName || 'N/A')}</span></div>
+    <div class="meta-item"><label>Supply</label><span>${escHtml(m.totalSupply || 'N/A')}</span></div>
+    <div class="meta-item"><label>Decimals</label><span>${escHtml(m.decimals != null ? String(m.decimals) : 'N/A')}</span></div>
+    <div class="meta-item"><label>Owner</label><span title="${escHtml(m.owner || '')}">${m.owner ? (m.owner === 'renounced' ? '✓ Renounced' : m.owner.slice(0,10)+'…') : 'N/A'}</span></div>
+    <div class="meta-item"><label>Deployer</label><span title="${escHtml(m.deployer || '')}">${m.deployer ? m.deployer.slice(0,10)+'…' : 'N/A'}</span></div>
+    <div class="meta-item"><label>Age</label><span>${m.ageDays != null ? m.ageDays + ' days' : 'N/A'}</span></div>
+    <div class="meta-item"><label>Proxy</label><span style="color:${m.isProxy ? 'var(--c-high)' : 'var(--text-dim)'}">${m.isProxy ? 'Yes (upgradeable)' : 'No'}</span></div>
+  </div>`;
+
+  // Findings
+  const findings = data.findings || [];
+  const order = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  const sorted = [...findings].sort((a, b) => (order[a.severity] ?? 5) - (order[b.severity] ?? 5));
+
+  html += `<div class="findings-wrap"><h3>Findings (${findings.length})</h3>`;
+  if (!sorted.length) {
+    html += `<div class="no-findings">✓ No significant risk patterns detected</div>`;
+  } else {
+    for (const f of sorted) {
+      html += `<div class="finding-item">
+        <span class="sev-badge ${severityClass(f.severity)}">${escHtml(f.severity)}</span>
+        <div class="finding-text">
+          <div class="finding-label">${escHtml(f.label)}</div>
+          <div class="finding-cat">${escHtml(f.category)}</div>
+        </div>
+      </div>`;
+    }
+  }
+  html += `</div>`;
+
+  // Verify link
+  if (data.signed) {
+    html += `<div class="verify-link">
+      Report signed with Ed25519 · key_id: <code>${escHtml(data.signed.key_id || '')}</code> ·
+      signed_at: <code>${escHtml(data.signed.signed_at || '')}</code> ·
+      <a href="/api/v2/scan/evm-token" onclick="return false">Verify with python3 /root/scanner/verify-report.py</a>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function runScan() {
+  const addr  = document.getElementById('addr').value.trim();
+  const chain = document.getElementById('chain').value;
+  const btn   = document.getElementById('scanBtn');
+  const el    = document.getElementById('results');
+
+  if (!addr) { alert('Enter a contract address'); return; }
+  if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) { alert('Invalid EVM address — must be 0x followed by 40 hex characters'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'SCANNING…';
+  el.style.display = 'block';
+  el.innerHTML = `<div class="loading"><div class="spinner"></div><br>Scanning ${addr.slice(0,10)}… on ${chain}<br><span style="color:var(--text-faint);font-size:11px">fetching bytecode · source · honeypot test…</span></div>`;
+
+  try {
+    const res = await fetch('/scan/evm-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: addr, chain })
+    });
+    const data = await res.json();
+    if (res.status === 402) {
+      el.innerHTML = `<div class="error-box">
+        <strong>Payment required (0.10 USDC)</strong><br>
+        Use the x402 protocol with an <code>X-Payment</code> header, or get an API key at <a href="/subscribe/builder">intmolt.org/subscribe</a>.
+        <pre style="margin-top:12px;font-size:11px;overflow-x:auto">${escHtml(JSON.stringify(data.accepts?.[0] || data, null, 2))}</pre>
+      </div>`;
+    } else {
+      renderResults(data);
+    }
+  } catch (e) {
+    el.innerHTML = `<div class="error-box">Request failed: ${escHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'SCAN TOKEN';
+  }
+}
+
+// Enter key support
+document.getElementById('addr').addEventListener('keydown', e => { if (e.key === 'Enter') runScan(); });
+
+// Prefill from query string ?address=0x…&chain=base
+(function() {
+  const p = new URLSearchParams(location.search);
+  if (p.get('address')) document.getElementById('addr').value = p.get('address');
+  if (p.get('chain') && ['base','ethereum','arbitrum'].includes(p.get('chain'))) {
+    document.getElementById('chain').value = p.get('chain');
+  }
+})();
+</script>
+</body>
+</html>

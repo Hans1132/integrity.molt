@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>integrity.molt — Solana Security Scanner | AI Audit & Rug Pull Detection</title>
+  <meta name="description" content="Free AI-powered Solana security scanner. Detect rug pulls, honeypots, and smart contract vulnerabilities on-chain. Ed25519 signed reports. First 3 scans free.">
+  <meta name="keywords" content="Solana security scanner, Solana audit, rug pull detection, Solana token checker, smart contract audit, Solana honeypot detector, DeFi security, meme coin scanner, integrity.molt">
+  <link rel="canonical" href="https://intmolt.org/">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://intmolt.org/">
+  <meta property="og:site_name" content="integrity.molt">
+  <meta property="og:title" content="integrity.molt — Free Solana Security Scanner">
+  <meta property="og:description" content="AI-powered on-chain security analysis. Detect rug pulls, honeypots, and vulnerabilities. Ed25519 signed reports. First 3 scans free.">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="integrity.molt — Free Solana Security Scanner">
+  <meta name="twitter:description" content="AI-powered on-chain security analysis. Detect rug pulls, honeypots, and vulnerabilities. First 3 scans free.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <!-- JSON-LD: SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "integrity.molt",
+    "url": "https://intmolt.org",
+    "description": "AI-powered Solana security scanner. Detects rug pulls, honeypots, and smart contract vulnerabilities with cryptographically signed reports.",
+    "applicationCategory": "SecurityApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "description": "First 3 scans free per day"
+    },
+    "provider": {
+      "@type": "Organization",
+      "name": "integrity.molt",
+      "url": "https://intmolt.org"
+    }
+  }
+  </script>
+  <!-- Google Search Console verification — nahradit skutečným tokenem z GSC -->
+  <!-- <meta name="google-site-verification" content="REPLACE_WITH_GSC_TOKEN"> -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0f;
+      --bg-card:   #0f0f18;
+      --bg-alt:    #12121e;
+      --border:    #1e1e2e;
+      --accent:    #4da6ff;
+      --accent-dim:#2a6aaa;
+      --text:      #d0d8e8;
+      --text-dim:  #6a7490;
+      --text-faint:#3a3f54;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-text {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+    .logo-text span { color: var(--accent); }
+    .badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 3px 8px;
+      border: 1px solid var(--accent-dim);
+      color: var(--accent);
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    nav { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    nav a { color: var(--text-dim); font-size: 13px; transition: color .15s; }
+    nav a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 72px 0 56px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-eyebrow {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    h1 {
+      font-size: clamp(26px, 4vw, 44px);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+      letter-spacing: -0.5px;
+      margin-bottom: 16px;
+    }
+    .tagline {
+      font-size: 16px;
+      color: var(--text-dim);
+      max-width: 520px;
+      margin: 0 auto 32px;
+    }
+
+    /* ── Hero scanner box ── */
+    .hero-scanner {
+      max-width: 620px;
+      margin: 0 auto 20px;
+    }
+    .hero-input-row {
+      display: flex;
+      gap: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .hero-input-row:focus-within {
+      border-color: var(--accent-dim);
+    }
+    .hero-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+      min-width: 0;
+    }
+    .hero-input::placeholder { color: var(--text-faint); }
+    .hero-scan-btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 14px 22px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .hero-scan-btn:hover { background: #6ab8ff; }
+    .hero-scan-btn:disabled { background: var(--bg-alt); color: var(--text-faint); cursor: default; }
+    .hero-meta {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-faint);
+      margin-top: 10px;
+    }
+    .hero-meta span { display: flex; align-items: center; gap: 5px; }
+    .hero-meta .dot { width: 6px; height: 6px; border-radius: 50%; background: #3fb950; }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .btn {
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 10px 22px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #000; font-weight: 600; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .btn-outline:hover { border-color: var(--accent-dim); color: var(--text); }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-grid {
+      display: flex;
+      gap: 0;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      padding: 12px 36px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      display: block;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 2px;
+    }
+
+    /* ── Sections ── */
+    section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+    .section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h2 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .section-sub {
+      color: var(--text-dim);
+      font-size: 14px;
+      margin-bottom: 40px;
+      max-width: 560px;
+    }
+
+    /* ── Service cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 22px 20px;
+      transition: border-color .15s, transform .15s, box-shadow .15s;
+      cursor: pointer;
+      display: block;
+      text-decoration: none;
+      color: inherit;
+    }
+    .card:hover {
+      border-color: var(--accent-dim);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(77,166,255,.12);
+      text-decoration: none;
+    }
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      margin-bottom: 16px;
+      opacity: .75;
+    }
+    .card-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    .card-price {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* ── Plans ── */
+    #plans { padding: 80px 0; }
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      max-width: 680px;
+      margin: 48px auto 0;
+    }
+    .plan-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 28px;
+    }
+    .plan-card--featured { border-color: var(--accent-dim); }
+    .plan-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .plan-name { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+    .plan-price { font-size: 36px; font-weight: 800; color: #fff; margin-bottom: 24px; }
+    .plan-period { font-size: 16px; font-weight: 400; color: var(--text-dim); }
+    .plan-features { list-style: none; padding: 0; margin: 0 0 28px; }
+    .plan-features li {
+      font-size: 13px;
+      color: var(--text-dim);
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .plan-features li::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+    .plan-cta {
+      display: block;
+      text-align: center;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid var(--accent-dim);
+      color: var(--accent);
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .plan-cta:hover { background: rgba(77,166,255,.08); }
+    .plan-cta--featured { background: var(--accent); color: #000; border-color: var(--accent); }
+    .plan-cta--featured:hover { background: #7abbff; }
+    .plans-note { text-align: center; font-size: 13px; color: var(--text-dim); margin-top: 32px; }
+    .plans-note a { color: var(--accent); text-decoration: none; }
+
+    /* ── How it works ── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0;
+    }
+    .step {
+      padding: 24px 32px 24px 0;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+    .step:last-child { border-right: none; padding-right: 0; }
+    .step:not(:first-child) { padding-left: 32px; }
+    .step-num {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-faint);
+      margin-bottom: 14px;
+      letter-spacing: 1px;
+    }
+    .step-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .step-desc { font-size: 13px; color: var(--text-dim); line-height: 1.55; }
+    .step-code {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-top: 14px;
+      word-break: break-all;
+    }
+
+    /* ── x402 section ── */
+    .x402-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 36px 40px;
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .x402-block .x402-icon { flex-shrink: 0; }
+    .x402-content { flex: 1; min-width: 260px; }
+    .x402-content h3 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .x402-content p { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 16px; }
+    .x402-detail {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+    .x402-detail .key { color: var(--text-faint); }
+    .x402-detail .val { color: var(--accent); }
+
+    /* ── Links grid ── */
+    .links-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .link-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      transition: border-color .15s;
+      display: block;
+    }
+    .link-card:hover { border-color: var(--accent-dim); text-decoration: none; }
+    .link-card-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .link-card-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .link-card-url {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      word-break: break-all;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .footer-col h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+    .footer-key {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    .footer-contact { font-size: 13px; color: var(--text-dim); line-height: 1.8; }
+    .footer-contact a { color: var(--accent); }
+    .footer-bottom {
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer-copy { font-size: 12px; color: var(--text-faint); font-family: var(--mono); }
+
+    @media (max-width: 640px) {
+      .stat-item { padding: 12px 20px; }
+      .step { padding: 20px 0; border-right: none; border-bottom: 1px solid var(--border); }
+      .step:last-child { border-bottom: none; }
+      .step:not(:first-child) { padding-left: 0; }
+      .x402-block { padding: 24px 20px; }
+      .footer-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo-wrap">
+        <!-- integrity.molt inline SVG logo -->
+        <svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="38" height="38" rx="8" fill="#0f0f18"/>
+          <rect x="1" y="1" width="36" height="36" rx="7" stroke="#1e1e2e" stroke-width="1"/>
+          <!-- Shield outline -->
+          <path d="M19 7 L29 11 L29 21 Q29 28 19 32 Q9 28 9 21 L9 11 Z"
+                stroke="#4da6ff" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+          <!-- Check mark -->
+          <path d="M14 19.5 L17.5 23 L24 15.5"
+                stroke="#4da6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text"><span>integrity</span>.molt</span>
+        <span class="badge">Solana Security Scanner</span>
+      </div>
+      <nav>
+        <a href="#services">Services</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#x402">x402</a>
+        <a href="/verify.html">Verify Report</a>
+        <a href="/compare.html">vs Rugcheck</a>
+        <a href="/docs.html">API Docs</a>
+        <a href="/blog/benchmark">Benchmark</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="container">
+    <p class="hero-eyebrow">AI-powered · Ed25519 signed</p>
+    <h1>Is this token safe to buy?</h1>
+    <p class="tagline">Paste any Solana or EVM address. Get an AI risk report in seconds — rug pull detection, mint authority, holder analysis.</p>
+
+    <div class="hero-scanner">
+      <div class="hero-input-row">
+        <input
+          class="hero-input"
+          id="heroAddrInput"
+          type="text"
+          placeholder="Paste Solana or EVM address…"
+          autocomplete="off"
+          spellcheck="false"
+          onkeydown="if(event.key==='Enter')heroScan()"
+        >
+        <button class="hero-scan-btn" id="heroScanBtn" onclick="heroScan()">Scan Free →</button>
+      </div>
+      <div class="hero-meta">
+        <span><span class="dot"></span>3 free scans / day</span>
+        <span>· no wallet required</span>
+        <span>· results in ~10s</span>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <a href="https://t.me/intmolt_bot" class="btn btn-outline" target="_blank" rel="noopener">Telegram Bot</a>
+      <a href="#services" class="btn btn-outline">See all scan types ↓</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── Stats bar ── -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="stat-value" id="stat-scans">--</span>
+        <div class="stat-label">Total Scans</div>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-rate">--</span>
+        <div class="stat-label">Success Rate</div>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-time">--</span>
+        <div class="stat-label">Avg Response</div>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-today">--</span>
+        <div class="stat-label">Scans Today</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Services ── -->
+<section id="services">
+  <div class="container">
+    <p class="section-label">Scan Types</p>
+    <h2>Security scanning services</h2>
+    <p class="section-sub">Each scan returns a structured JSON report, signed with Ed25519. All endpoints accept x402 payments.</p>
+
+    <div class="cards">
+
+      <!-- Quick Scan -->
+      <a class="card" href="/scan?type=quick">
+        <svg class="card-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="10" stroke="#4da6ff" stroke-width="1.5"/>
+          <path d="M24 24 L30 30" stroke="#4da6ff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <div class="card-name">Quick Scan</div>
+        <div class="card-desc">Account info, balance, basic risk classification of any Solana address.</div>
+        <div class="card-price">0.10 USDC</div>
+      </a>
+
+      <!-- Token Audit -->
+      <a class="card" href="/scan?type=token">
+        <svg class="card-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="18" r="11" stroke="#4da6ff" stroke-width="1.5"/>
+          <path d="M18 11 L18 14 M18 22 L18 25 M11 18 L14 18 M22 18 L25 18" stroke="#4da6ff" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="18" cy="18" r="3" fill="#4da6ff" opacity=".5"/>
+        </svg>
+        <div class="card-name">Token Audit</div>
+        <div class="card-desc">Mint authority, freeze authority, top-10 holder distribution, rug risk rating.</div>
+        <div class="card-price">0.25 USDC</div>
+      </a>
+
+      <!-- Wallet Profile -->
+      <a class="card" href="/scan?type=wallet">
+        <svg class="card-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="10" width="24" height="18" rx="3" stroke="#4da6ff" stroke-width="1.5"/>
+          <path d="M6 15 L30 15" stroke="#4da6ff" stroke-width="1.5"/>
+          <circle cx="24" cy="22" r="2.5" fill="#4da6ff" opacity=".6"/>
+        </svg>
+        <div class="card-name">Wallet Profile</div>
+        <div class="card-desc">Age estimate, activity level, DeFi exposure, risk classification.</div>
+        <div class="card-price">0.15 USDC</div>
+      </a>
+
+      <!-- Pool Scan -->
+      <a class="card" href="/scan?type=pool">
+        <svg class="card-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="18" cy="14" rx="10" ry="5" stroke="#4da6ff" stroke-width="1.5"/>
+          <path d="M8 14 L8 22 Q8 27 18 27 Q28 27 28 22 L28 14" stroke="#4da6ff" stroke-width="1.5"/>
+        </svg>
+        <div class="card-name">Pool Scan</div>
+        <div class="card-desc">Liquidity depth, LP token distribution, Raydium/Orca/Meteora analysis.</div>
+        <div class="card-price">0.25 USDC</div>
+      </a>
+
+      <!-- Deep Audit -->
+      <a class="card" href="/scan?type=deep">
+        <svg class="card-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 5 L28 9 L28 19 Q28 27 18 31 Q8 27 8 19 L8 9 Z" stroke="#4da6ff" stroke-width="1.5" fill="none"/>
+          <path d="M13 18 L16.5 21.5 L23 14" stroke="#4da6ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="card-name">Deep Audit</div>
+        <div class="card-desc">Full code review, vulnerability assessment, comprehensive signed report.</div>
+        <div class="card-price">2.00 USDC</div>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Subscription Plans ── -->
+<section id="plans">
+  <div class="container">
+    <p class="section-label">Subscription</p>
+    <h2>Plans</h2>
+    <p class="section-sub">For teams and developers who need continuous monitoring and higher volume.</p>
+    <div class="plans-grid">
+
+      <div class="plan-card">
+        <div class="plan-name">Builder</div>
+        <div class="plan-price">$79<span class="plan-period">/month</span></div>
+        <ul class="plan-features">
+          <li>Unlimited Quick Scans</li>
+          <li>20 Deep Audits / month</li>
+          <li>API access + CI/CD integration</li>
+          <li>Watchlist monitoring (10 addresses)</li>
+          <li>Ed25519 signed reports</li>
+        </ul>
+        <button onclick="startCheckout('builder')" class="plan-cta">Get Builder</button>
+      </div>
+
+      <div class="plan-card plan-card--featured">
+        <div class="plan-badge">Most Popular</div>
+        <div class="plan-name">Team</div>
+        <div class="plan-price">$299<span class="plan-period">/month</span></div>
+        <ul class="plan-features">
+          <li>Unlimited scans of all types</li>
+          <li>Priority queue</li>
+          <li>Slack / Discord / Telegram alerts</li>
+          <li>Watchlist monitoring (100 addresses)</li>
+          <li>Dashboard + usage export</li>
+          <li>Ed25519 signed reports</li>
+        </ul>
+        <button onclick="startCheckout('team')" class="plan-cta plan-cta--featured">Get Team</button>
+      </div>
+
+    </div>
+    <p class="plans-note">Need a one-time Pre-Audit Report or Enterprise contract? <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Contact us</a>.</p>
+  </div>
+</section>
+
+<!-- ── How it works ── -->
+<section id="how-it-works">
+  <div class="container">
+    <p class="section-label">Process</p>
+    <h2>How it works</h2>
+    <p class="section-sub">Three steps from request to cryptographically signed report.</p>
+
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title">Send address</div>
+        <div class="step-desc">Submit any Solana address via Telegram bot, API, or directly from your AI agent using x402 payment headers.</div>
+        <div class="step-code">POST /api/v2/scan/quick<br>{"address": "..."}</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title">AI swarm analyzes</div>
+        <div class="step-desc">Multiple specialized agents query on-chain data in parallel: account state, transaction history, program interactions, token metadata.</div>
+        <div class="step-code">Fetching on-chain state...<br>Running risk models...</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title">Get signed report</div>
+        <div class="step-desc">Receive a structured JSON report signed with Ed25519. The signature can be verified by anyone using the public key below.</div>
+        <div class="step-code">{"status":"complete",<br>"signed":{...}}</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── x402 ── -->
+<section id="x402">
+  <div class="container">
+    <p class="section-label">Agent Commerce</p>
+    <h2>x402: built for autonomous agents</h2>
+    <p class="section-sub">Agent-to-agent commerce ready. Any AI agent can pay and receive scans autonomously, without human involvement.</p>
+
+    <div class="x402-block">
+      <div class="x402-icon">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="10" fill="#12121e"/>
+          <rect x="1" y="1" width="46" height="46" rx="9" stroke="#1e1e2e"/>
+          <text x="9" y="33" font-family="monospace" font-size="20" font-weight="700" fill="#4da6ff">402</text>
+        </svg>
+      </div>
+      <div class="x402-content">
+        <h3>Agent-to-agent commerce ready</h3>
+        <p>integrity.molt implements the x402 payment protocol over HTTP. Any AI agent that speaks HTTP can discover available scans, send a Solana payment, and receive a signed report — no API keys, no subscriptions, no human in the loop.</p>
+        <p>The discovery endpoint at <a href="/api/v2/.well-known/x402.json" target="_blank" rel="noopener">/.well-known/x402.json</a> describes all available services, accepted assets, and payment addresses in a machine-readable format.</p>
+        <div class="x402-detail">
+          <span class="key">network      </span><span class="val">solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp</span><br>
+          <span class="key">asset        </span><span class="val">USDC (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)</span><br>
+          <span class="key">scheme       </span><span class="val">exact</span><br>
+          <span class="key">discovery    </span><span class="val">https://intmolt.org/.well-known/x402.json</span><br>
+          <span class="key">response     </span><span class="val">HTTP 402 with accepts[] on unpaid requests</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Links ── -->
+<section id="links">
+  <div class="container">
+    <p class="section-label">Resources</p>
+    <h2>Access &amp; integration</h2>
+    <p class="section-sub">Use the Telegram bot for manual scans, or integrate directly via the API.</p>
+
+    <div class="links-grid">
+      <a href="https://t.me/intmolt_bot" class="link-card" target="_blank" rel="noopener">
+        <div class="link-card-label">Telegram</div>
+        <div class="link-card-title">Telegram Bot</div>
+        <div class="link-card-url">t.me/intmolt_bot</div>
+      </a>
+      <a href="/api/v2/.well-known/x402.json" class="link-card" target="_blank" rel="noopener">
+        <div class="link-card-label">x402 Protocol</div>
+        <div class="link-card-title">Discovery Endpoint</div>
+        <div class="link-card-url">intmolt.org/.well-known/x402.json</div>
+      </a>
+      <a href="/api/v2/openapi.json" class="link-card" target="_blank" rel="noopener">
+        <div class="link-card-label">Documentation</div>
+        <div class="link-card-title">API Reference</div>
+        <div class="link-card-url">intmolt.org/api/v2/openapi.json</div>
+      </a>
+      <a href="/api/v2/stats" class="link-card" target="_blank" rel="noopener">
+        <div class="link-card-label">Transparency</div>
+        <div class="link-card-title">Live Stats</div>
+        <div class="link-card-url">intmolt.org/api/v2/stats</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>Ed25519 Verify Key</h4>
+        <div class="footer-key" id="verify-key">xs0YPIxV60Bxhe+66K8PuA5cSAwQwlsISUhU/vlsYJg=</div>
+        <p style="font-size:11px; color:var(--text-faint); margin-top:8px; font-family:var(--mono);">
+          All scan reports are signed. <a href="/verify.html" style="color:var(--accent-dim);">Verify online →</a>
+        </p>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <div class="footer-contact">
+          Telegram: <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">@intmolt_bot</a><br>
+          Compare: <a href="/compare.html">vs Rugcheck / Sherlock / OtterSec</a><br>
+          Benchmark: <a href="/blog/benchmark">99 tokens — integrity.molt vs Rugcheck</a><br>
+          New: <a href="/blog/rugcheck-methodology">Why token scanners miss smart contract risks</a><br>
+          Discovery: <a href="/api/v2/.well-known/x402.json" target="_blank" rel="noopener">/api/v2/.well-known/x402.json</a><br>
+          Health: <a href="/api/v2/health" target="_blank" rel="noopener">/api/v2/health</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">integrity.molt &mdash; intmolt.org</div>
+      <div class="footer-copy">Solana mainnet &bull; x402 protocol &bull; Ed25519 signed reports</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Fetch live stats — retry once on failure
+  function loadStats(attempt) {
+    fetch('/api/v2/stats', { cache: 'no-store' })
+      .then(function(r) { return r.ok ? r.json() : Promise.reject('HTTP ' + r.status); })
+      .then(function(d) {
+        var set = function(id, val) { if (val != null) document.getElementById(id).textContent = val; };
+        set('stat-scans',  d.total_scans != null  ? Number(d.total_scans).toLocaleString() : null);
+        set('stat-rate',   d.success_rate_pct != null ? Number(d.success_rate_pct).toFixed(1) + '%' : null);
+        if (d.average_response_time_ms != null) {
+          var ms = Number(d.average_response_time_ms);
+          set('stat-time', ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : ms + 'ms');
+        }
+        set('stat-today',  d.scans_today != null  ? Number(d.scans_today).toLocaleString() : null);
+      })
+      .catch(function(err) {
+        if (attempt < 2) setTimeout(function() { loadStats(attempt + 1); }, 2000);
+      });
+  }
+  loadStats(0);
+</script>
+
+<!-- Privacy-friendly analytics beacon — bez cookies, bez externích scriptů -->
+<script>
+  (function() {
+    try {
+      fetch('/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: location.pathname,
+          referrer: document.referrer || ''
+        }),
+        keepalive: true
+      });
+    } catch(e) {}
+  })();
+</script>
+
+<script>
+// ── Hero inline scanner ────────────────────────────────────────────────────
+function heroScan() {
+  const input = document.getElementById('heroAddrInput');
+  const btn   = document.getElementById('heroScanBtn');
+  const addr  = (input?.value || '').trim();
+  if (!addr) { input?.focus(); return; }
+
+  // Detekce EVM (0x prefix) vs Solana
+  const isEvm = /^0x[0-9a-fA-F]{40}$/.test(addr);
+  const type  = isEvm ? 'evm-token' : 'quick';
+
+  btn.textContent = 'Scanning…';
+  btn.disabled = true;
+
+  window.location.href = '/scan?address=' + encodeURIComponent(addr) + '&type=' + type;
+}
+
+async function startCheckout(tier) {
+  const email = prompt('Enter your email for the subscription:');
+  if (!email) return;
+  try {
+    const res = await fetch('/subscribe/' + tier, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Request failed: ' + e.message);
+  }
+}
+</script>
+
+<!-- JSON-LD: FAQPage for rich snippets -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is integrity.molt?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "integrity.molt is an AI-powered Solana security scanner that detects rug pulls, honeypots, and smart contract vulnerabilities. It uses a multi-agent AI swarm to analyze on-chain data and produces cryptographically signed (Ed25519) reports."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How many free scans do I get?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You get 3 free scans per day with no wallet or account required. For unlimited scans, you can pay per scan with Stripe or subscribe from $79/month."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What chains does integrity.molt support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "integrity.molt supports Solana (quick scan, token audit, wallet analysis, DeFi pool scan) and EVM chains — Base, Ethereum, and Arbitrum (EVM token scan with honeypot and bytecode analysis)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How is integrity.molt different from Rugcheck?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Unlike Rugcheck, which checks token metadata, integrity.molt runs a multi-agent AI swarm that also audits smart contract source code using cargo-audit (CVE detection), Rust clippy, and 13 Solana-specific vulnerability patterns. Reports are signed with Ed25519 for tamper-proof verification."
+      }
+    }
+  ]
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,94 @@
+{
+  "x402": true,
+  "version": "2.0",
+  "provider": {
+    "name": "integrity.molt",
+    "description": "AI-powered Solana security scanner and auditor on Moltbook",
+    "url": "https://intmolt.org",
+    "contact": "https://t.me/intmolt_bot"
+  },
+  "verifyKey": "qzppeeRmbyQ4hE4BYOW+4VbQ5muyplTP4GP4uxIhVwY=",
+  "reputation": {
+    "stats_endpoint": "https://intmolt.org/api/v1/stats",
+    "description": "Live scan count, success rate, and average response time. Updated after every scan."
+  },
+  "reportSigning": {
+    "algorithm": "Ed25519",
+    "description": "All scan reports are signed. Verify with any NaCl Ed25519 library using the verifyKey above."
+  },
+  "services": [
+    {
+      "path": "/api/v1/scan/quick",
+      "method": "POST",
+      "description": "Quick on-chain security scan of any Solana address. Returns account info, balance, owner program, risk assessment based on real data.",
+      "price": "0.10",
+      "currency": "USDC",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
+      "input": {"type": "application/json", "schema": {"address": "string"}},
+      "output": {"type": "application/json"},
+      "tags": ["security", "audit", "solana", "smart-contract", "scanner"]
+    },
+    {
+      "path": "/api/v1/scan/deep",
+      "method": "POST",
+      "description": "Comprehensive security audit including source code review, vulnerability assessment, token distribution analysis, and detailed written report.",
+      "price": "2.00",
+      "currency": "USDC",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
+      "input": {"type": "application/json", "schema": {"address": "string"}},
+      "output": {"type": "application/json"},
+      "tags": ["security", "deep-audit", "solana", "vulnerability", "code-review"]
+    },
+    {
+      "path": "/api/v1/scan/token",
+      "method": "POST",
+      "description": "Token launch audit: checks mint authority (can more tokens be created?), freeze authority (can accounts be frozen?), top-10 holder concentration, total supply. Returns risk rating per factor.",
+      "price": "0.25",
+      "currency": "USDC",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
+      "input": {"type": "application/json", "schema": {"address": "string (token mint address)"}},
+      "output": {"type": "application/json"},
+      "tags": ["token", "mint", "rug-check", "distribution", "solana"]
+    },
+    {
+      "path": "/api/v1/scan/wallet",
+      "method": "POST",
+      "description": "Wallet profiling: estimates wallet age from transaction history, activity level, DeFi exposure via token holdings, and classifies risk profile (fresh wallet / whale / dormant / normal user).",
+      "price": "0.15",
+      "currency": "USDC",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
+      "input": {"type": "application/json", "schema": {"address": "string (wallet address)"}},
+      "output": {"type": "application/json"},
+      "tags": ["wallet", "profiling", "due-diligence", "solana"]
+    },
+    {
+      "path": "/api/v1/scan/pool",
+      "method": "POST",
+      "description": "DeFi pool safety scan for Raydium, Orca, Meteora pools: liquidity depth, LP token distribution, recent transaction activity, withdrawal risk. Note: locked liquidity must be verified externally.",
+      "price": "0.25",
+      "currency": "USDC",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
+      "input": {"type": "application/json", "schema": {"address": "string (pool address)"}},
+      "output": {"type": "application/json"},
+      "tags": ["defi", "pool", "liquidity", "raydium", "orca", "solana"]
+    }
+  ,
+    {
+      "path": "/api/v1/scan/evm-token",
+      "method": "POST",
+      "description": "EVM token risk scan for Base, Ethereum, and Arbitrum. Honeypot detection, source code analysis (blacklist, adjustable fees, mint, pause, selfdestruct, proxy, ownership), contract age, deployer info. Risk score 0-100 with Ed25519 signed report.",
+      "price": "0.10",
+      "currency": "USDC",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
+      "input": {"type": "application/json", "schema": {"address": "string (0x EVM contract address)", "chain": "string (base|ethereum|arbitrum, default: base)"}},
+      "output": {"type": "application/json"},
+      "tags": ["evm", "token", "honeypot", "base", "ethereum", "arbitrum", "security", "risk-score"]
+    }
+  ]
+}
