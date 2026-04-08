@@ -6,7 +6,7 @@ const morgan = require('morgan');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const db = require('./db');
 const Stripe = require('stripe');
-const { scanEVMToken } = require('./scanners/evm-token');
+const { scanEVMToken, SUPPORTED_CHAINS: EVM_CHAINS, getExplorerKey: evmGetKey, hasExplorerKey: evmHasKey } = require('./scanners/evm-token');
 const { auditToken, getShowcaseReport } = require('./scanners/token-audit');
 const { generateReport, generatePDFBuffer, generatePNGBuffer } = require('./report-generator');
 const authModule = require('./auth');
@@ -17,6 +17,8 @@ const { computeDelta } = require('./src/delta/diff');
 const { signDeltaReport } = require('./src/delta/signing');
 const { runAdversarialSim }  = require('./src/adversarial/runner');
 const { getAllPlaybooks }     = require('./src/adversarial/playbooks');
+const { verifyWebhookAuth, handleHeliusWebhook } = require('./src/monitor/webhook-receiver');
+const { initMonitor }        = require('./src/monitor/init');
 
 const https = require('https');
 const nodemailer = require('nodemailer');
@@ -534,7 +536,58 @@ const evmTokenPaymentAccepts = [{
   maxTimeoutSeconds: 60,
   extra: {
     name: 'integrity.molt EVM Token Scan',
-    chains: ['base', 'ethereum', 'arbitrum']
+    chains: ['ethereum', 'bsc', 'polygon', 'arbitrum', 'base']
+  }
+}];
+
+const evmScanPaymentAccepts = [{
+  scheme: 'exact',
+  network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+  maxAmountRequired: '150000',
+  resource: 'https://intmolt.org/api/v2/scan/evm',
+  asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  payTo: WALLET,
+  description: 'EVM token risk scan — honeypot detection, source code analysis, ownership check',
+  mimeType: 'application/json',
+  maxTimeoutSeconds: 60,
+  extra: {
+    name: 'integrity.molt EVM Scan',
+    chains: ['ethereum', 'bsc', 'polygon', 'arbitrum', 'base']
+  }
+}];
+
+const contractAuditPaymentAccepts = [{
+  scheme: 'exact',
+  network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+  maxAmountRequired: '5000000',
+  resource: 'https://intmolt.org/api/v2/scan/contract',
+  asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  payTo: WALLET,
+  description: 'Contract Audit — static analysis (cargo-audit, clippy, semgrep), LLM-verified findings with CVE mapping and Immunefi impact assessment',
+  mimeType: 'application/json',
+  maxTimeoutSeconds: 600,
+  outputSchema: {
+    input: {
+      type: 'http',
+      method: 'POST',
+      url: 'https://intmolt.org/api/v2/scan/contract',
+      headers: { 'Content-Type': 'application/json' },
+      body: { type: 'object', properties: {
+        github_url:   { type: 'string', description: 'GitHub repository URL (https://github.com/owner/repo)' },
+        project_name: { type: 'string', description: 'Optional project name for the report' }
+      }, required: ['github_url'] }
+    },
+    output: {
+      type: 'http',
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: { type: 'object', properties: {
+        status:   { type: 'string' },
+        findings: { type: 'array' },
+        stats:    { type: 'object' },
+        report:   { type: 'object' }
+      } }
+    }
   }
 }];
 
@@ -631,6 +684,11 @@ app.get('/services', (req, res) => {
         endpoint: 'POST /scan/pool',
         price: '0.25 USDC',
         description: 'DeFi pool safety scan - liquidity depth, LP token distribution, Raydium/Orca/Meteora pool analysis, withdrawal risk'
+      },
+      {
+        endpoint: 'POST /scan/contract',
+        price: '5.00 USDC',
+        description: 'Contract Audit — static analysis (cargo-audit CVEs, clippy, semgrep) + LLM-verified findings with Immunefi impact mapping. Input: GitHub URL of a Solana/Rust project.'
       }
     ],
     subscription: [
@@ -906,14 +964,14 @@ app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolSc
 // EVM Token Risk Scan - paid endpoint (1.00 USDC = 1000000 micro-USDC)
 app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePayment(evmTokenPaymentAccepts, 1000000), express.json(), async (req, res) => {
   const address = (req.body?.address || '').trim();
-  const chain   = (req.body?.chain   || 'base').trim().toLowerCase();
+  const chain   = (req.body?.chain   || 'ethereum').trim().toLowerCase();
 
   if (!address) return res.status(400).json({ error: 'Missing address field' });
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
     return res.status(400).json({ error: 'Invalid EVM address format (expected 0x + 40 hex chars)' });
   }
-  if (!['base', 'ethereum', 'arbitrum'].includes(chain)) {
-    return res.status(400).json({ error: 'Invalid chain — use base|ethereum|arbitrum' });
+  if (!EVM_CHAINS.includes(chain)) {
+    return res.status(400).json({ error: `Invalid chain — use ${EVM_CHAINS.join('|')}` });
   }
 
   let scanResult;
@@ -981,6 +1039,152 @@ app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePaym
     signed:     signedEnvelope,
     timestamp:  new Date().toISOString()
   });
+});
+
+// ── GET /scan/evm/:address — EVM scan (0.15 USDC, x402) ──────────────────────
+// Alias pro /api/v2/scan/evm/:address — address v URL, chain v ?chain= query param
+// Příklad: GET /api/v2/scan/evm/0xdAC17F958D2ee523a2206206994597C13D831ec7?chain=ethereum
+const EVM_KEY_ENV_MAP = { ethereum:'ETHERSCAN_API_KEY', bsc:'BSCSCAN_API_KEY', polygon:'POLYGONSCAN_API_KEY', arbitrum:'ARBISCAN_API_KEY', base:'BASESCAN_API_KEY' };
+function evmPreValidate(req, res, next) {
+  const address = (req.params.address || '').trim();
+  const chain   = (req.query.chain    || 'ethereum').trim().toLowerCase();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address))
+    return res.status(400).json({ error: 'Invalid EVM address (expected 0x + 40 hex chars)' });
+  if (!EVM_CHAINS.includes(chain))
+    return res.status(400).json({ error: `Invalid chain — use ${EVM_CHAINS.join('|')}` });
+  if (!evmHasKey(chain))
+    return res.status(400).json({ error: `API key not configured for ${chain}`, hint: `Set ${EVM_KEY_ENV_MAP[chain]} in server .env` });
+  next();
+}
+app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireApiKey, requirePayment(evmScanPaymentAccepts, 150000), async (req, res) => {
+  const address = (req.params.address || '').trim();
+  const chain   = (req.query.chain    || 'ethereum').trim().toLowerCase();
+
+  const _t = Date.now();
+  let scanResult;
+  try {
+    scanResult = await scanEVMToken(address, chain);
+    console.log(`[scan/evm] address=${address} chain=${chain} scan=${Date.now()-_t}ms`);
+  } catch (err) {
+    return res.status(500).json({ error: 'EVM scan failed', detail: err.message });
+  }
+
+  // Build report text
+  const reportLines = [
+    '=== integrity.molt EVM Token Scan ===',
+    `Date:     ${new Date().toISOString()}`,
+    `Chain:    ${chain} (${scanResult.meta.chainLabel || chain})`,
+    `Address:  ${address}`,
+    '',
+    `Name:     ${scanResult.meta.name     || 'unknown'}`,
+    `Symbol:   ${scanResult.meta.symbol   || 'unknown'}`,
+    `Decimals: ${scanResult.meta.decimals ?? 'unknown'}`,
+    `Supply:   ${scanResult.meta.totalSupply || 'unknown'}`,
+    `Owner:    ${scanResult.meta.owner    || 'unknown'}`,
+    `Verified: ${scanResult.meta.verified}`,
+    `Contract: ${scanResult.meta.contractName || 'N/A'}`,
+    `Deployer: ${scanResult.meta.deployer || 'unknown'}`,
+    `Age:      ${scanResult.meta.ageDays != null ? scanResult.meta.ageDays + ' days' : 'unknown'}`,
+    `Proxy:    ${scanResult.meta.isProxy}`,
+    '',
+    `Risk Score:     ${scanResult.score} / 100`,
+    `Recommendation: ${scanResult.recommendation}`,
+    '',
+    '--- Findings ---'
+  ];
+  for (const f of scanResult.findings) {
+    reportLines.push(`[${f.severity.toUpperCase()}] [${f.category}] ${f.label}`);
+  }
+  if (!scanResult.findings.length) reportLines.push('No significant findings.');
+  reportLines.push('');
+  reportLines.push('---');
+  reportLines.push('Report signed with Ed25519. Verify: python3 /root/scanner/verify-report.py <signed.json>');
+  reportLines.push('This is an automated static analysis. Not a full security audit.');
+  const reportText = reportLines.join('\n');
+
+  // Sign report
+  let signedEnvelope = null;
+  try {
+    const { execSync } = require('child_process');
+    const raw = execSync(`echo ${JSON.stringify(reportText)} | python3 /root/scanner/sign-report.py`, { timeout: 10000 });
+    signedEnvelope = JSON.parse(raw.toString());
+  } catch {}
+
+  res.json({
+    status:          'complete',
+    type:            'evm-token-scan',
+    chain,
+    address,
+    score:           scanResult.score,
+    recommendation:  scanResult.recommendation,
+    findings:        scanResult.findings,
+    meta:            scanResult.meta,
+    report:          reportText,
+    signed:          signedEnvelope,
+    timestamp:       new Date().toISOString()
+  });
+});
+
+// Contract Audit - paid endpoint (5.00 USDC = 5000000 micro-USDC)
+// POST /scan/contract
+// Body: { github_url, project_name? }
+// Spouští bounty-hunter/deep-scan.sh: cargo-audit + clippy + semgrep + LLM verification
+app.post('/scan/contract', trackFunnel('contract'), requireApiKey, requirePayment(contractAuditPaymentAccepts, 5000000), express.json(), async (req, res) => {
+  const rawUrl     = (req.body?.github_url || '').trim();
+  const projName   = (req.body?.project_name || '').trim().replace(/[^a-zA-Z0-9_\- ]/g, '').slice(0, 64) || 'unknown';
+
+  if (!rawUrl) return res.status(400).json({ error: 'Missing github_url field' });
+
+  // Povolíme jen github.com a gitlab.com URL
+  if (!/^https?:\/\/(github\.com|gitlab\.com)\/[a-zA-Z0-9_.\-]+\/[a-zA-Z0-9_.\-]+(\.git)?(\/?|\/tree\/[^\s]*)$/.test(rawUrl)) {
+    return res.status(400).json({ error: 'Invalid GitHub/GitLab URL. Expected: https://github.com/owner/repo' });
+  }
+
+  const DEEP_SCAN = '/root/bounty-hunter/deep-scan.sh';
+  const t0 = Date.now();
+  console.log(`[scan/contract] starting: ${rawUrl} (${projName})`);
+
+  try {
+    const { stdout, stderr } = await runScript('bash', [DEEP_SCAN, rawUrl, projName], 600_000);
+    const elapsed = Date.now() - t0;
+    console.log(`[scan/contract] done in ${elapsed}ms: ${rawUrl}`);
+
+    // Parsuj výstupní cestu z stdout: "  → Output: /path/to/file.json"
+    const outMatch = stdout.match(/→ Output:\s*(\S+\.json)/);
+    let report = null;
+    let signature = null;
+
+    if (outMatch?.[1]) {
+      try {
+        report = JSON.parse(fs.readFileSync(outMatch[1], 'utf-8'));
+        signature = report.signature || null;
+      } catch (e) {
+        console.error('[scan/contract] Failed to read output JSON:', e.message);
+      }
+    }
+
+    if (!report) {
+      return res.status(500).json({ error: 'Scan completed but output not found', detail: stderr.slice(0, 300) });
+    }
+
+    res.json({
+      status:       'complete',
+      tier:         'contract-audit',
+      github_url:   rawUrl,
+      project_name: report.metadata?.project_name || projName,
+      language:     report.metadata?.language || null,
+      pipeline:     report.metadata?.pipeline || [],
+      stats:        report.stats || {},
+      findings:     report.findings || [],
+      signature:    signature,
+      scan_ms:      elapsed,
+      timestamp:    new Date().toISOString(),
+    });
+  } catch (err) {
+    const elapsed = Date.now() - t0;
+    console.error(`[scan/contract] failed after ${elapsed}ms: ${err.message}`);
+    res.status(500).json({ error: 'Contract audit failed', detail: err.message });
+  }
 });
 
 // ── Token Security Audit — paid endpoint (0.15 USDC = 150000 micro-USDC) ──────
@@ -1449,6 +1653,9 @@ app.post('/watchlist/add', express.json(), async (req, res) => {
     db.logEvent({ name: 'watchlist_created', resource: address, ip: req.ip })
       .catch(() => {});
     res.json({ ok: true, id: entry.id, address: entry.address, created_at: entry.created_at });
+    // Synchronizuj novou adresu do Helius webhooku (non-blocking)
+    const { syncWatchlistToWebhook } = require('./src/monitor/webhook-manager');
+    syncWatchlistToWebhook().catch(e => console.error('[monitor] webhook sync after add failed:', e.message));
   } catch (e) {
     res.status(500).json({ error: 'Failed to add watchlist entry', detail: e.message });
   }
@@ -1487,7 +1694,8 @@ const SCAN_PRICES_USD = {
   token:       1.00,
   wallet:      1.00,
   pool:        1.00,
-  'evm-token': 1.00
+  'evm-token': 1.00,
+  contract:    5.00
 };
 
 // Dočasná cache výsledků zaplacených scanů (klíč = Stripe session_id, TTL 1h)
@@ -1538,6 +1746,14 @@ app.post('/scan/checkout', express.json(), async (req, res) => {
 
   if (!SCAN_PRICES_USD[safeType]) {
     return res.status(400).json({ error: 'Invalid scan type' });
+  }
+
+  // Contract audit vyžaduje github_url — Stripe checkout zatím nepodporuje, nasměruj na x402
+  if (safeType === 'contract') {
+    return res.status(400).json({
+      error: 'Contract audit does not support Stripe checkout. Use x402 payment or API key.',
+      x402: { endpoint: '/scan/contract', accepts: contractAuditPaymentAccepts }
+    });
   }
 
   // Validace adresy — EVM nebo Solana
@@ -2396,8 +2612,23 @@ app.post('/scan/free', express.json(), async (req, res) => {
   if (!turnstileOk) {
     return res.status(403).json({ error: 'CAPTCHA verification failed', captcha_required: true });
   }
-  if (!['quick', 'deep', 'token', 'wallet', 'pool', 'evm-token'].includes(type)) {
+  if (!['quick', 'deep', 'token', 'wallet', 'pool', 'evm-token', 'contract'].includes(type)) {
     return res.status(400).json({ error: 'Invalid scan type' });
+  }
+
+  // Contract audit je vždy placený
+  if (type === 'contract') {
+    return res.status(402).json({
+      error:           'payment_required',
+      message:         'Contract Audit requires payment ($5.00 USDC). Use x402 micropayments or API key.',
+      payment_options: {
+        contract: { endpoint: '/scan/contract', price_usdc: 5.00, micro_usdc: 5000000, accepts: contractAuditPaymentAccepts }
+      },
+      subscription: {
+        builder: { price: '$79/mo', url: 'https://intmolt.org/subscribe/builder' },
+        team:    { price: '$299/mo', url: 'https://intmolt.org/subscribe/team'   }
+      }
+    });
   }
 
   // Validace adresy podle typu
@@ -2459,7 +2690,8 @@ app.post('/scan/free', express.json(), async (req, res) => {
         token:     { endpoint: '/scan/token',     price_usdc: 1.00, micro_usdc: 1000000, accepts: tokenAuditPaymentAccepts },
         wallet:    { endpoint: '/scan/wallet',    price_usdc: 1.00, micro_usdc: 1000000, accepts: walletProfilePaymentAccepts },
         pool:      { endpoint: '/scan/pool',      price_usdc: 1.00, micro_usdc: 1000000, accepts: poolScanPaymentAccepts },
-        'evm-token': { endpoint: '/scan/evm-token', price_usdc: 1.00, micro_usdc: 1000000, accepts: evmTokenPaymentAccepts }
+        'evm-token': { endpoint: '/scan/evm-token', price_usdc: 1.00, micro_usdc: 1000000, accepts: evmTokenPaymentAccepts },
+        contract:  { endpoint: '/scan/contract',  price_usdc: 5.00, micro_usdc: 5000000, accepts: contractAuditPaymentAccepts }
       },
       subscription: {
         builder: { price: '$79/mo', url: 'https://intmolt.org/subscribe/builder' },
@@ -2719,6 +2951,9 @@ app.post('/watchlist/user/add', express.json(), requireApiKey, async (req, res) 
     const notifyEmail = email_notify === false ? null : email;
     const entry = await db.addUserWatchlistEntry({ email, address, label, notify_email: notifyEmail });
     res.json({ ok: true, id: entry?.id, entry });
+    // Synchronizuj novou adresu do Helius webhooku (non-blocking)
+    const { syncWatchlistToWebhook } = require('./src/monitor/webhook-manager');
+    syncWatchlistToWebhook().catch(e => console.error('[monitor] webhook sync after user add failed:', e.message));
   } catch (e) {
     res.status(500).json({ error: 'Failed to add', detail: e.message });
   }
@@ -2965,6 +3200,18 @@ app.patch('/admin/ads/:id', requireStatsToken, express.json(), async (req, res) 
   }
 });
 
+// ── Live Runtime Monitoring — Helius Webhook ──────────────────────────────────
+// POST /webhook/helius — přijímá Helius enhanced transaction data
+// NGINX: /api/v2/webhook/helius → proxy_pass http://127.0.0.1:3402/ stripuje prefix
+// Helius webhook URL: https://intmolt.org/api/v2/webhook/helius
+app.post('/webhook/helius', express.json({ limit: '1mb' }), verifyWebhookAuth, handleHeliusWebhook);
+
+// ── Admin Monitor Status ───────────────────────────────────────────────────────
+// GET /api/v2/monitor/status — souhrnný stav monitoringu (vyžaduje X-Admin-Key)
+// NGINX: /api/v2/monitor/status → proxy_pass http://127.0.0.1:3402/monitor/status
+const { requireAdminKey, handleMonitorStatus } = require('./src/monitor/status');
+app.get('/monitor/status', requireAdminKey, handleMonitorStatus);
+
 // ── Error monitoring ───────────────────────────────────────────────────────────
 const ADMIN_TELEGRAM_CHAT = process.env.ADMIN_TELEGRAM_CHAT || null;
 
@@ -2993,6 +3240,11 @@ db.initSchema()
 
       // Weekly digest — každou neděli v 8:00 UTC
       scheduleWeeklyDigest();
+
+      // Live Runtime Monitoring — inicializace Helius webhooku po startu DB
+      setTimeout(() => {
+        initMonitor().catch(e => console.error('[monitor] Init error:', e.message));
+      }, 5_000);
     });
   })
   .catch(e => {
