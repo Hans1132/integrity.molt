@@ -1,0 +1,109 @@
+{
+  "status": "complete",
+  "type": "token",
+  "token": "Xk7mR4nBsT9pQvLwYfDcUaHjNeGoZiPbEuMxCvAkFr2",
+  "name": "SolSwap Token",
+  "symbol": "SSWP",
+  "risk_score": 87,
+  "risk_level": "critical",
+  "summary": "CRITICAL RISK: SolSwap Token (SSWP) scored 87/100 — mint authority active, 94% holder concentration in 3 wallets, no liquidity lock, deployer funded 48h ago.",
+  "scan_version": "2.0",
+  "scanned_at": "2026-04-08T03:20:00Z",
+  "checks": {
+    "mint_authority": {
+      "status": "active",
+      "holder": "7xKm3nPqR9vTsW2bYfDcUaLhNjEoQg",
+      "risk": "critical",
+      "detail": "Mint authority not revoked — deployer can print unlimited tokens at any time"
+    },
+    "freeze_authority": {
+      "status": "active",
+      "holder": "7xKm3nPqR9vTsW2bYfDcUaLhNjEoQg",
+      "risk": "high",
+      "detail": "Freeze authority active — deployer can freeze any holder account"
+    },
+    "token_program": {
+      "standard": false,
+      "token22": true,
+      "extensions": ["TransferFee", "PermanentDelegate"],
+      "transfer_hook": false,
+      "permanent_delegate": true,
+      "confidential_transfer": false,
+      "non_transferable": false,
+      "risk": "critical",
+      "detail": "Token-2022 with PermanentDelegate and TransferFee extension — deployer can transfer tokens from any wallet without approval"
+    },
+    "holder_concentration": {
+      "hhi": 0.64,
+      "top_holder_pct": 61.2,
+      "top_20_pct": 97.4,
+      "top_holders": [
+        { "address": "7xKm3nP…EoQg", "pct": 61.2, "label": "Deployer" },
+        { "address": "3nYfDcU…NjEo", "pct": 19.8, "label": "Unknown" },
+        { "address": "9vTsW2b…kFr2", "pct": 13.1, "label": "Unknown" }
+      ],
+      "risk": "critical",
+      "detail": "Top 3 wallets hold 94.1% of supply — extreme rug risk"
+    },
+    "holder_ages": {
+      "fresh_wallet_count": 847,
+      "fresh_wallet_pct": 91.3,
+      "oldest_holder_days": 1.8,
+      "risk": "critical",
+      "detail": "91% of holders have wallets under 48h old — coordinated airdrop / sybil pattern"
+    },
+    "insider_cluster": {
+      "detected": true,
+      "wallets": ["7xKm3nP…EoQg", "3nYfDcU…NjEo", "9vTsW2b…kFr2", "2pQvLwY…HjNe"],
+      "common_source": "7xKm3nPqR9vTsW2bYfDcUaLhNjEoQg",
+      "risk": "critical",
+      "detail": "4 wallets funded from single source within 2h of token creation — insider cluster detected"
+    },
+    "liquidity": {
+      "pools": [
+        {
+          "dex": "raydium",
+          "poolAddress": "5zPyuTJu…cuFd",
+          "liquidity_usd": 18420,
+          "volume_h24": 142300,
+          "locked": false
+        }
+      ],
+      "total_liquidity_usd": 18420,
+      "locked_pct": 0,
+      "risk": "critical",
+      "detail": "Liquidity not locked — can be pulled at any time. Volume/liquidity ratio 7.7x indicates wash trading."
+    },
+    "metadata": {
+      "name": "SolSwap Token",
+      "symbol": "SSWP",
+      "uri": "https://arweave.net/xK7mR4nBsT9pQ",
+      "mutable": true,
+      "risk": "high",
+      "detail": "Metadata is mutable — name, symbol, and image can be changed after launch"
+    },
+    "deployer_age": {
+      "days": 1.9,
+      "risk": "critical",
+      "detail": "Deployer wallet is 46 hours old — created specifically for this launch"
+    }
+  },
+  "evidence": [
+    "Mint authority not revoked",
+    "Permanent delegate extension (Token-2022)",
+    "TransferFee extension active",
+    "94.1% supply in 3 wallets",
+    "91.3% fresh wallets (<48h)",
+    "Insider cluster: 4 wallets from same source",
+    "Liquidity not locked",
+    "Deployer wallet 46h old",
+    "Mutable metadata"
+  ],
+  "signed": {
+    "algorithm": "Ed25519",
+    "key_id": "intmolt-v2-2026",
+    "signed_at": "2026-04-08T03:20:11Z",
+    "signature": "9nPqR7vTs2bYfDcUaLhNjEoQgXiZpBuMwCvAkFrHdGsSyTeIlOmJnVzPcRb4qUwKxNtMoAlBsDeHfGiJkLp"
+  },
+  "timestamp": "2026-04-08T03:20:11Z"
+}

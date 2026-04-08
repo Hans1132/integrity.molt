@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contract Audit — VaultX Protocol | integrity.molt</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --bg-card: #0f0f18; --bg-alt: #12121e; --border: #1e1e2e;
+      --accent: #4da6ff; --accent-dim: #2a6aaa; --text: #d0d8e8; --text-dim: #6a7490;
+      --text-faint: #3a3f54; --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+      --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      --c-critical: #f85149; --c-high: #e3b341; --c-medium: #d29922; --c-low: #3fb950; --c-info: #58a6ff;
+    }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px 60px; }
+
+    header { border-bottom: 1px solid var(--border); padding: 18px 0; margin-bottom: 36px; }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .logo-text { font-family: var(--mono); font-size: 17px; font-weight: 600; color: #fff; }
+    .logo-text span { color: var(--accent); }
+    .badge-demo { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border: 1px solid #3a3f54; color: var(--text-faint); border-radius: 4px; }
+    nav a { color: var(--text-dim); font-size: 13px; margin-left: 20px; }
+
+    .summary-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px 28px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+    }
+    .summary-left h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .summary-left .repo-url { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+    .summary-left .meta-line { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+    .summary-right { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stat-pill { display: flex; flex-direction: column; align-items: center; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; min-width: 68px; }
+    .stat-pill .val { font-size: 24px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+    .stat-pill .lbl { font-size: 10px; font-family: var(--mono); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
+    .stat-pill.critical .val { color: var(--c-critical); }
+    .stat-pill.high .val    { color: var(--c-high); }
+    .stat-pill.medium .val  { color: var(--c-medium); }
+    .stat-pill.low .val     { color: var(--c-low); }
+
+    .pipeline-bar {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 20px; margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    }
+    .pipe-stat { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+    .pipe-stat strong { color: var(--text); }
+    .pipe-sep { color: var(--border); }
+
+    .findings-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .findings-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .findings-header h3 { font-size: 14px; font-weight: 600; color: #fff; }
+
+    .finding-item { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .finding-item:last-child { border-bottom: none; }
+    .finding-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+    .sev-badge { flex-shrink: 0; font-size: 10px; font-family: var(--mono); font-weight: 700; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; margin-top: 3px; }
+    .sev-critical { background: rgba(248,81,73,.15); color: var(--c-critical); border: 1px solid rgba(248,81,73,.3); }
+    .sev-high     { background: rgba(227,179,65,.12); color: var(--c-high);     border: 1px solid rgba(227,179,65,.3); }
+    .sev-medium   { background: rgba(210,153,34,.12); color: var(--c-medium);   border: 1px solid rgba(210,153,34,.3); }
+    .sev-low      { background: rgba(63,185,80,.12);  color: var(--c-low);      border: 1px solid rgba(63,185,80,.3);  }
+    .finding-title { font-size: 14px; color: var(--text); font-weight: 500; flex: 1; line-height: 1.4; }
+    .finding-meta { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--mono); font-size: 11px; color: var(--text-faint); margin-bottom: 8px; }
+    .finding-file { color: var(--accent-dim); }
+    .finding-immunefi { color: var(--c-high); font-weight: 600; }
+    .finding-notes { font-size: 12px; color: var(--text-dim); padding: 8px 12px; background: var(--bg-alt); border-radius: 4px; border-left: 2px solid var(--border); margin-bottom: 8px; }
+    .finding-attack { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+    .finding-code { font-family: var(--mono); font-size: 11px; color: var(--text-dim); padding: 10px 14px; background: var(--bg-alt); border-radius: 4px; white-space: pre; overflow-x: auto; border: 1px solid var(--border); line-height: 1.5; }
+
+    .sig-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; font-size: 12px; color: var(--text-dim); margin-bottom: 20px; }
+    .sig-box code { font-family: var(--mono); font-size: 11px; word-break: break-all; }
+
+    .cta-box { background: linear-gradient(135deg, rgba(77,166,255,.08), rgba(77,166,255,.03)); border: 1px solid var(--accent-dim); border-radius: 12px; padding: 28px; text-align: center; margin-top: 32px; }
+    .cta-box h3 { color: #fff; font-size: 17px; margin-bottom: 8px; }
+    .cta-box p { color: var(--text-dim); font-size: 14px; margin-bottom: 20px; }
+    .btn-cta { display: inline-block; padding: 11px 28px; background: var(--accent); color: #0a0a0f; font-weight: 700; font-family: var(--mono); font-size: 13px; border-radius: 6px; text-decoration: none; }
+    .btn-cta:hover { background: #66b5ff; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px">
+        <a href="/" style="text-decoration:none"><div class="logo-text">integrity<span>.</span>molt</div></a>
+        <span class="badge-demo">DEMO RESULT</span>
+      </div>
+      <nav>
+        <a href="/scan-contract">Run Your Audit →</a>
+        <a href="/">Home</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Summary -->
+  <div class="summary-card">
+    <div class="summary-left">
+      <h2>VaultX Protocol</h2>
+      <div class="repo-url">github.com/example-protocol/vaults</div>
+      <div class="meta-line">Language: Solana/Rust &nbsp;·&nbsp; Scan time: 287s &nbsp;·&nbsp; Pipeline: cargo-audit · clippy · semgrep · LLM</div>
+    </div>
+    <div class="summary-right">
+      <div class="stat-pill critical"><span class="val">1</span><span class="lbl">Critical</span></div>
+      <div class="stat-pill high"><span class="val">2</span><span class="lbl">High</span></div>
+      <div class="stat-pill medium"><span class="val">2</span><span class="lbl">Medium</span></div>
+      <div class="stat-pill low"><span class="val">0</span><span class="lbl">Low</span></div>
+    </div>
+  </div>
+
+  <!-- Pipeline stats -->
+  <div class="pipeline-bar">
+    <span class="pipe-stat">cargo-audit CVEs: <strong>3</strong></span>
+    <span class="pipe-sep">·</span>
+    <span class="pipe-stat">clippy warnings: <strong>11</strong></span>
+    <span class="pipe-sep">·</span>
+    <span class="pipe-stat">semgrep raw: <strong>47</strong></span>
+    <span class="pipe-sep">·</span>
+    <span class="pipe-stat">LLM verified: <strong>5</strong></span>
+    <span class="pipe-sep">·</span>
+    <span class="pipe-stat">total findings: <strong>5</strong></span>
+  </div>
+
+  <!-- Findings -->
+  <div class="findings-wrap">
+    <div class="findings-header">
+      <h3>Findings (5)</h3>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--text-faint)">sorted by severity</span>
+    </div>
+
+    <!-- CRITICAL -->
+    <div class="finding-item">
+      <div class="finding-top">
+        <span class="sev-badge sev-critical">critical</span>
+        <span class="finding-title">Missing signer check on vault authority — any account can drain vault funds</span>
+      </div>
+      <div class="finding-meta">
+        <span class="finding-file">programs/vaults/src/instructions/withdraw.rs:84</span>
+        <span>confidence: 9/10</span>
+        <span class="finding-immunefi">Immunefi: Direct theft of funds</span>
+        <span>tool: grep-phase0</span>
+      </div>
+      <div class="finding-notes">Confirmed critical. The account constraint is missing <code>Signer&lt;'info&gt;</code> type or <code>#[account(signer)]</code>. The <code>require!</code> check only validates the pubkey matches — not that the transaction was signed by that key. This is a classic Anchor signer check vulnerability that would allow complete fund drainage.</div>
+      <div class="finding-attack" style="font-size:12px;color:var(--text-dim)"><strong style="color:var(--text-faint)">Attack path:</strong> Attacker calls withdraw() with an arbitrary authority account that is not a signer. The ix macro does not enforce <code>#[account(signer)]</code> on vault_authority, so any pubkey can be passed. Attacker drains entire vault balance in a single transaction.</div>
+      <div class="finding-code">pub fn withdraw(ctx: Context&lt;Withdraw&gt;, amount: u64) -&gt; Result&lt;()&gt; {
+    let vault = &amp;ctx.accounts.vault;
+    // BUG: vault_authority is not validated as signer
+    require!(ctx.accounts.vault_authority.key() == vault.authority, VaultError::Unauthorized);
+    // transfer proceeds without signer verification
+    transfer_lamports(&amp;ctx.accounts.vault, &amp;ctx.accounts.recipient, amount)?;
+    Ok(())
+}</div>
+    </div>
+
+    <!-- HIGH 1 -->
+    <div class="finding-item">
+      <div class="finding-top">
+        <span class="sev-badge sev-high">high</span>
+        <span class="finding-title">Integer overflow in reward calculation — unchecked multiplication on u64</span>
+      </div>
+      <div class="finding-meta">
+        <span class="finding-file">programs/vaults/src/state/rewards.rs:142</span>
+        <span>confidence: 8/10</span>
+        <span class="finding-immunefi">Immunefi: Theft of unclaimed yield</span>
+        <span>tool: semgrep</span>
+      </div>
+      <div class="finding-notes">High confidence. Should use <code>checked_mul()</code> or <code>saturating_mul()</code>. The overflow causes reward underpayment — attacker can craft stake amounts to manipulate reward accounting and drain the reward pool over time.</div>
+      <div class="finding-code">fn calculate_rewards(stake_amount: u64, reward_rate: u64, elapsed: u64) -&gt; u64 {
+    // UNSAFE: can overflow for large stake_amount
+    stake_amount * reward_rate * elapsed / PRECISION
+}</div>
+    </div>
+
+    <!-- HIGH 2 (CVE) -->
+    <div class="finding-item">
+      <div class="finding-top">
+        <span class="sev-badge sev-high">high</span>
+        <span class="finding-title">CVE-2024-43370 in curve25519-dalek 3.x — timing side-channel in scalar multiplication</span>
+      </div>
+      <div class="finding-meta">
+        <span class="finding-file">Cargo.lock</span>
+        <span>confidence: 10/10</span>
+        <span class="finding-immunefi">Immunefi: Key extraction via timing attack</span>
+        <span>tool: cargo-audit · RUSTSEC-2024-0344</span>
+      </div>
+      <div class="finding-notes">Definite CVE. Upgrade curve25519-dalek to 4.1.3 or pin solana-program to ≥1.18.x which pulls in the fixed version. CVSS 7.4 (High).</div>
+      <div class="finding-code">[[package]]
+name = "curve25519-dalek"
+version = "3.2.0"  # VULNERABLE — upgrade to 4.1.3+</div>
+    </div>
+
+    <!-- MEDIUM 1 -->
+    <div class="finding-item">
+      <div class="finding-top">
+        <span class="sev-badge sev-medium">medium</span>
+        <span class="finding-title">PDA derivation uses user-controlled seed without domain separation</span>
+      </div>
+      <div class="finding-meta">
+        <span class="finding-file">programs/vaults/src/instructions/create_vault.rs:37</span>
+        <span>confidence: 7/10</span>
+        <span>Immunefi: Account confusion / unauthorized access</span>
+        <span>tool: semgrep</span>
+      </div>
+      <div class="finding-attack" style="font-size:12px;color:var(--text-dim)"><strong style="color:var(--text-faint)">Attack path:</strong> If vault_id is user-controlled, a malicious user can craft a vault_id that collides with another user's PDA and overwrite their account state on initialization.</div>
+      <div class="finding-code">let (vault_pda, bump) = Pubkey::find_program_address(
+    &amp;[b"vault", ctx.accounts.user.key().as_ref(), &amp;vault_id.to_le_bytes()],
+    ctx.program_id,
+);</div>
+    </div>
+
+    <!-- MEDIUM 2 -->
+    <div class="finding-item">
+      <div class="finding-top">
+        <span class="sev-badge sev-medium">medium</span>
+        <span class="finding-title">GitHub Actions CI/CD secret exposure via unsanitized github.event context</span>
+      </div>
+      <div class="finding-meta">
+        <span class="finding-file">.github/workflows/deploy.yml:23</span>
+        <span>confidence: 8/10</span>
+        <span>Immunefi: None (CI/CD scope)</span>
+        <span>tool: semgrep</span>
+      </div>
+      <div class="finding-notes">Confirmed. Use an intermediate env var and restrict workflow trigger to protected branches only. The secrets would allow deploying a malicious program upgrade.</div>
+      <div class="finding-code">- name: Deploy program
+  run: |
+    anchor deploy --program-name ${{ github.event.inputs.program }} \
+      --provider.cluster $CLUSTER
+  env:
+    DEPLOY_KEYPAIR: ${{ secrets.DEPLOY_KEYPAIR }}</div>
+    </div>
+  </div>
+
+  <!-- Signature -->
+  <div class="sig-box">
+    Report signed with <strong>Ed25519</strong> &nbsp;·&nbsp;
+    pub_key: <code>4mXzK9nPqR7vTs2bYfDcU…</code> &nbsp;·&nbsp;
+    generated: <code>2026-04-08T03:15:42Z</code> &nbsp;·&nbsp;
+    <a href="/verify.html">Verify integrity →</a>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-box">
+    <h3>Audit Your Solana Contract</h3>
+    <p>Supply a GitHub URL. We run cargo-audit, semgrep, and LLM verification — results in minutes, signed report included.</p>
+    <a href="/scan-contract" class="btn-cta">Run Contract Audit — 5.00 USDC →</a>
+    <p style="margin-top:12px;font-size:12px;color:var(--text-faint)">Builder plan ($79/mo) includes unlimited contract audits + API access</p>
+  </div>
+
+</div>
+</body>
+</html>

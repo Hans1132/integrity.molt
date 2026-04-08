@@ -392,7 +392,7 @@ function requirePayment(accepts, requiredMicroUsdc = 0) {
 const quickPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '1000000',
+  maxAmountRequired: '500000',
   resource: 'https://intmolt.org/api/v2/scan/quick',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo: WALLET,
@@ -419,7 +419,7 @@ const quickPaymentAccepts = [{
 const deepPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '2000000',
+  maxAmountRequired: '5000000',
   resource: 'https://intmolt.org/api/v2/scan/deep',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo: WALLET,
@@ -446,7 +446,7 @@ const deepPaymentAccepts = [{
 const tokenAuditPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '1000000',
+  maxAmountRequired: '750000',
   resource: 'https://intmolt.org/api/v2/scan/token',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo: WALLET,
@@ -473,7 +473,7 @@ const tokenAuditPaymentAccepts = [{
 const walletProfilePaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '1000000',
+  maxAmountRequired: '500000',
   resource: 'https://intmolt.org/api/v2/scan/wallet',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo: WALLET,
@@ -500,7 +500,7 @@ const walletProfilePaymentAccepts = [{
 const poolScanPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '1000000',
+  maxAmountRequired: '500000',
   resource: 'https://intmolt.org/api/v2/scan/pool',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo: WALLET,
@@ -527,7 +527,7 @@ const poolScanPaymentAccepts = [{
 const evmTokenPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '1000000',
+  maxAmountRequired: '750000',
   resource: 'https://intmolt.org/api/v2/scan/evm-token',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo: WALLET,
@@ -543,7 +543,7 @@ const evmTokenPaymentAccepts = [{
 const evmScanPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '150000',
+  maxAmountRequired: '750000',
   resource: 'https://intmolt.org/api/v2/scan/evm',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo: WALLET,
@@ -594,7 +594,7 @@ const contractAuditPaymentAccepts = [{
 const tokenSecurityAuditPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '150000',
+  maxAmountRequired: '500000',
   resource: 'https://intmolt.org/api/v1/scan/token-audit',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo: WALLET,
@@ -662,46 +662,62 @@ app.get('/services', (req, res) => {
     services: [
       {
         endpoint: 'POST /scan/quick',
-        price: '0.10 USDC',
+        price: '0.50 USDC',
         description: 'Quick on-chain scan of a Solana address - account info, balance, basic risk assessment'
       },
       {
         endpoint: 'POST /scan/deep',
-        price: '2.00 USDC',
+        price: '5.00 USDC',
         description: 'Comprehensive security audit - full code review, vulnerability assessment, detailed report'
       },
       {
         endpoint: 'POST /scan/token',
-        price: '0.25 USDC',
+        price: '0.75 USDC',
         description: 'Token launch audit - mint authority status, freeze authority status, top-10 holder distribution, supply analysis, rug risk rating'
       },
       {
         endpoint: 'POST /scan/wallet',
-        price: '0.15 USDC',
+        price: '0.50 USDC',
         description: 'Wallet profiling - age estimate, activity level, DeFi exposure, risk classification (fresh wallet / whale / dormant / normal)'
       },
       {
         endpoint: 'POST /scan/pool',
-        price: '0.25 USDC',
+        price: '0.50 USDC',
         description: 'DeFi pool safety scan - liquidity depth, LP token distribution, Raydium/Orca/Meteora pool analysis, withdrawal risk'
       },
       {
         endpoint: 'POST /scan/contract',
         price: '5.00 USDC',
         description: 'Contract Audit — static analysis (cargo-audit CVEs, clippy, semgrep) + LLM-verified findings with Immunefi impact mapping. Input: GitHub URL of a Solana/Rust project.'
+      },
+      {
+        endpoint: 'GET /api/v1/delta/:address',
+        price: '1.00 USDC',
+        description: 'Signed delta report — cryptographically signed diff between two security scans'
+      },
+      {
+        endpoint: 'POST /api/v1/adversarial/simulate',
+        price: '10.00 USDC',
+        description: 'Adversarial simulation — forks on-chain state and probes exploit paths with 7 attack playbooks'
       }
     ],
     subscription: [
       {
+        tier: 'pro_trader',
+        price: '$15/month',
+        description: '20 watchlist addresses, all alerts, Telegram + email notifications, weekly delta report, unlimited scans, signed reports',
+        url: 'https://intmolt.org/subscribe/pro_trader'
+      },
+      {
         tier: 'builder',
-        price: '$79/month',
-        description: 'Unlimited quick scans, 20 deep audits/month, API access, CI/CD integration, watchlist 10 addresses',
+        price: '$49/month',
+        description: '100 watchlist addresses, all alerts + webhook, daily delta report, 1 adversarial sim/mo, API access (100 req/min), signed JSON reports, priority queue',
         url: 'https://intmolt.org/subscribe/builder'
       },
       {
         tier: 'team',
         price: '$299/month',
-        description: 'Unlimited all scan types, priority queue, Slack/Discord/Telegram alerts, watchlist 100 addresses, dashboard',
+        description: '500 watchlist addresses, custom alert rules, unlimited adversarial sim, API (1000 req/min), SLA 99.5%, priority support',
         url: 'https://intmolt.org/subscribe/team'
       }
     ],
@@ -742,8 +758,8 @@ app.get('/stats', (req, res) => {
   }
 });
 
-// Quick Scan - paid endpoint (1.00 USDC = 1000000 micro-USDC)
-app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quickPaymentAccepts, 1000000), express.json(), async (req, res) => {
+// Quick Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
+app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quickPaymentAccepts, 500000), express.json(), async (req, res) => {
   const address = req.body.address || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -771,9 +787,9 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
   }
 });
 
-// Deep Audit - paid endpoint (2.00 USDC = 2000000 micro-USDC)
+// Deep Audit - paid endpoint (5.00 USDC = 5000000 micro-USDC)
 // Volá multi-agent swarm orchestrator (scanner → analyst → reputation → meta-scorecard)
-app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPaymentAccepts, 2000000), express.json(), async (req, res) => {
+app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPaymentAccepts, 5000000), express.json(), async (req, res) => {
   const address = req.body.address || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -827,8 +843,8 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPa
   }
 });
 
-// Token Audit - paid endpoint (1.00 USDC = 1000000 micro-USDC)
-app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(tokenAuditPaymentAccepts, 1000000), express.json(), async (req, res) => {
+// Token Audit - paid endpoint (0.75 USDC = 750000 micro-USDC)
+app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(tokenAuditPaymentAccepts, 750000), express.json(), async (req, res) => {
   const address = req.body.address || req.body.mint || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -873,8 +889,8 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
   }
 });
 
-// Wallet Deep Scan - paid endpoint (1.00 USDC = 1000000 micro-USDC)
-app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(walletProfilePaymentAccepts, 1000000), express.json(), async (req, res) => {
+// Wallet Deep Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
+app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(walletProfilePaymentAccepts, 500000), express.json(), async (req, res) => {
   const address = req.body.address || req.body.wallet || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -917,8 +933,8 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(wa
   }
 });
 
-// Pool Deep Scan - paid endpoint (1.00 USDC = 1000000 micro-USDC)
-app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolScanPaymentAccepts, 1000000), express.json(), async (req, res) => {
+// Pool Deep Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
+app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolScanPaymentAccepts, 500000), express.json(), async (req, res) => {
   const address = req.body.address || req.body.pool || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -961,8 +977,8 @@ app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolSc
   }
 });
 
-// EVM Token Risk Scan - paid endpoint (1.00 USDC = 1000000 micro-USDC)
-app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePayment(evmTokenPaymentAccepts, 1000000), express.json(), async (req, res) => {
+// EVM Token Risk Scan - paid endpoint (0.75 USDC = 750000 micro-USDC)
+app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePayment(evmTokenPaymentAccepts, 750000), express.json(), async (req, res) => {
   const address = (req.body?.address || '').trim();
   const chain   = (req.body?.chain   || 'ethereum').trim().toLowerCase();
 
@@ -1041,7 +1057,7 @@ app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePaym
   });
 });
 
-// ── GET /scan/evm/:address — EVM scan (0.15 USDC, x402) ──────────────────────
+// ── GET /scan/evm/:address — EVM scan (0.75 USDC, x402) ──────────────────────
 // Alias pro /api/v2/scan/evm/:address — address v URL, chain v ?chain= query param
 // Příklad: GET /api/v2/scan/evm/0xdAC17F958D2ee523a2206206994597C13D831ec7?chain=ethereum
 // Etherscan v2 — jeden klíč pro všechny chainy
@@ -1056,7 +1072,7 @@ function evmPreValidate(req, res, next) {
     return res.status(400).json({ error: `API key not configured for ${chain}`, hint: 'Set ETHERSCAN_API_KEY in server .env' });
   next();
 }
-app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireApiKey, requirePayment(evmScanPaymentAccepts, 150000), async (req, res) => {
+app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireApiKey, requirePayment(evmScanPaymentAccepts, 750000), async (req, res) => {
   const address = (req.params.address || '').trim();
   const chain   = (req.query.chain    || 'ethereum').trim().toLowerCase();
 
@@ -1187,14 +1203,14 @@ app.post('/scan/contract', trackFunnel('contract'), requireApiKey, requirePaymen
   }
 });
 
-// ── Token Security Audit — paid endpoint (0.15 USDC = 150000 micro-USDC) ──────
+// ── Token Security Audit — paid endpoint (0.50 USDC = 500000 micro-USDC) ──────
 // POST /api/v1/scan/token-audit
 // Body: { token_mint, token_name?, callback_url? }
 app.post(
   '/api/v1/scan/token-audit',
   trackFunnel('token-security-audit'),
   requireApiKey,
-  requirePayment(tokenSecurityAuditPaymentAccepts, 150000),
+  requirePayment(tokenSecurityAuditPaymentAccepts, 500000),
   express.json(),
   async (req, res) => {
     const { token_mint, token_name, callback_url } = req.body || {};
@@ -1350,9 +1366,9 @@ app.get('/api/v1/token-audit/showcase', (req, res) => {
   const showcase = getShowcaseReport();
   res.json({
     status:  'showcase',
-    message: 'This is a pre-computed example Token Security Audit report. Run a live audit for any Molt.id token via POST /api/v1/scan/token-audit (0.15 USDC via x402).',
+    message: 'This is a pre-computed example Token Security Audit report. Run a live audit for any Molt.id token via POST /api/v1/scan/token-audit (0.50 USDC via x402).',
     pricing: {
-      price:    '0.15 USDC',
+      price:    '0.50 USDC',
       method:   'x402 micropayment or Bearer API key',
       endpoint: 'POST /api/v1/scan/token-audit',
       body:     '{ "token_mint": "<mint_address>", "token_name": "<optional>" }'
@@ -1374,12 +1390,12 @@ app.get('/api/v1/token-audit/showcase', (req, res) => {
 
 // ── Adversarial Simulation ─────────────────────────────────────────────────────
 // GET  /api/v1/adversarial/playbooks          — list all playbooks (free)
-// POST /api/v1/adversarial/simulate           — run simulation (paid, 2.00 USDC)
+// POST /api/v1/adversarial/simulate           — run simulation (paid, 10.00 USDC)
 
 const adversarialPaymentAccepts = [{
   scheme:            'exact',
   network:           'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '2000000',
+  maxAmountRequired: '10000000',
   resource:          'https://intmolt.org/api/v1/adversarial/simulate',
   asset:             'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo:             WALLET,
@@ -1440,7 +1456,7 @@ app.post(
   '/api/v1/adversarial/simulate',
   trackFunnel('adversarial'),
   requireApiKey,
-  requirePayment(adversarialPaymentAccepts, 2000000),
+  requirePayment(adversarialPaymentAccepts, 10000000),
   express.json(),
   async (req, res) => {
     const { program_id, playbook_ids, skip_fork } = req.body || {};
@@ -1490,7 +1506,7 @@ app.post(
 const deltaPaymentAccepts = [{
   scheme:           'exact',
   network:          'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired:'150000',
+  maxAmountRequired:'1000000',
   resource:         'https://intmolt.org/api/v1/delta',
   asset:            'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   payTo:            WALLET,
@@ -1539,7 +1555,7 @@ app.get('/api/v1/history/:address', async (req, res) => {
 app.get(
   '/api/v1/delta/:address',
   requireApiKey,
-  requirePayment(deltaPaymentAccepts, 150000),
+  requirePayment(deltaPaymentAccepts, 1000000),
   async (req, res) => {
     const raw = (req.params.address || '').trim();
     const safeAddress = raw.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
@@ -1598,7 +1614,7 @@ app.get(
 app.get(
   '/api/v1/delta/:address/:ts1/:ts2',
   requireApiKey,
-  requirePayment(deltaPaymentAccepts, 150000),
+  requirePayment(deltaPaymentAccepts, 1000000),
   async (req, res) => {
     const raw = (req.params.address || '').trim();
     const safeAddress = raw.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
@@ -1689,12 +1705,12 @@ app.get('/watchlist', async (req, res) => {
 // ── Stripe Per-Scan Checkout ──────────────────────────────────────────────────
 
 const SCAN_PRICES_USD = {
-  quick:       1.00,
-  deep:        2.00,
-  token:       1.00,
-  wallet:      1.00,
-  pool:        1.00,
-  'evm-token': 1.00,
+  quick:       0.50,
+  deep:        5.00,
+  token:       0.75,
+  wallet:      0.50,
+  pool:        0.50,
+  'evm-token': 0.75,
   contract:    5.00
 };
 
@@ -2164,8 +2180,8 @@ footer{border-top:1px solid #1e1e2e;margin-top:60px;padding:24px 0;text-align:ce
 ${reportHtml}
 
 ${!isError ? (result.type === 'deep'
-  ? `<div class="upsell"><strong>Deep Audit complete.</strong> Subscribe to <a href="/#plans">Builder ($79/mo)</a> for unlimited deep audits, API access, and watchlist monitoring.</div>`
-  : `<div class="upsell"><strong>Quick Scan</strong> — This was a basic on-chain check. Upgrade to <strong>Deep Audit ($2.00)</strong> for full AI vulnerability analysis, insider cluster detection, and wash trading signals. Or subscribe to <a href="/#plans">Builder ($79/mo)</a> for unlimited access.</div>`)
+  ? `<div class="upsell"><strong>Deep Audit complete.</strong> Subscribe to <a href="/#plans">Builder ($49/mo)</a> for unlimited deep audits, API access, and watchlist monitoring.</div>`
+  : `<div class="upsell"><strong>Quick Scan</strong> — This was a basic on-chain check. Upgrade to <strong>Deep Audit ($5.00)</strong> for full AI vulnerability analysis, insider cluster detection, and wash trading signals. Or subscribe to <a href="/#plans">Pro Trader ($15/mo)</a> for unlimited access.</div>`)
 : ''}
 
 ${result.reportFiles ? `<div style="margin:20px 0;padding:20px 24px;background:#0f0f18;border:1px solid #1e2e40;border-radius:10px">
@@ -2184,7 +2200,7 @@ ${result.reportFiles ? `<div style="margin:20px 0;padding:20px 24px;background:#
 
 <div class="actions">
   <a href="/scan" class="btn">← New Scan</a>
-  <a href="/scan?address=${escapeHtml(result.address)}&type=deep" class="btn-ghost btn">Deep Audit ($2.00)</a>
+  <a href="/scan?address=${escapeHtml(result.address)}&type=deep" class="btn-ghost btn">Deep Audit ($5.00)</a>
   <a href="/verify.html" class="btn-ghost btn">Verify Report</a>
 </div>
 
@@ -2211,15 +2227,16 @@ app.get('/report/download', (req, res) => {
 // ── Stripe Subscription ────────────────────────────────────────────────────────
 
 const STRIPE_PRICE_IDS = {
-  builder: process.env.STRIPE_PRICE_BUILDER,
-  team:    process.env.STRIPE_PRICE_TEAM
+  pro_trader: process.env.STRIPE_PRICE_PRO_TRADER,
+  builder:    process.env.STRIPE_PRICE_BUILDER,
+  team:       process.env.STRIPE_PRICE_TEAM
 };
 
 // POST /subscribe/:tier — vytvoří Stripe Checkout session a přesměruje
 app.post('/subscribe/:tier', express.json(), async (req, res) => {
   const tier = req.params.tier;
-  if (!['builder', 'team'].includes(tier)) {
-    return res.status(400).json({ error: `Unknown tier: ${tier}. Use 'builder' or 'team'.` });
+  if (!['pro_trader', 'builder', 'team'].includes(tier)) {
+    return res.status(400).json({ error: `Unknown tier: ${tier}. Use 'pro_trader', 'builder' or 'team'.` });
   }
   const { email, telegram_chat_id, success_url, cancel_url } = req.body || {};
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -2545,6 +2562,9 @@ app.get('/dashboard', requireApiKey, async (req, res) => {
 
 const FREE_SCAN_LIMIT = 3;
 
+// Serve /watchlist page
+app.get('/watchlist', (req, res) => res.sendFile('/root/x402-server/public/watchlist.html'));
+
 // Serve /scan page
 app.get('/scan', (req, res) => res.sendFile('/root/x402-server/public/scan.html'));
 
@@ -2625,8 +2645,9 @@ app.post('/scan/free', express.json(), async (req, res) => {
         contract: { endpoint: '/scan/contract', price_usdc: 5.00, micro_usdc: 5000000, accepts: contractAuditPaymentAccepts }
       },
       subscription: {
-        builder: { price: '$79/mo', url: 'https://intmolt.org/subscribe/builder' },
-        team:    { price: '$299/mo', url: 'https://intmolt.org/subscribe/team'   }
+        pro_trader: { price: '$15/mo', url: 'https://intmolt.org/subscribe/pro_trader' },
+        builder:    { price: '$49/mo', url: 'https://intmolt.org/subscribe/builder' },
+        team:       { price: '$299/mo', url: 'https://intmolt.org/subscribe/team'   }
       }
     });
   }
@@ -2660,16 +2681,17 @@ app.post('/scan/free', express.json(), async (req, res) => {
   if (type === 'deep') {
     return res.status(402).json({
       error:           'payment_required',
-      message:         'Deep Audit requires payment ($2.00 USDC). Use Stripe or x402 micropayments.',
+      message:         'Deep Audit requires payment ($5.00 USDC). Use Stripe or x402 micropayments.',
       scans_used:      0,
       scans_limit:     0,
       scans_remaining: 0,
       payment_options: {
-        deep: { endpoint: '/scan/deep', price_usdc: 2.00, micro_usdc: 2000000, accepts: deepPaymentAccepts }
+        deep: { endpoint: '/scan/deep', price_usdc: 5.00, micro_usdc: 5000000, accepts: deepPaymentAccepts }
       },
       subscription: {
-        builder: { price: '$79/mo', url: 'https://intmolt.org/subscribe/builder' },
-        team:    { price: '$299/mo', url: 'https://intmolt.org/subscribe/team'   }
+        pro_trader: { price: '$15/mo', url: 'https://intmolt.org/subscribe/pro_trader' },
+        builder:    { price: '$49/mo', url: 'https://intmolt.org/subscribe/builder' },
+        team:       { price: '$299/mo', url: 'https://intmolt.org/subscribe/team'   }
       }
     });
   }
@@ -2678,24 +2700,25 @@ app.post('/scan/free', express.json(), async (req, res) => {
   const used = await db.countFreeScansToday(ip).catch(() => FREE_SCAN_LIMIT);
 
   if (used >= FREE_SCAN_LIMIT) {
-    return res.status(402).json({
+    return res.status(429).json({
       error:           'free_quota_exceeded',
-      message:         `You have used all ${FREE_SCAN_LIMIT} free scans for today. Resets at midnight UTC.`,
+      message:         `Daily free scan limit reached. Upgrade at intmolt.org/pricing`,
       scans_used:      used,
       scans_limit:     FREE_SCAN_LIMIT,
       scans_remaining: 0,
       payment_options: {
-        quick:     { endpoint: '/scan/quick',     price_usdc: 1.00, micro_usdc: 1000000, accepts: quickPaymentAccepts },
-        deep:      { endpoint: '/scan/deep',      price_usdc: 2.00, micro_usdc: 2000000, accepts: deepPaymentAccepts },
-        token:     { endpoint: '/scan/token',     price_usdc: 1.00, micro_usdc: 1000000, accepts: tokenAuditPaymentAccepts },
-        wallet:    { endpoint: '/scan/wallet',    price_usdc: 1.00, micro_usdc: 1000000, accepts: walletProfilePaymentAccepts },
-        pool:      { endpoint: '/scan/pool',      price_usdc: 1.00, micro_usdc: 1000000, accepts: poolScanPaymentAccepts },
-        'evm-token': { endpoint: '/scan/evm-token', price_usdc: 1.00, micro_usdc: 1000000, accepts: evmTokenPaymentAccepts },
-        contract:  { endpoint: '/scan/contract',  price_usdc: 5.00, micro_usdc: 5000000, accepts: contractAuditPaymentAccepts }
+        quick:     { endpoint: '/scan/quick',     price_usdc: 0.50, micro_usdc: 500000,   accepts: quickPaymentAccepts },
+        deep:      { endpoint: '/scan/deep',      price_usdc: 5.00, micro_usdc: 5000000,  accepts: deepPaymentAccepts },
+        token:     { endpoint: '/scan/token',     price_usdc: 0.75, micro_usdc: 750000,   accepts: tokenAuditPaymentAccepts },
+        wallet:    { endpoint: '/scan/wallet',    price_usdc: 0.50, micro_usdc: 500000,   accepts: walletProfilePaymentAccepts },
+        pool:      { endpoint: '/scan/pool',      price_usdc: 0.50, micro_usdc: 500000,   accepts: poolScanPaymentAccepts },
+        'evm-token': { endpoint: '/scan/evm-token', price_usdc: 0.75, micro_usdc: 750000, accepts: evmTokenPaymentAccepts },
+        contract:  { endpoint: '/scan/contract',  price_usdc: 5.00, micro_usdc: 5000000,  accepts: contractAuditPaymentAccepts }
       },
       subscription: {
-        builder: { price: '$79/mo', url: 'https://intmolt.org/subscribe/builder' },
-        team:    { price: '$299/mo', url: 'https://intmolt.org/subscribe/team'   }
+        pro_trader: { price: '$15/mo', url: 'https://intmolt.org/subscribe/pro_trader' },
+        builder:    { price: '$49/mo', url: 'https://intmolt.org/subscribe/builder' },
+        team:       { price: '$299/mo', url: 'https://intmolt.org/subscribe/team'   }
       }
     });
   }
@@ -2856,7 +2879,7 @@ app.get('/login', (req, res) => {
 // GET /subscribe/builder|team — redirects through auth if not logged in, then creates Stripe checkout
 app.get('/subscribe/:tier', async (req, res) => {
   const tier = req.params.tier;
-  if (!['builder', 'team'].includes(tier)) return res.status(400).send('Unknown tier');
+  if (!['pro_trader', 'builder', 'team'].includes(tier)) return res.status(400).send('Unknown tier');
 
   // If not authenticated, redirect to login with next= param
   if (!req.isAuthenticated || !req.isAuthenticated()) {

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Scan — SolSwap Token (SSWP) | integrity.molt</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --bg-card: #0f0f18; --bg-alt: #12121e; --border: #1e1e2e;
+      --accent: #4da6ff; --accent-dim: #2a6aaa; --text: #d0d8e8; --text-dim: #6a7490;
+      --text-faint: #3a3f54; --mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+      --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      --c-critical: #f85149; --c-high: #e3b341; --c-medium: #d29922; --c-low: #3fb950; --c-info: #58a6ff;
+    }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    .container { max-width: 860px; margin: 0 auto; padding: 0 24px 60px; }
+
+    header { border-bottom: 1px solid var(--border); padding: 18px 0; margin-bottom: 36px; }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .logo-text { font-family: var(--mono); font-size: 17px; font-weight: 600; color: #fff; }
+    .logo-text span { color: var(--accent); }
+    .badge-demo { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border: 1px solid #3a3f54; color: var(--text-faint); border-radius: 4px; }
+
+    /* Score card */
+    .score-card {
+      background: var(--bg-card); border: 2px solid rgba(248,81,73,.4); border-radius: 12px;
+      padding: 28px; margin-bottom: 20px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+    }
+    .gauge-wrap { flex-shrink: 0; }
+    .score-info h2 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .score-info .symbol { font-family: var(--mono); font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+    .score-val { font-size: 42px; font-weight: 700; font-family: var(--mono); color: var(--c-critical); line-height: 1; margin-bottom: 8px; }
+    .score-val span { font-size: 18px; color: var(--text-dim); }
+    .verdict { display: inline-block; font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 4px 12px; background: rgba(248,81,73,.15); border: 1px solid rgba(248,81,73,.4); border-radius: 4px; color: var(--c-critical); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .summary-text { font-size: 13px; color: var(--text-dim); max-width: 460px; }
+
+    /* Address bar */
+    .addr-bar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; font-family: var(--mono); font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .addr-bar strong { color: var(--text); word-break: break-all; }
+
+    /* Checks grid */
+    .checks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .check-card { background: var(--bg-card); border-radius: 10px; padding: 16px 18px; border: 1px solid var(--border); }
+    .check-card.risk-critical { border-color: rgba(248,81,73,.4); }
+    .check-card.risk-high     { border-color: rgba(227,179,65,.35); }
+    .check-card.risk-safe     { border-color: rgba(63,185,80,.25); }
+    .check-label { font-size: 11px; font-family: var(--mono); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .check-value { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .check-value.critical { color: var(--c-critical); }
+    .check-value.high     { color: var(--c-high); }
+    .check-value.safe     { color: var(--c-low); }
+    .check-detail { font-size: 12px; color: var(--text-dim); }
+
+    /* Evidence list */
+    .evidence-box { background: var(--bg-card); border: 1px solid rgba(248,81,73,.25); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; }
+    .evidence-box h3 { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 12px; }
+    .ev-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text-dim); padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .ev-item:last-child { border-bottom: none; }
+    .ev-icon { color: var(--c-critical); font-size: 12px; margin-top: 2px; flex-shrink: 0; }
+
+    /* Holders table */
+    .holders-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+    .holders-wrap h3 { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: #fff; }
+    .holder-row { display: grid; grid-template-columns: 1fr 60px 80px; padding: 8px 18px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; align-items: center; }
+    .holder-row:last-child { border-bottom: none; }
+    .holder-row.header { color: var(--text-faint); font-size: 11px; text-transform: uppercase; }
+    .holder-pct { font-weight: 700; color: var(--c-critical); }
+    .holder-bar-wrap { background: var(--bg-alt); border-radius: 2px; height: 4px; overflow: hidden; }
+    .holder-bar { background: var(--c-critical); height: 100%; border-radius: 2px; }
+
+    /* Signature */
+    .sig-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; font-size: 12px; color: var(--text-dim); margin-bottom: 20px; }
+    .sig-box code { font-family: var(--mono); font-size: 11px; word-break: break-all; }
+
+    /* CTA */
+    .cta-box { background: linear-gradient(135deg, rgba(77,166,255,.08), rgba(77,166,255,.03)); border: 1px solid var(--accent-dim); border-radius: 12px; padding: 28px; text-align: center; margin-top: 32px; }
+    .cta-box h3 { color: #fff; font-size: 17px; margin-bottom: 8px; }
+    .cta-box p { color: var(--text-dim); font-size: 14px; margin-bottom: 20px; }
+    .btn-cta { display: inline-block; padding: 11px 28px; background: var(--accent); color: #0a0a0f; font-weight: 700; font-family: var(--mono); font-size: 13px; border-radius: 6px; text-decoration: none; }
+    .btn-cta:hover { background: #66b5ff; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px">
+        <a href="/" style="text-decoration:none"><div class="logo-text">integrity<span>.</span>molt</div></a>
+        <span class="badge-demo">DEMO RESULT</span>
+      </div>
+      <nav style="display:flex;gap:20px">
+        <a href="/scan" style="color:var(--text-dim);font-size:13px">Run Your Scan →</a>
+        <a href="/" style="color:var(--text-dim);font-size:13px">Home</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Score card -->
+  <div class="score-card">
+    <div class="gauge-wrap">
+      <svg width="110" height="110" viewBox="0 0 110 110">
+        <circle cx="55" cy="55" r="44" fill="none" stroke="#1e1e2e" stroke-width="10"/>
+        <circle cx="55" cy="55" r="44" fill="none" stroke="#f85149" stroke-width="10"
+          stroke-dasharray="241 38" stroke-dashoffset="69"
+          stroke-linecap="round" transform="rotate(-90 55 55)"/>
+        <text x="55" y="61" text-anchor="middle" font-size="22" font-weight="700"
+          font-family="monospace" fill="#f85149">87</text>
+      </svg>
+    </div>
+    <div class="score-info">
+      <h2>SolSwap Token</h2>
+      <div class="symbol">SSWP &nbsp;·&nbsp; Token-2022 &nbsp;·&nbsp; Solana Mainnet</div>
+      <div class="score-val">87<span> / 100</span></div>
+      <div class="verdict">Critical Risk</div>
+      <div class="summary-text">Mint authority active, freeze authority active, PermanentDelegate extension, 94% supply in 3 wallets, 91% fresh wallets, deployer 46h old. Do not buy.</div>
+    </div>
+  </div>
+
+  <!-- Address -->
+  <div class="addr-bar">
+    <span>Token mint:</span>
+    <strong>Xk7mR4nBsT9pQvLwYfDcUaHjNeGoZiPbEuMxCvAkFr2</strong>
+    <span style="color:var(--text-faint)">·</span>
+    <span>Scanned: 2026-04-08 03:20 UTC</span>
+  </div>
+
+  <!-- Risk checks grid -->
+  <div class="checks-grid">
+    <div class="check-card risk-critical">
+      <div class="check-label">Mint Authority</div>
+      <div class="check-value critical">Active — not revoked</div>
+      <div class="check-detail">Deployer can print unlimited tokens at any time</div>
+    </div>
+    <div class="check-card risk-critical">
+      <div class="check-label">Freeze Authority</div>
+      <div class="check-value critical">Active — not revoked</div>
+      <div class="check-detail">Deployer can freeze any holder account</div>
+    </div>
+    <div class="check-card risk-critical">
+      <div class="check-label">Token-2022 Extensions</div>
+      <div class="check-value critical">PermanentDelegate + TransferFee</div>
+      <div class="check-detail">Deployer can transfer tokens from any wallet without approval</div>
+    </div>
+    <div class="check-card risk-critical">
+      <div class="check-label">Holder Concentration</div>
+      <div class="check-value critical">94.1% in top 3 wallets</div>
+      <div class="check-detail">Extreme rug risk — coordinated dump possible at any time</div>
+    </div>
+    <div class="check-card risk-critical">
+      <div class="check-label">Fresh Wallet Activity</div>
+      <div class="check-value critical">91.3% wallets &lt;48h old</div>
+      <div class="check-detail">Coordinated airdrop / sybil pattern — artificial holder count</div>
+    </div>
+    <div class="check-card risk-critical">
+      <div class="check-label">Insider Cluster</div>
+      <div class="check-value critical">4 wallets, 1 funding source</div>
+      <div class="check-detail">4 wallets funded from same source within 2h of token creation</div>
+    </div>
+    <div class="check-card risk-critical">
+      <div class="check-label">Liquidity Lock</div>
+      <div class="check-value critical">Not locked (0%)</div>
+      <div class="check-detail">$18,420 liquidity can be pulled at any time</div>
+    </div>
+    <div class="check-card risk-high">
+      <div class="check-label">Metadata</div>
+      <div class="check-value high">Mutable</div>
+      <div class="check-detail">Name, symbol and image can be changed after launch</div>
+    </div>
+    <div class="check-card risk-critical">
+      <div class="check-label">Deployer Age</div>
+      <div class="check-value critical">46 hours old</div>
+      <div class="check-detail">Wallet created specifically for this token launch</div>
+    </div>
+  </div>
+
+  <!-- Evidence list -->
+  <div class="evidence-box">
+    <h3>Risk Evidence (9 signals)</h3>
+    <div class="ev-item"><span class="ev-icon">⚠</span>Mint authority not revoked</div>
+    <div class="ev-item"><span class="ev-icon">⚠</span>Permanent delegate extension (Token-2022) — deployer controls all transfers</div>
+    <div class="ev-item"><span class="ev-icon">⚠</span>TransferFee extension active</div>
+    <div class="ev-item"><span class="ev-icon">⚠</span>94.1% of supply held by 3 wallets</div>
+    <div class="ev-item"><span class="ev-icon">⚠</span>91.3% of holders have wallets under 48h old</div>
+    <div class="ev-item"><span class="ev-icon">⚠</span>Insider cluster detected — 4 wallets from same funding source</div>
+    <div class="ev-item"><span class="ev-icon">⚠</span>Liquidity not locked — $18,420 can be pulled instantly</div>
+    <div class="ev-item"><span class="ev-icon">⚠</span>Volume/liquidity ratio 7.7x — wash trading pattern</div>
+    <div class="ev-item"><span class="ev-icon">⚠</span>Deployer wallet 46 hours old</div>
+  </div>
+
+  <!-- Top holders -->
+  <div class="holders-wrap">
+    <h3>Top Holders</h3>
+    <div class="holder-row header">
+      <span>Wallet</span><span>%</span><span>Distribution</span>
+    </div>
+    <div class="holder-row">
+      <span style="color:var(--c-critical)">7xKm3nP…EoQg <span style="color:var(--text-faint)">(Deployer)</span></span>
+      <span class="holder-pct">61.2%</span>
+      <div class="holder-bar-wrap"><div class="holder-bar" style="width:61.2%"></div></div>
+    </div>
+    <div class="holder-row">
+      <span>3nYfDcU…NjEo</span>
+      <span class="holder-pct">19.8%</span>
+      <div class="holder-bar-wrap"><div class="holder-bar" style="width:19.8%"></div></div>
+    </div>
+    <div class="holder-row">
+      <span>9vTsW2b…kFr2</span>
+      <span class="holder-pct">13.1%</span>
+      <div class="holder-bar-wrap"><div class="holder-bar" style="width:13.1%"></div></div>
+    </div>
+    <div class="holder-row">
+      <span style="color:var(--text-faint)">All other holders</span>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">5.9%</span>
+      <div class="holder-bar-wrap"><div class="holder-bar" style="width:5.9%;background:var(--text-faint)"></div></div>
+    </div>
+  </div>
+
+  <!-- Signature -->
+  <div class="sig-box">
+    Report signed with <strong>Ed25519</strong> &nbsp;·&nbsp;
+    key_id: <code>intmolt-v2-2026</code> &nbsp;·&nbsp;
+    signed_at: <code>2026-04-08T03:20:11Z</code> &nbsp;·&nbsp;
+    <a href="/verify.html">Verify integrity →</a>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-box">
+    <h3>Check Any Solana Token Before You Buy</h3>
+    <p>Mint authority, freeze authority, Token-2022 extensions, holder concentration, insider clusters — all in one signed report.</p>
+    <a href="/scan?type=token" class="btn-cta">Scan a Token — free →</a>
+    <p style="margin-top:12px;font-size:12px;color:var(--text-faint)">Free quick scan · deeper audit from 1.00 USDC · Ed25519-signed reports</p>
+  </div>
+
+</div>
+</body>
+</html>

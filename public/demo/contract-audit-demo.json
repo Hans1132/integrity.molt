@@ -1,0 +1,98 @@
+{
+  "status": "complete",
+  "tier": "contract-audit",
+  "github_url": "https://github.com/example-protocol/vaults",
+  "project_name": "VaultX Protocol",
+  "language": "solana",
+  "pipeline": ["cargo-audit", "cargo-clippy", "grep-solana-phase0", "semgrep", "grep-patterns", "llm-verification"],
+  "stats": {
+    "cargo_audit_cves": 3,
+    "clippy_warnings": 11,
+    "semgrep_raw": 47,
+    "phase2_candidates": 18,
+    "llm_verified": 5,
+    "critical": 1,
+    "high": 2,
+    "medium": 2,
+    "low": 0
+  },
+  "findings": [
+    {
+      "id": "FINDING-001",
+      "severity": "critical",
+      "title": "Missing signer check on vault authority — any account can drain vault funds",
+      "file": "programs/vaults/src/instructions/withdraw.rs",
+      "line": 84,
+      "category": "grep-phase0",
+      "rule": "missing_signer_check",
+      "immunefi_impact": "Critical — Direct theft of funds",
+      "attack_path": "Attacker calls withdraw() with an arbitrary authority account that is not a signer. The ix macro does not enforce `#[account(signer)]` on vault_authority, so any pubkey can be passed. Attacker drains entire vault balance in a single transaction.",
+      "code_context": "pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {\n    let vault = &ctx.accounts.vault;\n    // BUG: vault_authority is not validated as signer\n    require!(ctx.accounts.vault_authority.key() == vault.authority, VaultError::Unauthorized);\n    // transfer proceeds without signer verification\n    transfer_lamports(&ctx.accounts.vault, &ctx.accounts.recipient, amount)?;\n    Ok(())\n}",
+      "confidence": 9,
+      "notes": "Confirmed critical. The account constraint is missing `Signer<'info>` type or `#[account(signer)]`. The `require!` check only validates the pubkey matches — not that the transaction was signed by that key. This is a classic Anchor signer check vulnerability that would allow complete fund drainage."
+    },
+    {
+      "id": "FINDING-002",
+      "severity": "high",
+      "title": "Integer overflow in reward calculation — unchecked multiplication on u64",
+      "file": "programs/vaults/src/state/rewards.rs",
+      "line": 142,
+      "category": "semgrep",
+      "rule": "solana.unchecked-arithmetic",
+      "immunefi_impact": "High — Theft of unclaimed yield",
+      "attack_path": "If `stake_amount` is close to u64::MAX and `reward_rate` > 1, the multiplication on line 142 wraps to a small value, allowing the attacker to claim near-zero rewards while the protocol believes a full payout occurred. Can be triggered by depositing a crafted amount.",
+      "code_context": "fn calculate_rewards(stake_amount: u64, reward_rate: u64, elapsed: u64) -> u64 {\n    // UNSAFE: can overflow for large stake_amount\n    stake_amount * reward_rate * elapsed / PRECISION\n}",
+      "confidence": 8,
+      "notes": "High confidence. Should use checked_mul() or saturating_mul(). The overflow causes reward underpayment — attacker can craft stake amounts to manipulate reward accounting and drain the reward pool over time."
+    },
+    {
+      "id": "FINDING-003",
+      "severity": "high",
+      "title": "CVE-2024-43370 in curve25519-dalek 3.x — timing side-channel in scalar multiplication",
+      "file": "Cargo.lock",
+      "line": 0,
+      "category": "cargo-audit",
+      "rule": "RUSTSEC-2024-0344",
+      "immunefi_impact": "High — Key extraction via timing attack",
+      "attack_path": "curve25519-dalek 3.x (used transitively via solana-program 1.17.x) has a known timing side-channel in its scalar multiplication. An attacker with precise timing measurement can recover private key material after ~1000 observed operations.",
+      "code_context": "[[package]]\nname = \"curve25519-dalek\"\nversion = \"3.2.0\"  # VULNERABLE — upgrade to 4.1.3+",
+      "confidence": 10,
+      "notes": "Definite CVE. Upgrade curve25519-dalek to 4.1.3 or pin solana-program to >=1.18.x which pulls in the fixed version. CVSS 7.4 (High)."
+    },
+    {
+      "id": "FINDING-004",
+      "severity": "medium",
+      "title": "PDA derivation uses user-controlled seed without domain separation",
+      "file": "programs/vaults/src/instructions/create_vault.rs",
+      "line": 37,
+      "category": "semgrep",
+      "rule": "solana.pda-seed-collision",
+      "immunefi_impact": "Medium — Account confusion / unauthorized access",
+      "attack_path": "The PDA is derived with `[b\"vault\", user.key().as_ref(), vault_id.to_le_bytes()]`. If vault_id is user-controlled, a malicious user can craft a vault_id that collides with another user's PDA and overwrite their account state on initialization.",
+      "code_context": "let (vault_pda, bump) = Pubkey::find_program_address(\n    &[b\"vault\", ctx.accounts.user.key().as_ref(), &vault_id.to_le_bytes()],\n    ctx.program_id,\n);",
+      "confidence": 7,
+      "notes": "Medium confidence. The collision is only possible if vault_id is user-supplied without bounds checking. Recommend adding program-controlled nonce or using the user's account creation count as part of the seed."
+    },
+    {
+      "id": "FINDING-005",
+      "severity": "medium",
+      "title": "GitHub Actions CI/CD secret exposure via unsanitized `github.event` context",
+      "file": ".github/workflows/deploy.yml",
+      "line": 23,
+      "category": "semgrep",
+      "rule": "yaml.github-actions.security.run-shell-injection.run-shell-injection",
+      "immunefi_impact": "None (CI/CD scope, not on-chain)",
+      "attack_path": "The deploy workflow interpolates `${{ github.event.pull_request.head.repo.full_name }}` directly into a `run:` step. A malicious PR from a fork could exfiltrate DEPLOY_KEYPAIR and PROGRAM_ID secrets by injecting shell commands.",
+      "code_context": "- name: Deploy program\n  run: |\n    anchor deploy --program-name ${{ github.event.inputs.program }} \\\n      --provider.cluster $CLUSTER\n  env:\n    DEPLOY_KEYPAIR: ${{ secrets.DEPLOY_KEYPAIR }}",
+      "confidence": 8,
+      "notes": "Confirmed. Use an intermediate env var and restrict workflow trigger to protected branches only. The secrets would allow deploying a malicious program upgrade."
+    }
+  ],
+  "signature": {
+    "algorithm": "Ed25519",
+    "value": "7xKm3nPqR9vTsW2bYfDcUaLhNjEoQgXiZpBuMwCvAkFrHdGsSyTeIlOmJnVzPcRb4qUwKxNtMoAlBsDeHfGiJkLpQrSuTvWxYzAaBbCcDdEeFfGgHhIiJjKkLlMmNnOo",
+    "public_key": "4mXzK9nPqR7vTs2bYfDcUaLhNjEoQgXiZpBuMwCvAkFr"
+  },
+  "scan_ms": 287340,
+  "timestamp": "2026-04-08T03:15:42Z"
+}

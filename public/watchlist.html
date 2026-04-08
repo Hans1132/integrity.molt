@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watchlist — integrity.molt</title>
+  <meta name="description" content="Real-time Solana address monitoring. Get instant alerts on authority changes, large transfers, and risk escalations.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #070b0f;
+      --bg-card:   #0c1117;
+      --bg-alt:    #0f1520;
+      --border:    #1a2332;
+      --accent:    #00ff88;
+      --accent-dim:#00a855;
+      --blue:      #4da6ff;
+      --text:      #c8d8e8;
+      --text-dim:  #607080;
+      --text-faint:#2a3a4a;
+      --danger:    #ff4444;
+      --warn:      #ffaa00;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+    /* Header */
+    header { border-bottom: 1px solid var(--border); padding: 16px 0; background: rgba(7,11,15,.95); }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .logo-wrap { display: flex; align-items: center; gap: 10px; }
+    .logo-text { font-family: var(--mono); font-size: 17px; font-weight: 700; color: #fff; }
+    .logo-text .dot { color: var(--accent); }
+    nav { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+    nav a { color: var(--text-dim); font-size: 13px; }
+    nav a:hover { color: var(--text); text-decoration: none; }
+
+    /* Hero */
+    .page-hero { padding: 56px 0 48px; border-bottom: 1px solid var(--border); }
+    h1 { font-size: clamp(24px, 4vw, 40px); font-weight: 800; color: #fff; margin-bottom: 12px; }
+    .page-sub { font-size: 15px; color: var(--text-dim); max-width: 560px; margin-bottom: 32px; }
+    .btn-primary {
+      background: var(--accent); color: #000; font-family: var(--mono); font-size: 13px; font-weight: 700;
+      padding: 13px 28px; border-radius: 6px; border: none; cursor: pointer; text-decoration: none;
+      display: inline-block; transition: opacity .15s;
+    }
+    .btn-primary:hover { opacity: .88; text-decoration: none; }
+
+    /* Tiers comparison */
+    section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+    .section-tag { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+    h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .section-sub { color: var(--text-dim); font-size: 14px; margin-bottom: 40px; }
+
+    .tiers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    .tier-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 28px 22px;
+      position: relative; transition: border-color .2s;
+    }
+    .tier-card:hover { border-color: var(--accent-dim); }
+    .tier-card--featured { border-color: var(--accent-dim); box-shadow: 0 0 0 1px var(--accent-dim); }
+    .tier-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #000; font-family: var(--mono); font-size: 10px; font-weight: 700;
+      padding: 3px 12px; border-radius: 20px; white-space: nowrap;
+    }
+    .tier-name { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+    .tier-price { font-size: 34px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .tier-price span { font-size: 15px; font-weight: 400; color: var(--text-dim); }
+    .tier-limit { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-bottom: 16px; }
+    .tier-features { list-style: none; padding: 0; margin: 0 0 22px; }
+    .tier-features li { font-size: 12px; color: var(--text-dim); padding: 5px 0; border-bottom: 1px solid var(--border); display: flex; gap: 7px; }
+    .tier-features li::before { content: "✓"; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+    .tier-cta {
+      display: block; text-align: center; padding: 10px; border-radius: 6px;
+      font-family: var(--mono); font-size: 12px; font-weight: 700;
+      border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
+      transition: all .15s; text-decoration: none; background: transparent; width: 100%;
+    }
+    .tier-cta:hover { border-color: var(--accent-dim); color: var(--accent); text-decoration: none; }
+    .tier-cta--accent { background: var(--accent); color: #000; border-color: var(--accent); }
+    .tier-cta--accent:hover { opacity: .88; color: #000; }
+
+    /* Watchlist features */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    .feature-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 24px 20px; }
+    .feature-icon { font-size: 24px; margin-bottom: 12px; }
+    .feature-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .feature-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+
+    /* Telegram setup */
+    .setup-steps { counter-reset: step; }
+    .setup-step { display: flex; gap: 16px; margin-bottom: 28px; }
+    .setup-step-num {
+      flex-shrink: 0; width: 28px; height: 28px;
+      background: var(--bg-alt); border: 1px solid var(--border); border-radius: 50%;
+      font-family: var(--mono); font-size: 11px; color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .setup-step-content h4 { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .setup-step-content p { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+    .code-block {
+      font-family: var(--mono); font-size: 11px; background: var(--bg-alt);
+      border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px;
+      color: var(--accent); display: inline-block;
+    }
+
+    /* Footer */
+    footer { padding: 40px 0; }
+    .footer-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border); padding-top: 24px; }
+    .footer-copy { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
+
+    @media (max-width: 640px) {
+      .page-hero { padding: 40px 0 32px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo-wrap">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="7" fill="#0c1117"/>
+          <path d="M16 4 L25 8 L25 17 Q25 24 16 28 Q7 24 7 17 L7 8 Z" stroke="#00ff88" stroke-width="1.5" fill="none"/>
+          <path d="M12 16.5 L15 19.5 L21 13" stroke="#00ff88" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <a href="/" class="logo-text" style="color:#fff;text-decoration:none;">integrity<span class="dot">.</span>molt</a>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/docs.html">API Docs</a>
+        <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<div class="page-hero">
+  <div class="container">
+    <p style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">Watchlist Monitoring</p>
+    <h1>24/7 Solana Address Monitoring</h1>
+    <p class="page-sub">Get real-time alerts on authority changes, large transfers, program upgrades, and risk escalations — directly to Telegram or email.</p>
+    <a href="https://t.me/intmolt_bot" class="btn-primary" target="_blank" rel="noopener">Start Monitoring Free</a>
+  </div>
+</div>
+
+<!-- Tier comparison -->
+<section id="plans">
+  <div class="container">
+    <p class="section-tag">Plans</p>
+    <h2>Choose your monitoring tier</h2>
+    <p class="section-sub">Start free with 3 addresses. Scale up as your portfolio grows.</p>
+
+    <div class="tiers-grid">
+
+      <!-- Free -->
+      <div class="tier-card">
+        <div class="tier-name">Free</div>
+        <div class="tier-price">$0</div>
+        <div class="tier-limit">3 addresses</div>
+        <ul class="tier-features">
+          <li>3 watchlist addresses</li>
+          <li>Critical alerts only</li>
+          <li>Telegram notifications</li>
+          <li>3 free scans/day</li>
+        </ul>
+        <a href="https://t.me/intmolt_bot" class="tier-cta" target="_blank" rel="noopener">Start Free</a>
+      </div>
+
+      <!-- Pro Trader -->
+      <div class="tier-card">
+        <div class="tier-name">Pro Trader</div>
+        <div class="tier-price">$15<span>/mo</span></div>
+        <div class="tier-limit">20 addresses</div>
+        <ul class="tier-features">
+          <li>20 watchlist addresses</li>
+          <li>All alerts: critical + high + warning</li>
+          <li>Telegram + email notifications</li>
+          <li>Weekly delta report</li>
+          <li>Unlimited scans</li>
+          <li>Signed reports</li>
+        </ul>
+        <button onclick="startCheckout('pro_trader')" class="tier-cta">Subscribe $15/mo</button>
+      </div>
+
+      <!-- Builder — FEATURED -->
+      <div class="tier-card tier-card--featured">
+        <div class="tier-badge">Most Popular</div>
+        <div class="tier-name">Builder</div>
+        <div class="tier-price">$49<span>/mo</span></div>
+        <div class="tier-limit">100 addresses</div>
+        <ul class="tier-features">
+          <li>100 watchlist addresses</li>
+          <li>All alerts + webhook callback</li>
+          <li>Daily delta report</li>
+          <li>1 adversarial sim/month</li>
+          <li>API access (100 req/min)</li>
+          <li>Signed JSON reports</li>
+          <li>Priority scan queue</li>
+        </ul>
+        <button onclick="startCheckout('builder')" class="tier-cta tier-cta--accent">Subscribe $49/mo</button>
+      </div>
+
+      <!-- Team -->
+      <div class="tier-card">
+        <div class="tier-name">Team</div>
+        <div class="tier-price">$299<span>/mo</span></div>
+        <div class="tier-limit">500 addresses</div>
+        <ul class="tier-features">
+          <li>500 watchlist addresses</li>
+          <li>All alerts + custom alert rules</li>
+          <li>Daily delta + on-demand</li>
+          <li>Unlimited adversarial sim</li>
+          <li>API access (1000 req/min)</li>
+          <li>SLA 99.5% uptime</li>
+          <li>Priority email support</li>
+        </ul>
+        <a href="https://t.me/intmolt_bot" class="tier-cta" target="_blank" rel="noopener">Contact Us</a>
+      </div>
+
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:20px;">
+      Pay with card (Stripe) or crypto — Pro Trader: 15 USDC · Builder: 49 USDC · Team: 299 USDC
+    </p>
+  </div>
+</section>
+
+<!-- What gets monitored -->
+<section>
+  <div class="container">
+    <p class="section-tag">Alert types</p>
+    <h2>What triggers an alert</h2>
+    <p class="section-sub">Helius webhooks deliver real-time on-chain events. Every alert is signed.</p>
+
+    <div class="features-grid">
+      <div class="feature-item">
+        <div class="feature-icon">🔑</div>
+        <div class="feature-title">Authority Changes</div>
+        <div class="feature-desc">Detect when mint authority, freeze authority, or program upgrade authority is transferred or revoked. The earliest possible rug signal.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📦</div>
+        <div class="feature-title">Large Transfers</div>
+        <div class="feature-desc">Alert on large SOL or token transfers out of monitored addresses. Configurable thresholds per tier.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">Program Upgrades</div>
+        <div class="feature-desc">Know immediately when an on-chain program is upgraded. Upgradeable programs are a critical risk factor.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Risk Escalations</div>
+        <div class="feature-desc">Periodic risk rescans detect when a low-risk address becomes high-risk. Notifies when risk level changes.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📝</div>
+        <div class="feature-title">Delta Reports</div>
+        <div class="feature-desc">Weekly (Pro Trader) or daily (Builder/Team) signed diff reports showing exactly what changed since the last scan.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🎯</div>
+        <div class="feature-title">Custom Alert Rules</div>
+        <div class="feature-desc">Team tier: define custom conditions for alerts — specific programs, transfer amounts, or address patterns.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Setup guide -->
+<section>
+  <div class="container">
+    <p class="section-tag">Setup</p>
+    <h2>Start monitoring in 30 seconds</h2>
+    <p class="section-sub">Use the Telegram bot or the API — no installation required.</p>
+
+    <div class="setup-steps">
+      <div class="setup-step">
+        <div class="setup-step-num">1</div>
+        <div class="setup-step-content">
+          <h4>Open the Telegram bot</h4>
+          <p>Start a conversation with <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">@intmolt_bot</a> on Telegram.</p>
+          <span class="code-block">/start</span>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">2</div>
+        <div class="setup-step-content">
+          <h4>Add an address to your watchlist</h4>
+          <p>Use /watch followed by any Solana address. You can add a label to identify it.</p>
+          <span class="code-block">/watch EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v USDC</span>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">3</div>
+        <div class="setup-step-content">
+          <h4>Receive real-time alerts</h4>
+          <p>You'll get a Telegram message the moment something changes on-chain. Every alert includes the risk level, what changed, and a link to the full signed report.</p>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">4</div>
+        <div class="setup-step-content">
+          <h4>Upgrade for more coverage</h4>
+          <p>Use /upgrade in Telegram to see subscription options and pay with USDC or card.</p>
+          <span class="code-block">/upgrade</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:24px;">
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:12px;">API: add to watchlist programmatically</p>
+      <pre style="font-family:var(--mono);font-size:11px;color:var(--accent);background:var(--bg-alt);border:1px solid var(--border);border-radius:4px;padding:14px;overflow-x:auto;line-height:1.7;">POST /watchlist/add
+X-API-Key: im_your_builder_key
+
+{
+  "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "label": "USDC Mint",
+  "notify_email": "alerts@yourteam.com"
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-bottom">
+      <div class="footer-copy">integrity.molt — intmolt.org</div>
+      <div class="footer-copy"><a href="/">← Back to home</a> · <a href="/docs.html">API Docs</a> · <a href="/verify.html">Verify Reports</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  async function startCheckout(tier) {
+    if (tier === 'team') { window.open('https://t.me/intmolt_bot', '_blank'); return; }
+    window.location.href = '/subscribe/' + tier;
+  }
+</script>
+
+</body>
+</html>

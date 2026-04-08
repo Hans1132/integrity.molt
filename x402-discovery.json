@@ -3,7 +3,7 @@
   "version": "2.0",
   "provider": {
     "name": "integrity.molt",
-    "description": "AI-powered Solana security scanner and auditor on Moltbook",
+    "description": "Real-time Solana risk monitoring for traders, bots, and protocol teams",
     "url": "https://intmolt.org",
     "contact": "https://t.me/intmolt_bot"
   },
@@ -16,13 +16,47 @@
     "algorithm": "Ed25519",
     "description": "All scan reports are signed. Verify with any NaCl Ed25519 library using the verifyKey above."
   },
+  "freeTier": {
+    "scans_per_day": 3,
+    "scan_types": ["quick", "token", "wallet", "pool", "evm-token"],
+    "rate_limit": "IP-based, resets at midnight UTC",
+    "quota_exceeded_status": 429,
+    "quota_exceeded_message": "Daily free scan limit reached. Upgrade at intmolt.org/pricing"
+  },
+  "subscriptions": [
+    {
+      "tier": "pro_trader",
+      "price_usd_monthly": 15,
+      "price_micro_usdc": 15000000,
+      "watchlist_addresses": 20,
+      "features": ["All alerts (critical+high+warning)", "Telegram + email notifications", "Weekly delta report", "Unlimited scans", "Signed reports"],
+      "subscribe_url": "https://intmolt.org/subscribe/pro_trader"
+    },
+    {
+      "tier": "builder",
+      "price_usd_monthly": 49,
+      "price_micro_usdc": 49000000,
+      "watchlist_addresses": 100,
+      "features": ["All alerts + webhook callback", "Daily delta report", "1 adversarial sim/month", "API access (100 req/min)", "Signed JSON reports", "Priority scan queue"],
+      "subscribe_url": "https://intmolt.org/subscribe/builder"
+    },
+    {
+      "tier": "team",
+      "price_usd_monthly": 299,
+      "price_micro_usdc": 299000000,
+      "watchlist_addresses": 500,
+      "features": ["All alerts + custom alert rules", "Daily delta + on-demand", "Unlimited adversarial sim", "API access (1000 req/min)", "SLA 99.5% uptime", "Priority email support"],
+      "subscribe_url": "https://intmolt.org/subscribe/team"
+    }
+  ],
   "services": [
     {
       "path": "/api/v1/scan/quick",
       "method": "POST",
       "description": "Quick on-chain security scan of any Solana address. Returns account info, balance, owner program, risk assessment based on real data.",
-      "price": "0.10",
+      "price": "0.50",
       "currency": "USDC",
+      "micro_usdc": 500000,
       "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
       "input": {"type": "application/json", "schema": {"address": "string"}},
@@ -33,8 +67,9 @@
       "path": "/api/v1/scan/deep",
       "method": "POST",
       "description": "Comprehensive security audit including source code review, vulnerability assessment, token distribution analysis, and detailed written report.",
-      "price": "2.00",
+      "price": "5.00",
       "currency": "USDC",
+      "micro_usdc": 5000000,
       "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
       "input": {"type": "application/json", "schema": {"address": "string"}},
@@ -44,9 +79,10 @@
     {
       "path": "/api/v1/scan/token",
       "method": "POST",
-      "description": "Token launch audit: checks mint authority (can more tokens be created?), freeze authority (can accounts be frozen?), top-10 holder concentration, total supply. Returns risk rating per factor.",
-      "price": "0.25",
+      "description": "Token scan: checks mint authority (can more tokens be created?), freeze authority (can accounts be frozen?), top-10 holder concentration, total supply. Returns risk rating per factor.",
+      "price": "0.75",
       "currency": "USDC",
+      "micro_usdc": 750000,
       "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
       "input": {"type": "application/json", "schema": {"address": "string (token mint address)"}},
@@ -56,9 +92,10 @@
     {
       "path": "/api/v1/scan/wallet",
       "method": "POST",
-      "description": "Wallet profiling: estimates wallet age from transaction history, activity level, DeFi exposure via token holdings, and classifies risk profile (fresh wallet / whale / dormant / normal user).",
-      "price": "0.15",
+      "description": "Rug check: estimates wallet age from transaction history, activity level, DeFi exposure via token holdings, and classifies risk profile (fresh wallet / whale / dormant / normal user).",
+      "price": "0.50",
       "currency": "USDC",
+      "micro_usdc": 500000,
       "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
       "input": {"type": "application/json", "schema": {"address": "string (wallet address)"}},
@@ -68,27 +105,54 @@
     {
       "path": "/api/v1/scan/pool",
       "method": "POST",
-      "description": "DeFi pool safety scan for Raydium, Orca, Meteora pools: liquidity depth, LP token distribution, recent transaction activity, withdrawal risk. Note: locked liquidity must be verified externally.",
-      "price": "0.25",
+      "description": "DeFi pool safety scan for Raydium, Orca, Meteora pools: liquidity depth, LP token distribution, recent transaction activity, withdrawal risk.",
+      "price": "0.50",
       "currency": "USDC",
+      "micro_usdc": 500000,
       "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
       "input": {"type": "application/json", "schema": {"address": "string (pool address)"}},
       "output": {"type": "application/json"},
       "tags": ["defi", "pool", "liquidity", "raydium", "orca", "solana"]
-    }
-  ,
+    },
     {
       "path": "/api/v1/scan/evm-token",
       "method": "POST",
       "description": "EVM token risk scan for Base, Ethereum, and Arbitrum. Honeypot detection, source code analysis (blacklist, adjustable fees, mint, pause, selfdestruct, proxy, ownership), contract age, deployer info. Risk score 0-100 with Ed25519 signed report.",
-      "price": "0.10",
+      "price": "0.75",
       "currency": "USDC",
+      "micro_usdc": 750000,
       "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
       "input": {"type": "application/json", "schema": {"address": "string (0x EVM contract address)", "chain": "string (base|ethereum|arbitrum, default: base)"}},
       "output": {"type": "application/json"},
       "tags": ["evm", "token", "honeypot", "base", "ethereum", "arbitrum", "security", "risk-score"]
+    },
+    {
+      "path": "/api/v1/delta/:address",
+      "method": "GET",
+      "description": "Signed delta report — cryptographically signed diff between current and baseline security scan. Detects authority changes, supply changes, risk escalations.",
+      "price": "1.00",
+      "currency": "USDC",
+      "micro_usdc": 1000000,
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
+      "input": {"type": "application/json", "schema": {"address": "string (Solana address)"}},
+      "output": {"type": "application/json"},
+      "tags": ["delta", "monitoring", "signed", "diff", "solana"]
+    },
+    {
+      "path": "/api/v1/adversarial/simulate",
+      "method": "POST",
+      "description": "Adversarial simulation — forks on-chain state and systematically probes 7 exploit paths: authority_takeover, oracle_manipulation, flash_loan, etc. Returns signed risk report.",
+      "price": "10.00",
+      "currency": "USDC",
+      "micro_usdc": 10000000,
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "payTo": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
+      "input": {"type": "application/json", "schema": {"program_id": "string (Solana program address)"}},
+      "output": {"type": "application/json"},
+      "tags": ["adversarial", "simulation", "exploit", "security-testing", "solana"]
     }
   ]
 }
