@@ -5,22 +5,20 @@
 
 const fs = require('fs');
 
-// ── API key loaders ───────────────────────────────────────────────────────────
-// Primárně z process.env, fallback ze souboru (jen pro Etherscan kvůli zpětné kompatibilitě)
-
+// ── File key loader (sdílený helper) ─────────────────────────────────────────
 function loadKeyFromFile(filePath) {
   try { return fs.readFileSync(filePath, 'utf-8').trim(); } catch { return ''; }
 }
 
-function getExplorerKey(envVar) {
-  if (process.env[envVar]) return process.env[envVar];
-  // Fallback: starý způsob přes soubor (jen ETHERSCAN_API_KEY)
-  if (envVar === 'ETHERSCAN_API_KEY') {
-    const fromFile = loadKeyFromFile('/root/.secrets/etherscan_api_key');
-    if (fromFile) return fromFile;
-  }
-  return '';
+// ── API key — Etherscan v2 (jeden klíč pro všechny chainy) ───────────────────
+// process.env primárně, fallback na /root/.secrets/etherscan_api_key
+
+function getEtherscanKey() {
+  return process.env.ETHERSCAN_API_KEY || loadKeyFromFile('/root/.secrets/etherscan_api_key');
 }
+
+// Alias — getExplorerKey() bez argumentu vždy vrátí Etherscan klíč
+function getExplorerKey() { return getEtherscanKey(); }
 
 // ── Alchemy RPC ───────────────────────────────────────────────────────────────
 const ALCHEMY_KEY = process.env.ALCHEMY_API_KEY || loadKeyFromFile('/root/.secrets/alchemy_api_key');
@@ -31,50 +29,15 @@ function alchemyRpc(subdomain) {
 
 // ── Chain configs ─────────────────────────────────────────────────────────────
 
-// Etherscan migroval na v2 API (v1 deprecated).
-// Ethereum, Arbitrum, Base sdílí Etherscan infrastrukturu → ETHERSCAN_API_KEY + chainid param.
-// BSC a Polygon mají vlastní nativní API (stále v1 kompatibilní).
+// Etherscan v2 API: jeden klíč (ETHERSCAN_API_KEY) pro všechny chainy přes ?chainid=N
+const EXPLORER_BASE = 'https://api.etherscan.io/v2/api';
+
 const CHAINS = {
-  ethereum: {
-    rpc:          alchemyRpc('eth-mainnet') || 'https://ethereum.publicnode.com',
-    alchRpc:      alchemyRpc('eth-mainnet'),
-    explorerBase: 'https://api.etherscan.io/v2/api',
-    explorerChainId: '1',
-    apiKeyEnv:    'ETHERSCAN_API_KEY',
-    label:        'Ethereum'
-  },
-  bsc: {
-    rpc:          'https://bsc-dataseed.binance.org',
-    alchRpc:      null,
-    explorerBase: 'https://api.bscscan.com/api',
-    explorerChainId: null,
-    apiKeyEnv:    'BSCSCAN_API_KEY',
-    label:        'BSC'
-  },
-  polygon: {
-    rpc:          'https://polygon-rpc.com',
-    alchRpc:      alchemyRpc('polygon-mainnet'),
-    explorerBase: 'https://api.polygonscan.com/api',
-    explorerChainId: null,
-    apiKeyEnv:    'POLYGONSCAN_API_KEY',
-    label:        'Polygon'
-  },
-  arbitrum: {
-    rpc:          alchemyRpc('arb-mainnet') || 'https://arb1.arbitrum.io/rpc',
-    alchRpc:      alchemyRpc('arb-mainnet'),
-    explorerBase: 'https://api.etherscan.io/v2/api',
-    explorerChainId: '42161',
-    apiKeyEnv:    'ARBISCAN_API_KEY',
-    label:        'Arbitrum'
-  },
-  base: {
-    rpc:          alchemyRpc('base-mainnet') || 'https://mainnet.base.org',
-    alchRpc:      alchemyRpc('base-mainnet'),
-    explorerBase: 'https://api.etherscan.io/v2/api',
-    explorerChainId: '8453',
-    apiKeyEnv:    'BASESCAN_API_KEY',
-    label:        'Base'
-  }
+  ethereum: { rpc: alchemyRpc('eth-mainnet') || 'https://ethereum.publicnode.com', alchRpc: alchemyRpc('eth-mainnet'), chainId: '1',     label: 'Ethereum' },
+  bsc:      { rpc: 'https://bsc-dataseed.binance.org',                              alchRpc: null,                      chainId: '56',    label: 'BSC'      },
+  polygon:  { rpc: 'https://polygon-rpc.com',                                       alchRpc: alchemyRpc('polygon-mainnet'), chainId: '137', label: 'Polygon'  },
+  arbitrum: { rpc: alchemyRpc('arb-mainnet') || 'https://arb1.arbitrum.io/rpc',    alchRpc: alchemyRpc('arb-mainnet'), chainId: '42161', label: 'Arbitrum' },
+  base:     { rpc: alchemyRpc('base-mainnet') || 'https://mainnet.base.org',        alchRpc: alchemyRpc('base-mainnet'), chainId: '8453', label: 'Base'     }
 };
 
 const SUPPORTED_CHAINS = Object.keys(CHAINS);
@@ -296,19 +259,17 @@ async function alchemyGetAssetTransfers(alchRpc, address, maxCount = 100) {
 
 // ── Explorer API calls ────────────────────────────────────────────────────────
 
-function buildExplorerUrl(explorerBase, chainId, params) {
-  const chainParam = chainId ? `&chainid=${chainId}` : '';
+function buildExplorerUrl(chainId, params) {
   const qstr = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-  return `${explorerBase}?${qstr}${chainParam}`;
+  return `${EXPLORER_BASE}?chainid=${chainId}&${qstr}`;
 }
 
 async function explorerGetSourceCode(cfg, address, apiKey) {
   const params = { module: 'contract', action: 'getsourcecode', address };
   if (apiKey) params.apikey = apiKey;
-  const url = buildExplorerUrl(cfg.explorerBase, cfg.explorerChainId, params);
+  const url = buildExplorerUrl(cfg.chainId, params);
   const res  = await explorerFetch(url);
   const json = await res.json();
-  // Etherscan v2 vrací NOTOK s popisem pokud je chyba
   if (json?.status === '0' && typeof json?.result === 'string') {
     throw new Error(`Explorer error: ${json.result}`);
   }
@@ -318,7 +279,7 @@ async function explorerGetSourceCode(cfg, address, apiKey) {
 async function explorerGetContractCreation(cfg, address, apiKey) {
   const params = { module: 'contract', action: 'getcontractcreation', contractaddresses: address };
   if (apiKey) params.apikey = apiKey;
-  const url = buildExplorerUrl(cfg.explorerBase, cfg.explorerChainId, params);
+  const url = buildExplorerUrl(cfg.chainId, params);
   const res  = await explorerFetch(url);
   const json = await res.json();
   if (json?.status === '0' && typeof json?.result === 'string') return null;
@@ -331,7 +292,7 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
   const cfg = CHAINS[chain];
   if (!cfg) throw new Error(`Unknown chain: ${chain}. Supported: ${SUPPORTED_CHAINS.join('|')}`);
 
-  const apiKey = getExplorerKey(cfg.apiKeyEnv);
+  const apiKey = getEtherscanKey();
 
   const findings = [];
   const meta = {
@@ -393,7 +354,7 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
   let sourceCode = null;
   if (!apiKey) {
     findings.push({
-      label:    `Explorer API key not configured (${cfg.apiKeyEnv} not set) — source code analysis skipped`,
+      label:    'Explorer API key not configured (ETHERSCAN_API_KEY not set) — source code analysis skipped',
       severity: 'medium',
       category: 'transparency'
     });
@@ -499,10 +460,10 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
   return { findings, meta, score, recommendation };
 }
 
+// Všechny chainy sdílí ETHERSCAN_API_KEY — chain argument se ignoruje
 function hasExplorerKey(chain) {
-  const cfg = CHAINS[chain];
-  if (!cfg) return false;
-  return !!getExplorerKey(cfg.apiKeyEnv);
+  if (!CHAINS[chain]) return false;
+  return !!getEtherscanKey();
 }
 
 module.exports = { scanEVMToken, SUPPORTED_CHAINS, getExplorerKey, hasExplorerKey };

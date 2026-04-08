@@ -1044,7 +1044,7 @@ app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePaym
 // ── GET /scan/evm/:address — EVM scan (0.15 USDC, x402) ──────────────────────
 // Alias pro /api/v2/scan/evm/:address — address v URL, chain v ?chain= query param
 // Příklad: GET /api/v2/scan/evm/0xdAC17F958D2ee523a2206206994597C13D831ec7?chain=ethereum
-const EVM_KEY_ENV_MAP = { ethereum:'ETHERSCAN_API_KEY', bsc:'BSCSCAN_API_KEY', polygon:'POLYGONSCAN_API_KEY', arbitrum:'ARBISCAN_API_KEY', base:'BASESCAN_API_KEY' };
+// Etherscan v2 — jeden klíč pro všechny chainy
 function evmPreValidate(req, res, next) {
   const address = (req.params.address || '').trim();
   const chain   = (req.query.chain    || 'ethereum').trim().toLowerCase();
@@ -1053,7 +1053,7 @@ function evmPreValidate(req, res, next) {
   if (!EVM_CHAINS.includes(chain))
     return res.status(400).json({ error: `Invalid chain — use ${EVM_CHAINS.join('|')}` });
   if (!evmHasKey(chain))
-    return res.status(400).json({ error: `API key not configured for ${chain}`, hint: `Set ${EVM_KEY_ENV_MAP[chain]} in server .env` });
+    return res.status(400).json({ error: `API key not configured for ${chain}`, hint: 'Set ETHERSCAN_API_KEY in server .env' });
   next();
 }
 app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireApiKey, requirePayment(evmScanPaymentAccepts, 150000), async (req, res) => {
