@@ -10,18 +10,45 @@ const { scanEVMToken, SUPPORTED_CHAINS: EVM_CHAINS, getExplorerKey: evmGetKey, h
 const { auditToken, getShowcaseReport } = require('./scanners/token-audit');
 const { generateReport, generatePDFBuffer, generatePNGBuffer } = require('./report-generator');
 const authModule = require('./auth');
-const { configureSession, setupStrategies, registerAuthRoutes, initUsersSchema } = authModule;
+const { configureSession, setupStrategies, registerAuthRoutes } = authModule;
+const { initUsersSchema } = db;
 const { runWeeklyDigests, sendWelcomeEmail } = require('./mailer');
 const { saveSnapshot, getLatestSnapshot, getSnapshotByTimestamp, getSnapshotHistory } = require('./src/delta/store');
 const { computeDelta } = require('./src/delta/diff');
 const { signDeltaReport } = require('./src/delta/signing');
 const { runAdversarialSim }  = require('./src/adversarial/runner');
 const { getAllPlaybooks }     = require('./src/adversarial/playbooks');
-const { verifyWebhookAuth, handleHeliusWebhook } = require('./src/monitor/webhook-receiver');
+const { verifyWebhookAuth, handleHeliusWebhook, registerRescanCallback } = require('./src/monitor/webhook-receiver');
 const { initMonitor }        = require('./src/monitor/init');
+const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
+const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 
 const https = require('https');
 const nodemailer = require('nodemailer');
+
+// ── Async Ed25519 signer — neblokující náhrada za execSync sign-report.py ────
+// Předá reportText přes stdin, přečte JSON envelope ze stdout.
+// Nepoužívá shell — žádné command injection riziko.
+function asyncSign(reportText) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('python3', ['/root/scanner/sign-report.py'], { timeout: 10000 });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', d => { stdout += d; });
+    proc.stderr.on('data', d => { stderr += d; });
+    proc.on('close', code => {
+      if (code === 0) {
+        try { resolve(JSON.parse(stdout.trim())); }
+        catch (e) { reject(new Error('sign-report.py invalid JSON: ' + stdout.slice(0, 200))); }
+      } else {
+        reject(new Error('sign-report.py exited ' + code + ': ' + stderr.slice(0, 200)));
+      }
+    });
+    proc.on('error', reject);
+    proc.stdin.write(reportText);
+    proc.stdin.end();
+  });
+}
 
 // ── Async scan runner — nahrazuje execSync, neblokuje event loop ──────────────
 // Spustí shell skript jako child_process, vrátí Promise<{ stdout, stderr }>.
@@ -57,6 +84,28 @@ function runScript(cmd, args, timeoutMs) {
       reject(err);
     });
   });
+}
+
+// ── Advisor helper — spustí LLM jen pokud score v šedé zóně (40-70) ──────────
+// alwaysRun=true: ignoruje zónu (pro /scan/quick kde LLM nahrazuje celý report)
+// Vrátí { text, advisorUsed, provider, signed } nebo null při skip/chybě.
+async function runAdvisorIfGreyZone({ score, context, scanType, alwaysRun = false }) {
+  const inGrey = typeof score === 'number' && score >= 40 && score <= 70;
+  if (!alwaysRun && !inGrey) {
+    // Skóre mimo šedou zónu — zaloguj jako not-invoked a skonči
+    try { db.logAdvisorUsage(null, scanType, { advisorUsed: false, usage: {} }); } catch {}
+    return null;
+  }
+  try {
+    const result = await runWithAdvisor({ systemPrompt: SECURITY_ANALYST_SYSTEM, userMessage: context });
+    let signed = null;
+    try { signed = await asyncSign(result.text); } catch {}
+    db.logAdvisorUsage(null, scanType, result);
+    return { text: result.text, advisorUsed: result.advisorUsed, provider: result.provider, signed };
+  } catch (e) {
+    console.warn(`[advisor/${scanType}] failed (non-fatal):`, e.message);
+    return null;
+  }
 }
 
 // Načte nejnovější report soubory pro danou adresu (txt + signed.json).
@@ -211,21 +260,39 @@ function getVerifyKeyBase64() {
   try { return fs.readFileSync(VERIFY_KEY_PATH).toString('base64'); } catch { return null; }
 }
 
+// ── RPC rate limiter — token bucket, max 50 req/s, burst 100 ─────────────────
+// Alchemy free tier: 660 CU/s (~330 req/s), nastavujeme konzervativně
+const _rpcBucket = { tokens: 100, max: 100, refillRate: 50, lastRefill: Date.now() };
+function _rpcAcquire() {
+  const now = Date.now();
+  const elapsed = (now - _rpcBucket.lastRefill) / 1000;
+  _rpcBucket.tokens = Math.min(_rpcBucket.max, _rpcBucket.tokens + elapsed * _rpcBucket.refillRate);
+  _rpcBucket.lastRefill = now;
+  if (_rpcBucket.tokens >= 1) { _rpcBucket.tokens--; return 0; }
+  // Čekání do dalšího dostupného tokenu (ms)
+  return Math.ceil((1 - _rpcBucket.tokens) / _rpcBucket.refillRate * 1000);
+}
+
 function rpcPost(body) {
   return new Promise((resolve, reject) => {
-    const data = JSON.stringify(body);
-    const req = https.request(SOLANA_RPC, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
-    }, res => {
-      let buf = '';
-      res.on('data', c => buf += c);
-      res.on('end', () => { try { resolve(JSON.parse(buf)); } catch { resolve(null); } });
-    });
-    req.on('error', reject);
-    req.setTimeout(8000, () => { req.destroy(); reject(new Error('RPC timeout')); });
-    req.write(data);
-    req.end();
+    const wait = _rpcAcquire();
+    const doRequest = () => {
+      const data = JSON.stringify(body);
+      const req = https.request(SOLANA_RPC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
+      }, res => {
+        let buf = '';
+        res.on('data', c => buf += c);
+        res.on('end', () => { try { resolve(JSON.parse(buf)); } catch { resolve(null); } });
+      });
+      req.on('error', reject);
+      req.setTimeout(8000, () => { req.destroy(); reject(new Error('RPC timeout')); });
+      req.write(data);
+      req.end();
+    };
+    if (wait <= 0) doRequest();
+    else setTimeout(doRequest, wait);
   });
 }
 
@@ -733,28 +800,53 @@ app.get('/services', (req, res) => {
 });
 
 // Public reputation stats - free
-app.get('/stats', (req, res) => {
-  const reputationFile = '/root/scanner/reputation.json';
-  try {
-    const raw = JSON.parse(fs.readFileSync(reputationFile, 'utf-8'));
-    const total   = raw.total_scans || 0;
-    const success = raw.successful_scans || 0;
-    const today   = new Date().toISOString().slice(0, 10);
-    const todayData = (raw.scans_by_day || {})[today] || {};
-    const fb      = raw.feedback || {};
-    const fbTotal = Object.values(fb).reduce((a, b) => a + b, 0);
+async function buildStatsResponse() {
+  const stats = await db.getLiveStats();
+  return {
+    total_scans:             stats.total_scans,
+    scans_today:             stats.scans_today,
+    success_rate_pct:        stats.success_rate_pct,
+    average_response_time_ms: stats.average_response_time_ms || 0,
+    // camelCase aliases pro kompatibilitu
+    totalScans:       stats.total_scans,
+    scansToday:       stats.scans_today,
+    successRate:      stats.success_rate_pct,
+    avgResponseTime:  stats.average_response_time_ms || 0,
+  };
+}
 
-    res.json({
-      total_scans: total,
-      scans_today: todayData.total || 0,
-      success_rate_pct: total ? Math.round(100 * success / total * 100) / 100 : 0,
-      average_response_time_ms: raw.average_response_time_ms || 0,
-      satisfaction_pct: fbTotal ? Math.round(100 * (fb.positive || 0) / fbTotal * 100) / 100 : null,
-      last_updated: raw.last_updated || null,
-      stats_endpoint: 'https://intmolt.org/api/v2/stats'
-    });
-  } catch {
-    res.status(503).json({ error: 'Stats unavailable', total_scans: 0 });
+app.get('/stats/advisor', (req, res) => {
+  try {
+    const days  = Math.min(parseInt(req.query.days) || 30, 365);
+    const stats = db.getAdvisorStats(days);
+    res.json({ ok: true, days, stats });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /email/capture — soft paywall email lead capture
+app.post('/email/capture', express.json(), (req, res) => {
+  const { email, source, scan_type } = req.body || {};
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+  // Zaloguj jako event (db.logEvent je non-blocking)
+  db.logEvent({ name: 'email_captured', resource: email, ip: req.ip,
+    meta: JSON.stringify({ source: source || 'unknown', scan_type: scan_type || '' }) }).catch(() => {});
+  res.json({ ok: true });
+});
+
+app.get('/stats',              async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
+app.get('/api/v1/stats',       async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
+app.get('/api/v2/stats',       async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
+app.get('/api/v1/stats/advisor', (req, res) => {
+  try {
+    const days  = Math.min(parseInt(req.query.days) || 30, 365);
+    const stats = db.getAdvisorStats(days);
+    res.json({ ok: true, days, stats });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -770,17 +862,55 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
 
   try {
     const _t0 = Date.now();
+
+    // 1. Shell skript — on-chain data
     const { stdout } = await runScript('/root/scanner/quick-scan.sh', [safeAddress], 60000);
     const scriptMs = Date.now() - _t0;
     const slug = safeAddress.substring(0, 10).toLowerCase();
-    const { reportText, signedEnvelope } = loadLatestReport('/root/scanner/reports', slug, '');
+    const { reportText: shellReport, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, '');
+    const rawReport = shellReport || stdout;
+
+    // 2. Sonnet executor + Opus advisor — LLM analýza
+    let advisorResult = null;
+    let finalReport   = rawReport;
+    let signedEnvelope = shellSigned;
+    try {
+      advisorResult = await runWithAdvisor({
+        systemPrompt: SECURITY_ANALYST_SYSTEM,
+        userMessage:  `Adresa: ${safeAddress}\n\nOn-chain data:\n${rawReport}`,
+      });
+      finalReport = advisorResult.text || rawReport;
+      console.log(`[scan/quick] advisor=${advisorResult.provider} used=${advisorResult.advisorUsed} llmMs=${Date.now()-_t0-scriptMs}ms`);
+
+      // 3. Ed25519 podpis advisor výstupu
+      try {
+        signedEnvelope = await asyncSign(finalReport);
+      } catch (signErr) {
+        console.warn('[scan/quick] signing failed (non-fatal):', signErr.message);
+      }
+
+      // 4. Logování advisor usage do DB (fire-and-forget)
+      db.logAdvisorUsage(null, 'quick-paid', advisorResult);
+    } catch (llmErr) {
+      console.warn('[scan/quick] advisor failed, fallback na shell report:', llmErr.message);
+    }
+
     console.log(`[scan/quick] address=${safeAddress} script=${scriptMs}ms total=${Date.now()-_t0}ms`);
+    db.logScanToHistory({
+      email: req.apiKey?.email || null, address: safeAddress, scan_type: 'quick-paid',
+      risk_score: null, risk_level: null,
+      summary: advisorResult?.text?.slice(0, 500) || null,
+      cached: false, result_json: null
+    }).catch(() => {});
+
     res.json({
-      status: 'complete',
-      address: safeAddress,
-      report: reportText || stdout,
-      signed: signedEnvelope,
-      timestamp: new Date().toISOString()
+      status:        'complete',
+      address:       safeAddress,
+      report:        finalReport,
+      advisor_used:  advisorResult?.advisorUsed ?? false,
+      provider:      advisorResult?.provider    ?? 'shell-only',
+      signed:        signedEnvelope,
+      timestamp:     new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: 'Scan failed', detail: err.message });
@@ -825,6 +955,12 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPa
       signedEnvelope = signedEnvelope || fs2;
     }
 
+    db.logScanToHistory({
+      email: req.apiKey?.email || null, address: safeAddress, scan_type: 'deep-audit',
+      risk_score: swarmResult?.aggregate_score ?? null,
+      risk_level: swarmResult?.decision || null,
+      summary: null, cached: false, result_json: null
+    }).catch(() => {});
     res.json({
       status: 'complete',
       tier: 'deep-audit',
@@ -858,32 +994,32 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
     const { stdout } = await runScript('/root/scanner/enhanced-token-scan.sh', [safeAddress], 150000);
     console.log(`[scan/token] address=${safeAddress} script=${Date.now()-_t0}ms`);
     const slug = safeAddress.substring(0, 10).toLowerCase();
-    // Try to parse JSON output from enhanced scanner
     let data = null;
     try { data = JSON.parse(stdout.trim()); } catch {}
-    // Also load latest saved report file
-    const { reportText, signedEnvelope } = loadLatestReport('/root/scanner/reports', slug, 'enhanced-token');
-    if (data) {
-      res.json({
-        status: 'complete',
-        type: 'enhanced-token-scan',
-        scan_version: '2.0',
-        address: safeAddress,
-        data,
-        signed: data.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : null,
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      res.json({
-        status: 'complete',
-        type: 'enhanced-token-scan',
-        scan_version: '2.0',
-        address: safeAddress,
-        report: reportText || stdout,
-        signed: signedEnvelope,
-        timestamp: new Date().toISOString()
-      });
-    }
+    const { reportText, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, 'enhanced-token');
+
+    // Advisor — šedá zóna 40-70
+    const advisorCtx = `Token audit pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}`;
+    const adv = await runAdvisorIfGreyZone({ score: data?.risk_score, context: advisorCtx, scanType: 'token' });
+
+    db.logScanToHistory({
+      email: req.apiKey?.email || null, address: safeAddress, scan_type: 'token',
+      risk_score: data?.risk_score ?? null, risk_level: data?.risk_level || null,
+      summary: adv?.text?.slice(0, 500) || data?.summary || null, cached: false, result_json: null
+    }).catch(() => {});
+
+    const signed = adv?.signed || (data?.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : shellSigned);
+    res.json({
+      status:        'complete',
+      type:          'enhanced-token-scan',
+      scan_version:  '2.0',
+      address:       safeAddress,
+      data:          data || null,
+      report:        (!data && (reportText || stdout)) || null,
+      advisor:       adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
+      signed,
+      timestamp:     new Date().toISOString()
+    });
   } catch (err) {
     res.status(500).json({ error: 'Token scan failed', detail: err.message });
   }
@@ -906,28 +1042,23 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(wa
     const slug = safeAddress.substring(0, 10).toLowerCase();
     let data = null;
     try { data = JSON.parse(stdout.trim()); } catch {}
-    const { reportText, signedEnvelope } = loadLatestReport('/root/scanner/reports', slug, 'wallet-deep');
-    if (data) {
-      res.json({
-        status: 'complete',
-        type: 'wallet-deep-scan',
-        scan_version: '2.0',
-        address: safeAddress,
-        data,
-        signed: data.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : null,
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      res.json({
-        status: 'complete',
-        type: 'wallet-deep-scan',
-        scan_version: '2.0',
-        address: safeAddress,
-        report: reportText || stdout,
-        signed: signedEnvelope,
-        timestamp: new Date().toISOString()
-      });
-    }
+    const { reportText, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, 'wallet-deep');
+
+    const advisorCtx = `Wallet profiling pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}`;
+    const adv = await runAdvisorIfGreyZone({ score: data?.risk_score, context: advisorCtx, scanType: 'wallet' });
+
+    const signed = adv?.signed || (data?.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : shellSigned);
+    res.json({
+      status:       'complete',
+      type:         'wallet-deep-scan',
+      scan_version: '2.0',
+      address:      safeAddress,
+      data:         data || null,
+      report:       (!data && (reportText || stdout)) || null,
+      advisor:      adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
+      signed,
+      timestamp:    new Date().toISOString()
+    });
   } catch (err) {
     res.status(500).json({ error: 'Wallet scan failed', detail: err.message });
   }
@@ -950,28 +1081,23 @@ app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolSc
     const slug = safeAddress.substring(0, 10).toLowerCase();
     let data = null;
     try { data = JSON.parse(stdout.trim()); } catch {}
-    const { reportText, signedEnvelope } = loadLatestReport('/root/scanner/reports', slug, 'pool-deep');
-    if (data) {
-      res.json({
-        status: 'complete',
-        type: 'pool-deep-scan',
-        scan_version: '2.0',
-        address: safeAddress,
-        data,
-        signed: data.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : null,
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      res.json({
-        status: 'complete',
-        type: 'pool-deep-scan',
-        scan_version: '2.0',
-        address: safeAddress,
-        report: reportText || stdout,
-        signed: signedEnvelope,
-        timestamp: new Date().toISOString()
-      });
-    }
+    const { reportText, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, 'pool-deep');
+
+    const advisorCtx = `Pool scan pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}`;
+    const adv = await runAdvisorIfGreyZone({ score: data?.risk_score, context: advisorCtx, scanType: 'pool' });
+
+    const signed = adv?.signed || (data?.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : shellSigned);
+    res.json({
+      status:       'complete',
+      type:         'pool-deep-scan',
+      scan_version: '2.0',
+      address:      safeAddress,
+      data:         data || null,
+      report:       (!data && (reportText || stdout)) || null,
+      advisor:      adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
+      signed,
+      timestamp:    new Date().toISOString()
+    });
   } catch (err) {
     res.status(500).json({ error: 'Pool scan failed', detail: err.message });
   }
@@ -1032,28 +1158,30 @@ app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePaym
   reportLines.push('This is an automated static analysis. Not a full security audit.');
   const reportText = reportLines.join('\n');
 
-  // Sign report
-  const _tSign = Date.now();
-  let signedEnvelope = null;
-  try {
-    const { execSync } = require('child_process');
-    const raw = execSync(`echo ${JSON.stringify(reportText)} | python3 /root/scanner/sign-report.py`, { timeout: 10000 });
-    signedEnvelope = JSON.parse(raw.toString());
-  } catch {}
-  console.log(`[scan/evm-token] address=${address} chain=${chain} signing=${Date.now()-_tSign}ms`);
+  // Advisor — šedá zóna 40-70
+  const evmCtx = `EVM token scan ${chain}/${address}:\nScore: ${scanResult.score}\nRecommendation: ${scanResult.recommendation}\nFindings:\n${scanResult.findings.map(f=>`[${f.severity}] ${f.label}`).join('\n')}\nMeta: ${JSON.stringify(scanResult.meta)}`;
+  const adv = await runAdvisorIfGreyZone({ score: scanResult.score, context: evmCtx, scanType: 'evm-token' });
+
+  // Sign: pokud advisor běžel, podepíše jeho text; jinak původní reportText
+  let signedEnvelope = adv?.signed || null;
+  if (!signedEnvelope) {
+    try { signedEnvelope = await asyncSign(reportText); } catch {}
+  }
+  console.log(`[scan/evm-token] address=${address} chain=${chain} advisor=${adv?.advisorUsed ?? 'skip'}`);
 
   res.json({
-    status:     'complete',
-    type:       'evm-token-scan',
+    status:          'complete',
+    type:            'evm-token-scan',
     chain,
     address,
-    score:      scanResult.score,
-    recommendation: scanResult.recommendation,
-    findings:   scanResult.findings,
-    meta:       scanResult.meta,
-    report:     reportText,
-    signed:     signedEnvelope,
-    timestamp:  new Date().toISOString()
+    score:           scanResult.score,
+    recommendation:  scanResult.recommendation,
+    findings:        scanResult.findings,
+    meta:            scanResult.meta,
+    report:          adv?.text || reportText,
+    advisor:         adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
+    signed:          signedEnvelope,
+    timestamp:       new Date().toISOString()
   });
 });
 
@@ -1118,13 +1246,15 @@ app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireAp
   reportLines.push('This is an automated static analysis. Not a full security audit.');
   const reportText = reportLines.join('\n');
 
-  // Sign report
-  let signedEnvelope = null;
-  try {
-    const { execSync } = require('child_process');
-    const raw = execSync(`echo ${JSON.stringify(reportText)} | python3 /root/scanner/sign-report.py`, { timeout: 10000 });
-    signedEnvelope = JSON.parse(raw.toString());
-  } catch {}
+  // Advisor — šedá zóna
+  const evmCtx2 = `EVM token scan ${chain}/${address}:\nScore: ${scanResult.score}\nRecommendation: ${scanResult.recommendation}\nFindings:\n${scanResult.findings.map(f=>`[${f.severity}] ${f.label}`).join('\n')}\nMeta: ${JSON.stringify(scanResult.meta)}`;
+  const adv2 = await runAdvisorIfGreyZone({ score: scanResult.score, context: evmCtx2, scanType: 'evm-scan' });
+
+  let signedEnvelope = adv2?.signed || null;
+  if (!signedEnvelope) {
+    try { signedEnvelope = await asyncSign(reportText); } catch {}
+  }
+  console.log(`[scan/evm] address=${address} chain=${chain} advisor=${adv2?.advisorUsed ?? 'skip'}`);
 
   res.json({
     status:          'complete',
@@ -1135,7 +1265,8 @@ app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireAp
     recommendation:  scanResult.recommendation,
     findings:        scanResult.findings,
     meta:            scanResult.meta,
-    report:          reportText,
+    report:          adv2?.text || reportText,
+    advisor:         adv2 ? { text: adv2.text, advisor_used: adv2.advisorUsed, provider: adv2.provider } : null,
     signed:          signedEnvelope,
     timestamp:       new Date().toISOString()
   });
@@ -1277,13 +1408,11 @@ app.post(
 
       const reportText = reportLines.join('\n');
 
-      // Sign report with Ed25519
+      // Sign report with Ed25519 (async — neblokuje event loop)
       const _tSign = Date.now();
       let signedEnvelope = null;
       try {
-        const { execSync } = require('child_process');
-        const raw = execSync(`echo ${JSON.stringify(reportText)} | python3 /root/scanner/sign-report.py`, { timeout: 10000 });
-        signedEnvelope = JSON.parse(raw.toString());
+        signedEnvelope = await asyncSign(reportText);
       } catch (e) {
         console.error('[scan/token-audit] signing failed:', e.message);
       }
@@ -1650,16 +1779,66 @@ app.get(
 // ── Watchlist API ──────────────────────────────────────────────────────────────
 const SOLANA_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
+// Limity watchlistu per tier (počet aktivních adres)
+const WATCHLIST_TIER_LIMITS = {
+  free:       3,   // bez předplatného — malý buffer pro vyzkoušení
+  pro_trader: 20,
+  builder:    100,
+  team:       500,
+};
+
+async function getWatchlistLimit(email, telegram_chat_id) {
+  let sub = null;
+  if (email)             sub = await db.getActiveSubscription(email).catch(() => null);
+  if (!sub && telegram_chat_id) sub = await db.getActiveSubscriptionByChatId(telegram_chat_id).catch(() => null);
+  const tier = sub?.tier || 'free';
+  return { tier, limit: WATCHLIST_TIER_LIMITS[tier] ?? WATCHLIST_TIER_LIMITS.free };
+}
+
+// Systémové/nativní adresy s obrovským objemem transakcí — nesmí být ve watchlistu
+// (každá transakce na Solana by generovala webhook → miliony kreditů/den)
+const WATCHLIST_BLOCKED_ADDRESSES = new Set([
+  'So11111111111111111111111111111111111111112',  // Wrapped SOL (wSOL) mint
+  '11111111111111111111111111111111',             // System Program
+  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // Token Program
+  'TokenzQdBNbEqufqEJu1B7ayKkXJMPuSHEFPiHsqEuu', // Token-2022 Program
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bFAE', // Associated Token Program
+  'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s',  // Metaplex Token Metadata
+  'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',  // Orca Whirlpool
+  'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',  // Jupiter v6
+  '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin',  // Serum DEX v3
+  'srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX',   // Serum DEX v4
+]);
+
+function isBlockedWatchlistAddress(address) {
+  return WATCHLIST_BLOCKED_ADDRESSES.has(address);
+}
+
 // POST /watchlist/add — přidat adresu do watchlistu
 app.post('/watchlist/add', express.json(), async (req, res) => {
   const { address, label, telegram_chat_id, email } = req.body || {};
   if (!address || !SOLANA_ADDRESS_RE.test(address)) {
     return res.status(400).json({ error: 'Invalid or missing Solana address' });
   }
+  if (isBlockedWatchlistAddress(address)) {
+    return res.status(400).json({ error: 'This address cannot be monitored (system/program address with excessive transaction volume)' });
+  }
   if (!telegram_chat_id && !email) {
     return res.status(400).json({ error: 'Provide telegram_chat_id or email for notifications' });
   }
   try {
+    // Enforce tier limit
+    const { tier, limit } = await getWatchlistLimit(email, telegram_chat_id);
+    const current = telegram_chat_id
+      ? db.countWatchlistForChat(telegram_chat_id)
+      : db.countWatchlistForEmail(email);
+    if (current >= limit) {
+      return res.status(403).json({
+        error: `Watchlist limit reached (${current}/${limit} for tier '${tier}'). Upgrade your plan to add more addresses.`,
+        tier, limit, current
+      });
+    }
+
     const entry = await db.addWatchlistEntry({
       address,
       label,
@@ -2388,10 +2567,7 @@ app.get('/unsubscribe', async (req, res) => {
   }
   try {
     // Nastav příznak digest_unsubscribed na subscriptions záznamu
-    await db.pool.query(
-      `UPDATE subscriptions SET digest_unsubscribed = TRUE WHERE LOWER(email) = $1`,
-      [email]
-    ).catch(() => {});
+    try { db.db.prepare('UPDATE subscriptions SET digest_unsubscribed = 1 WHERE lower(email) = ?').run(email.toLowerCase()); } catch (_) {}
     // Zaloguj event
     await db.logEvent({ name: 'digest_unsubscribed', resource: email, ip: req.ip }).catch(() => {});
     console.log(`[mailer] unsubscribe: ${email}`);
@@ -2748,8 +2924,12 @@ app.post('/scan/free', express.json(), async (req, res) => {
       const t1 = Date.now();
       const evmResult = await scanEVMToken(safeAddress, chain);
       const scanMs = Date.now() - t1;
-      const totalMs = Date.now() - t0;
-      console.log(`[scan/free] EVM address=${safeAddress} chain=${chain} scan=${scanMs}ms total=${totalMs}ms`);
+      console.log(`[scan/free] EVM address=${safeAddress} chain=${chain} scan=${scanMs}ms total=${Date.now()-t0}ms`);
+
+      // Advisor — šedá zóna
+      const evmFreeCtx = `Free EVM token scan ${chain}/${safeAddress}:\nScore: ${evmResult.score}\nRecommendation: ${evmResult.recommendation}\nFindings:\n${evmResult.findings.map(f=>`[${f.severity}] ${f.label}`).join('\n')}`;
+      const evmAdv = await runAdvisorIfGreyZone({ score: evmResult.score, context: evmFreeCtx, scanType: 'free-evm' });
+
       const result = {
         status:          'complete',
         type:            'evm-token',
@@ -2759,6 +2939,8 @@ app.post('/scan/free', express.json(), async (req, res) => {
         recommendation:  evmResult.recommendation,
         findings:        evmResult.findings,
         meta:            evmResult.meta,
+        advisor:         evmAdv ? { text: evmAdv.text, advisor_used: evmAdv.advisorUsed, provider: evmAdv.provider } : null,
+        signed:          evmAdv?.signed || null,
         timestamp:       new Date().toISOString()
       };
       setCachedScan(safeAddress, type, chain, result);
@@ -2836,15 +3018,22 @@ app.post('/scan/free', express.json(), async (req, res) => {
       });
     }
 
+    // Advisor — šedá zóna 40-70
+    const freeCtx = `${type} scan pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}`;
+    const freeAdv = await runAdvisorIfGreyZone({ score: data?.risk_score, context: freeCtx, scanType: `free-${type}` });
+
+    const freeSigned = freeAdv?.signed
+      || (data?.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : signedEnvelope)
+      || null;
+
     const result = {
       status:    'complete',
       type,
       address:   safeAddress,
       data:      data || null,
       report:    (!data && (reportText || stdout)) || null,
-      signed:    data?.signed
-                   ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' }
-                   : (signedEnvelope || null),
+      advisor:   freeAdv ? { text: freeAdv.text, advisor_used: freeAdv.advisorUsed, provider: freeAdv.provider } : null,
+      signed:    freeSigned,
       timestamp: new Date().toISOString()
     };
     setCachedScan(safeAddress, type, 'solana', result);
@@ -2853,7 +3042,7 @@ app.post('/scan/free', express.json(), async (req, res) => {
     db.logScanToHistory({
       email: histEmail2 || null, address: safeAddress, scan_type: type,
       risk_score: data?.risk_score ?? null, risk_level: data?.risk_level || null,
-      summary: data?.summary || null, cached: false, result_json: data || null
+      summary: freeAdv?.text?.slice(0, 500) || data?.summary || null, cached: false, result_json: data || null
     }).catch(() => {});
     res.json({
       ...result,
@@ -2908,10 +3097,7 @@ app.get('/subscribe/:tier', async (req, res) => {
       });
       customerId = customer.id;
       // Save customer_id to users table
-      await db.pool.query(
-        'UPDATE users SET stripe_customer_id = $1 WHERE id = $2',
-        [customerId, req.user.id]
-      ).catch(() => {});
+      try { db.db.prepare('UPDATE users SET stripe_customer_id = ? WHERE id = ?').run(customerId, req.user.id); } catch (_) {}
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -2970,7 +3156,20 @@ app.post('/watchlist/user/add', express.json(), requireApiKey, async (req, res) 
   if (!address || !SOLANA_ADDRESS_RE.test(address)) {
     return res.status(400).json({ error: 'Invalid Solana address' });
   }
+  if (isBlockedWatchlistAddress(address)) {
+    return res.status(400).json({ error: 'This address cannot be monitored (system/program address with excessive transaction volume)' });
+  }
   try {
+    // Enforce tier limit
+    const { tier, limit } = await getWatchlistLimit(email, null);
+    const current = db.countWatchlistForEmail(email);
+    if (current >= limit) {
+      return res.status(403).json({
+        error: `Watchlist limit reached (${current}/${limit} for tier '${tier}'). Upgrade your plan to add more addresses.`,
+        tier, limit, current
+      });
+    }
+
     const notifyEmail = email_notify === false ? null : email;
     const entry = await db.addUserWatchlistEntry({ email, address, label, notify_email: notifyEmail });
     res.json({ ok: true, id: entry?.id, entry });
@@ -2995,7 +3194,7 @@ app.delete('/watchlist/user/:id', requireApiKey, async (req, res) => {
 });
 
 // ── Watchlist monitoring ───────────────────────────────────────────────────────
-const WATCHLIST_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hodin
+const WATCHLIST_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hodin (real-time via webhook, polling jen jako sanity check)
 const WATCHLIST_BATCH_DELAY = 2000;                // 2s mezi scany (rate limiting)
 
 async function sendTelegramAlert(chatId, message) {
@@ -3162,9 +3361,7 @@ app.get('/ads/serve', async (req, res) => {
     const ad = await db.getAdForPlacement(placement);
     if (!ad) return res.json({ ad: null });
     // Tracker impression (CPM: $cpm / 1000)
-    const cpmRow = await db.pool.query('SELECT cpm_usd FROM ads WHERE id = $1', [ad.id]);
-    const cpm = parseFloat(cpmRow.rows[0]?.cpm_usd || 0);
-    db.trackAdImpression(ad.id, cpm / 1000).catch(() => {});
+    db.trackAdImpression(ad.id, parseFloat(ad.cpm_usd || 0) / 1000).catch(() => {});
     db.logEvent({ name: 'ad_impression', resource: String(ad.id), ip: req.ip }).catch(() => {});
     res.json({ ad });
   } catch (e) {
@@ -3223,11 +3420,330 @@ app.patch('/admin/ads/:id', requireStatsToken, express.json(), async (req, res) 
   }
 });
 
+// ── Stripe Live Payments — /api/v1 ────────────────────────────────────────────
+
+const PLAN_PRICES = {
+  pro_trader: { amount: 1500, name: 'integrity.molt Pro Trader' },
+  builder:    { amount: 4900, name: 'integrity.molt Builder' },
+  team:       { amount: 29900, name: 'integrity.molt Team' }
+};
+
+// POST /api/v1/create-checkout-session
+app.post('/api/v1/create-checkout-session', express.json(), async (req, res) => {
+  const { plan } = req.body || {};
+  if (!PLAN_PRICES[plan]) {
+    return res.status(400).json({ error: `Unknown plan: ${plan}. Use pro_trader, builder, or team.` });
+  }
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeKey) return res.status(503).json({ error: 'Stripe not configured' });
+
+  const stripe = Stripe(stripeKey);
+  const APP = process.env.APP_URL || 'https://intmolt.org';
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: 'usd',
+          recurring: { interval: 'month' },
+          unit_amount: PLAN_PRICES[plan].amount,
+          product_data: { name: PLAN_PRICES[plan].name }
+        }
+      }],
+      metadata: { plan },
+      success_url: `${APP}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${APP}/#pricing`
+    });
+    db.logEvent({ name: 'checkout_session_created', resource: plan, ip: req.ip }).catch(() => {});
+    res.json({ url: session.url });
+  } catch (e) {
+    console.error('[stripe] create-checkout-session error:', e.message);
+    res.status(500).json({ error: 'Failed to create checkout session', detail: e.message });
+  }
+});
+
+// POST /api/v1/stripe-webhook — ověření podpisu + logování do JSON souboru
+const STRIPE_EVENTS_FILE = path.join(__dirname, 'data', 'stripe_events.json');
+app.post('/api/v1/stripe-webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const stripeKey     = process.env.STRIPE_SECRET_KEY;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!stripeKey) return res.status(503).send('Stripe not configured');
+
+    const stripe = Stripe(stripeKey);
+    let event;
+    try {
+      event = webhookSecret
+        ? stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], webhookSecret)
+        : JSON.parse(req.body.toString());
+    } catch (e) {
+      console.error('[stripe/v1] webhook signature failed:', e.message);
+      return res.status(400).send(`Webhook Error: ${e.message}`);
+    }
+
+    // Append event to JSON log file
+    try {
+      let events = [];
+      try { events = JSON.parse(fs.readFileSync(STRIPE_EVENTS_FILE, 'utf-8')); } catch {}
+      events.push({ ts: new Date().toISOString(), type: event.type, id: event.id, data: event.data?.object });
+      fs.writeFileSync(STRIPE_EVENTS_FILE, JSON.stringify(events, null, 2));
+    } catch (e) {
+      console.error('[stripe/v1] event log write error:', e.message);
+    }
+
+    const obj = event.data?.object;
+    try {
+      switch (event.type) {
+        case 'checkout.session.completed': {
+          if (obj.mode === 'subscription' && obj.subscription) {
+            const fullSub = await stripe.subscriptions.retrieve(obj.subscription);
+            await db.upsertSubscription({
+              stripe_customer_id: obj.customer,
+              stripe_sub_id:      obj.subscription,
+              email:              obj.customer_email || obj.customer_details?.email,
+              tier:               obj.metadata?.plan || 'builder',
+              status:             fullSub.status,
+              current_period_end: fullSub.current_period_end,
+              telegram_chat_id:   obj.metadata?.telegram_chat_id || null
+            });
+            db.logEvent({ name: 'subscription_activated', resource: obj.metadata?.plan }).catch(() => {});
+            console.log(`[stripe/v1] subscription activated: ${obj.customer_email} plan=${obj.metadata?.plan}`);
+            const welEmail = obj.customer_email || obj.customer_details?.email;
+            if (welEmail) sendWelcomeEmail({ email: welEmail, tier: obj.metadata?.plan || 'builder' }).catch(() => {});
+          }
+          break;
+        }
+        case 'customer.subscription.deleted': {
+          const customer = await stripe.customers.retrieve(obj.customer);
+          await db.upsertSubscription({
+            stripe_customer_id: obj.customer,
+            stripe_sub_id:      obj.id,
+            email:              customer.email,
+            tier:               obj.metadata?.plan || 'builder',
+            status:             obj.status,
+            current_period_end: obj.current_period_end
+          });
+          console.log(`[stripe/v1] subscription deleted: ${customer.email}`);
+          break;
+        }
+      }
+    } catch (e) {
+      console.error('[stripe/v1] webhook handler error:', e.message);
+    }
+
+    res.json({ received: true });
+  }
+);
+
 // ── Live Runtime Monitoring — Helius Webhook ──────────────────────────────────
 // POST /webhook/helius — přijímá Helius enhanced transaction data
 // NGINX: /api/v2/webhook/helius → proxy_pass http://127.0.0.1:3402/ stripuje prefix
 // Helius webhook URL: https://intmolt.org/api/v2/webhook/helius
-app.post('/webhook/helius', express.json({ limit: '1mb' }), verifyWebhookAuth, handleHeliusWebhook);
+
+// Global rate limit: max 300 req/min od Helius (5/s průměr).
+// Chrání před kreditu-burning při sledování extrémně aktivních adres.
+const _webhookRateWindow = { count: 0, resetAt: Date.now() + 60_000 };
+const WEBHOOK_GLOBAL_RATE_MAX = 300; // req/minuta
+
+function webhookGlobalRateLimit(req, res, next) {
+  const now = Date.now();
+  if (now > _webhookRateWindow.resetAt) {
+    _webhookRateWindow.count   = 0;
+    _webhookRateWindow.resetAt = now + 60_000;
+  }
+  _webhookRateWindow.count++;
+  if (_webhookRateWindow.count > WEBHOOK_GLOBAL_RATE_MAX) {
+    console.warn(`[monitor] Global webhook rate limit hit (${_webhookRateWindow.count} req/min) — dropping request`);
+    return res.status(200).json({ ok: false, error: 'rate_limit' }); // 200 aby Helius neretryoval
+  }
+  next();
+}
+
+app.post('/webhook/helius', express.json({ limit: '1mb' }), verifyWebhookAuth, webhookGlobalRateLimit, handleHeliusWebhook);
+
+// ── Bot-internal endpoints (bez x402, jen ADMIN_API_KEY + localhost) ──────────
+
+function requireBotKey(req, res, next) {
+  const key = process.env.ADMIN_API_KEY;
+  if (!key) return res.status(503).json({ error: 'ADMIN_API_KEY not configured' });
+  if (req.headers['x-admin-key'] !== key) return res.status(401).json({ error: 'Unauthorized' });
+  // Pouze z localhostu
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  if (!ip.includes('127.0.0.1') && !ip.includes('::1') && ip !== '::ffff:127.0.0.1') {
+    return res.status(403).json({ error: 'Forbidden: internal only' });
+  }
+  next();
+}
+
+// POST /internal/bot/quick — Solana quick scan pro Telegram bot (bez platby)
+// Body: { address }
+// Pipeline: quickScanRpcOnly → shell quick-scan → runWithAdvisor → asyncSign
+app.post('/internal/bot/quick', requireBotKey, express.json(), async (req, res) => {
+  const raw = (req.body?.address || '').trim();
+  const safeAddress = raw.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '').slice(0, 44);
+  if (!safeAddress || safeAddress.length < 32)
+    return res.status(400).json({ error: 'Invalid Solana address' });
+
+  try {
+    const t0 = Date.now();
+
+    // 1. RPC data (rychlé on-chain info)
+    const rpcData = await quickScanRpcOnly(safeAddress);
+
+    // 2. Shell quick-scan (detailnější report, non-fatal fallback)
+    let shellReport = '';
+    try {
+      const { stdout } = await runScript('/root/scanner/quick-scan.sh', [safeAddress], 60000);
+      shellReport = stdout;
+    } catch (shellErr) {
+      console.warn('[bot/quick] shell scan failed (non-fatal):', shellErr.message);
+    }
+
+    // 3. Sonnet executor + Opus advisor
+    const userMessage = `Adresa: ${safeAddress}
+
+On-chain RPC data:
+${JSON.stringify(rpcData, null, 2)}
+
+${shellReport ? `Shell scan report:\n${shellReport}` : '(shell scan unavailable)'}`;
+
+    const advisorResult = await runWithAdvisor({
+      systemPrompt: SECURITY_ANALYST_SYSTEM,
+      userMessage,
+    });
+
+    // 4. Ed25519 podpis výstupu
+    let signed = null;
+    try { signed = await asyncSign(advisorResult.text); } catch (e) {
+      console.warn('[bot/quick] signing failed (non-fatal):', e.message);
+    }
+
+    // 5. Logování do DB
+    db.logAdvisorUsage(null, 'bot-quick', advisorResult);
+    db.logEvent({ name: 'bot_quick_scan', resource: safeAddress, ip: req.ip }).catch(() => {});
+
+    console.log(`[bot/quick] address=${safeAddress} provider=${advisorResult.provider} advisor=${advisorResult.advisorUsed} ms=${Date.now()-t0}`);
+    res.json({
+      status:       'complete',
+      address:      safeAddress,
+      report:       advisorResult.text,
+      advisor_used: advisorResult.advisorUsed,
+      provider:     advisorResult.provider,
+      risk_score:   rpcData.risk_score   ?? null,
+      risk_level:   rpcData.risk_level   ?? null,
+      signed,
+    });
+  } catch (e) {
+    console.error('[bot/quick] error:', e.message);
+    res.status(500).json({ error: 'Quick scan failed', detail: e.message });
+  }
+});
+
+// POST /internal/bot/token — SPL token audit pro Telegram bot (bez platby)
+// Body: { address }
+app.post('/internal/bot/token', requireBotKey, express.json(), async (req, res) => {
+  const raw = (req.body?.address || '').trim();
+  const safeAddress = raw.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '').slice(0, 44);
+  if (!safeAddress || safeAddress.length < 32)
+    return res.status(400).json({ error: 'Invalid Solana address' });
+
+  try {
+    const result = await auditToken(safeAddress);
+    db.logEvent({ name: 'bot_token_audit', resource: safeAddress, ip: req.ip }).catch(() => {});
+
+    // Advisor pro grey-zone skóre (40-70)
+    let advisorResult = null;
+    if (result.risk_score >= 40 && result.risk_score <= 70) {
+      try {
+        advisorResult = await runWithAdvisor({
+          systemPrompt: SECURITY_ANALYST_SYSTEM,
+          userMessage:  `Token audit data:\n${JSON.stringify(result, null, 2)}`,
+          maxAdvisorUses: 2,
+        });
+        db.logAdvisorUsage(null, 'bot-token', advisorResult);
+      } catch (advErr) {
+        console.warn('[bot/token] advisor failed (non-fatal):', advErr.message);
+      }
+    }
+
+    res.json({
+      status:       'complete',
+      address:      safeAddress,
+      risk_score:   result.risk_score,
+      category:     result.category,
+      summary:      advisorResult?.text || result.summary,
+      advisor_used: advisorResult?.advisorUsed ?? false,
+      findings:     result.findings || [],
+    });
+  } catch (e) {
+    console.error('[bot/token] error:', e.message);
+    res.status(500).json({ error: 'Token audit failed', detail: e.message });
+  }
+});
+
+// POST /internal/bot/evm — EVM token scan pro Telegram bot (bez platby)
+// Body: { address, chain? }
+app.post('/internal/bot/evm', requireBotKey, express.json(), async (req, res) => {
+  const address = (req.body?.address || '').trim();
+  const chain   = (req.body?.chain   || 'ethereum').trim().toLowerCase();
+
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address))
+    return res.status(400).json({ error: 'Invalid EVM address (expected 0x + 40 hex chars)' });
+  if (!EVM_CHAINS.includes(chain))
+    return res.status(400).json({ error: `Invalid chain. Use: ${EVM_CHAINS.join('|')}` });
+
+  try {
+    const evmRes = await scanEVMToken(address, chain);
+    db.logEvent({ name: 'bot_evm_scan', resource: chain, ip: req.ip }).catch(() => {});
+
+    // Advisor — šedá zóna
+    const evmBotCtx = `EVM token scan ${chain}/${address}:\nScore: ${evmRes.score}\nRecommendation: ${evmRes.recommendation}\nFindings:\n${evmRes.findings.map(f=>`[${f.severity}] ${f.label}`).join('\n')}`;
+    const adv = await runAdvisorIfGreyZone({ score: evmRes.score, context: evmBotCtx, scanType: 'bot-evm' });
+
+    res.json({
+      status:         'complete',
+      chain,
+      address,
+      score:          evmRes.score,
+      recommendation: evmRes.recommendation,
+      findings:       evmRes.findings,
+      meta:           evmRes.meta,
+      advisor:        adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
+      signed:         adv?.signed || null,
+    });
+  } catch (e) {
+    console.error('[bot/evm] scan error:', e.message);
+    res.status(500).json({ error: 'EVM scan failed', detail: e.message });
+  }
+});
+
+// POST /internal/bot/contract — smart contract audit pro Telegram bot (bez platby)
+// Body: { github_url, project_name? }
+app.post('/internal/bot/contract', requireBotKey, express.json(), async (req, res) => {
+  const rawUrl   = (req.body?.github_url || '').trim();
+  const projName = (req.body?.project_name || '').trim().replace(/[^a-zA-Z0-9_\- ]/g, '').slice(0, 64) || 'unknown';
+
+  if (!rawUrl) return res.status(400).json({ error: 'Missing github_url' });
+  if (!/^https?:\/\/(github\.com|gitlab\.com)\/[a-zA-Z0-9_.\-]+\/[a-zA-Z0-9_.\-]+(\.git)?(\/?|\/tree\/[^\s]*)$/.test(rawUrl))
+    return res.status(400).json({ error: 'Invalid GitHub/GitLab URL. Expected: https://github.com/owner/repo' });
+
+  const DEEP_SCAN = '/root/bounty-hunter/deep-scan.sh';
+  db.logEvent({ name: 'bot_contract_audit', resource: rawUrl.slice(0, 100), ip: req.ip }).catch(() => {});
+  try {
+    const { stdout, stderr } = await runScript('bash', [DEEP_SCAN, rawUrl, projName], 600_000);
+    const outMatch = stdout.match(/→ Output:\s*(\S+\.json)/);
+    if (!outMatch?.[1]) return res.status(500).json({ error: 'Scan completed but output not found', detail: stderr.slice(0, 300) });
+
+    const report = JSON.parse(fs.readFileSync(outMatch[1], 'utf-8'));
+    res.json({ status: 'complete', github_url: rawUrl, project_name: report.metadata?.project_name || projName, language: report.metadata?.language, pipeline: report.metadata?.pipeline || [], stats: report.stats || {}, findings: report.findings || [] });
+  } catch (e) {
+    console.error('[bot/contract] audit error:', e.message);
+    res.status(500).json({ error: 'Contract audit failed', detail: e.message });
+  }
+});
 
 // ── Admin Monitor Status ───────────────────────────────────────────────────────
 // GET /api/v2/monitor/status — souhrnný stav monitoringu (vyžaduje X-Admin-Key)
@@ -3253,7 +3769,7 @@ db.initSchema()
   .then(() => initUsersSchema())
   .then(() => db.initAdsSchema())
   .then(() => {
-    app.listen(PORT, '127.0.0.1', () => {
+    const server = app.listen(PORT, '127.0.0.1', () => {
       console.log(`integrity.molt x402 server running on port ${PORT}`);
       // Watchlist monitor — první běh po 1 minutě, pak každých 6h
       setTimeout(() => {
@@ -3268,7 +3784,34 @@ db.initSchema()
       setTimeout(() => {
         initMonitor().catch(e => console.error('[monitor] Init error:', e.message));
       }, 5_000);
+
+      // Webhook-triggered re-scan: suspektní transakce spustí okamžitý risk re-scan
+      registerRescanCallback(async (address, entry) => {
+        const data = await quickScanRpcOnly(address);
+        const newLevel = data.risk_level || 'unknown';
+        const newScore = data.risk_score ?? null;
+        await db.updateWatchlistRisk(entry.id, {
+          risk_level: newLevel, risk_score: newScore, risk_summary: data.summary || null
+        });
+        console.log(`[watchlist-monitor] webhook-triggered re-scan ${address}: ${newLevel} (score: ${newScore})`);
+      });
     });
+
+    // ── Graceful shutdown — umožní dokončit in-flight requesty ─────────────
+    function gracefulShutdown(signal) {
+      console.log(`[shutdown] ${signal} received — closing HTTP server...`);
+      server.close(() => {
+        console.log('[shutdown] All connections closed, exiting cleanly');
+        process.exit(0);
+      });
+      // Nucené ukončení po 15s pokud server.close() nestačí
+      setTimeout(() => {
+        console.error('[shutdown] Forced shutdown after 15s timeout');
+        process.exit(1);
+      }, 15000).unref();
+    }
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT',  gracefulShutdown);
   })
   .catch(e => {
     console.error('FATAL: DB schema init failed:', e.message);

@@ -5,8 +5,32 @@ const path = require('path');
 const { evaluateTransaction } = require('./alerts');
 const { sendAlert }           = require('./notifications');
 
-const EVENTS_FILE = path.join(__dirname, '../../data/monitor/events.jsonl');
+const EVENTS_FILE    = path.join(__dirname, '../../data/monitor/events.jsonl');
+const PAYMENTS_FILE  = path.join(__dirname, '../../data/monitor/wallet-payments.jsonl');
+const NOTIFY_FILE    = path.join(__dirname, '../../data/monitor/new-payment.flag');
 const WEBHOOK_SECRET = process.env.HELIUS_WEBHOOK_SECRET || null;
+const OWN_WALLET     = process.env.SOLANA_WALLET_ADDRESS || null;
+
+// Re-scan fronta — adresy označené k okamžitému re-scanu po suspektní transakci
+// Callback zaregistruje server.js při startu
+let _rescanCallback = null;
+function registerRescanCallback(fn) { _rescanCallback = fn; }
+
+// Dedup cache — zabrání zpracování stejné signatury vícekrát (Helius retry, flood)
+// Max 50 000 položek, TTL 1h; při překročení se smaže celý Set (jednoduchý GC)
+const _dedupCache = new Set();
+let _dedupClearedAt = Date.now();
+function isDuplicate(sig) {
+  if (!sig) return false;
+  const now = Date.now();
+  if (_dedupCache.size > 50000 || now - _dedupClearedAt > 3600_000) {
+    _dedupCache.clear();
+    _dedupClearedAt = now;
+  }
+  if (_dedupCache.has(sig)) return true;
+  _dedupCache.add(sig);
+  return false;
+}
 
 // Zajisti existence log souboru
 if (!fs.existsSync(path.dirname(EVENTS_FILE))) {
@@ -122,8 +146,25 @@ function extractPrograms(tx) {
 /**
  * Append transakce do JSONL logu (append-only, jeden JSON per řádek).
  */
+const EVENTS_MAX_BYTES = 50 * 1024 * 1024; // 50 MB cap — zabrání disk flood při extrémně aktivních adresách
+
 function logEvent(parsed) {
   try {
+    // Přeskoč logování pokud soubor přesáhl cap (kontrola max každých 100 volání)
+    if (logEvent._callCount === undefined) logEvent._callCount = 0;
+    if (++logEvent._callCount % 100 === 0) {
+      try {
+        const size = fs.statSync(EVENTS_FILE).size;
+        if (size > EVENTS_MAX_BYTES) {
+          console.warn(`[monitor] events.jsonl přesáhl ${EVENTS_MAX_BYTES / 1024 / 1024}MB — logování pozastaveno`);
+          logEvent._paused = true;
+        } else {
+          logEvent._paused = false;
+        }
+      } catch { logEvent._paused = false; }
+    }
+    if (logEvent._paused) return;
+
     const line = JSON.stringify({
       sig:       parsed.signature,
       ts:        parsed.timestamp,
@@ -138,17 +179,68 @@ function logEvent(parsed) {
 }
 
 /**
- * Načte watchlist adresy z DB a vrátí Set pro rychlé vyhledávání.
- * Lazy import db aby se předešlo cirkulárním závislostem.
+ * Watchlist cache — aktualizuje se max 1x za 60s, ne na každý webhook.
+ * Při 6M webhooks/den = 6M DB queries → 1440 queries/den (1x/min).
  */
+let _watchlistCache = null;
+let _watchlistCachedAt = 0;
+const WATCHLIST_TTL = 60_000; // 60 sekund
+
 async function getWatchedAddresses() {
+  const now = Date.now();
+  if (_watchlistCache && now - _watchlistCachedAt < WATCHLIST_TTL) {
+    return _watchlistCache;
+  }
   try {
     const db = require('../../db');
     const entries = await db.getActiveWatchlist();
-    return entries.map(e => ({ address: e.address, entry: e }));
+    _watchlistCache = entries.map(e => ({ address: e.address, entry: e }));
+    _watchlistCachedAt = now;
+    return _watchlistCache;
   } catch (e) {
     console.error('[monitor] Cannot load watchlist:', e.message);
-    return [];
+    return _watchlistCache || []; // při chybě vrať stará data
+  }
+}
+
+/**
+ * Detekuje příchozí platbu na vlastní wallet (monitor-wallet logika přes webhook).
+ * Helius enhanced format obsahuje nativeTransfers přímo — žádné další RPC volání.
+ */
+function detectOwnWalletPayment(parsed) {
+  if (!OWN_WALLET) return;
+
+  const incoming = parsed.nativeTransfers.filter(
+    t => t.to === OWN_WALLET && t.from !== OWN_WALLET && t.amount > 0
+  );
+  if (!incoming.length) return;
+
+  const totalLamports = incoming.reduce((s, t) => s + t.amount, 0);
+  const sol = (totalLamports / 1e9).toFixed(6);
+  const blockTs = parsed.timestamp
+    ? new Date(parsed.timestamp).toISOString()
+    : new Date().toISOString();
+
+  console.log(`[monitor] PAYMENT: sig=${parsed.signature?.slice(0,20)}... +${sol} SOL at ${blockTs}`);
+
+  const entry = JSON.stringify({
+    timestamp:   blockTs,
+    recorded_at: new Date().toISOString(),
+    source:      'helius_webhook',
+    signature:   parsed.signature,
+    lamports:    totalLamports,
+    sol,
+    verified:    true,
+  }) + '\n';
+
+  try {
+    fs.mkdirSync(path.dirname(PAYMENTS_FILE), { recursive: true });
+    fs.appendFileSync(PAYMENTS_FILE, entry, 'utf8');
+    fs.writeFileSync(NOTIFY_FILE, JSON.stringify({
+      sig: parsed.signature, lamports: totalLamports, sol, at: blockTs
+    }), 'utf8');
+  } catch (e) {
+    console.error('[monitor] Failed to write payment:', e.message);
   }
 }
 
@@ -175,9 +267,13 @@ async function handleHeliusWebhook(req, res) {
   for (const rawTx of txList) {
     try {
       const parsed = parseEnhancedTransaction(rawTx);
+      if (isDuplicate(parsed.signature)) continue;
       logEvent(parsed);
 
-      // Najdi průnik mezi účty v tx a sledovanými adresami
+      // Detekce příchozí platby na vlastní wallet (bez RPC pollingu)
+      detectOwnWalletPayment(parsed);
+
+      // Najdi průnik mezi účty v tx a sledovanými adresami (zákaznický watchlist)
       const relevantAddresses = parsed.accounts.filter(a => watchedSet.has(a));
 
       for (const addr of relevantAddresses) {
@@ -197,6 +293,15 @@ async function handleHeliusWebhook(req, res) {
           }
           await sendAlert(alert, channels);
         }
+
+        // Suspektní transakce → okamžitý re-scan místo čekání na 24h interval
+        const severity = alerts.map(a => a.severity || a.level || '').join(',').toLowerCase();
+        if (alerts.length > 0 && /critical|high/.test(severity) && _rescanCallback) {
+          console.log(`[monitor] Triggering re-scan for watchlist address ${addr} (suspicious tx)`);
+          _rescanCallback(addr, entry).catch(e =>
+            console.error('[monitor] Re-scan callback failed:', e.message)
+          );
+        }
       }
     } catch (e) {
       console.error('[monitor] Error processing tx:', e.message);
@@ -204,4 +309,4 @@ async function handleHeliusWebhook(req, res) {
   }
 }
 
-module.exports = { verifyWebhookAuth, handleHeliusWebhook, parseEnhancedTransaction };
+module.exports = { verifyWebhookAuth, handleHeliusWebhook, parseEnhancedTransaction, registerRescanCallback };

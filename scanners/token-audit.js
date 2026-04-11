@@ -23,6 +23,15 @@ let OPENROUTER_API_KEY = '';
 try { OPENROUTER_API_KEY = fs.readFileSync('/root/.secrets/openrouter_api_key', 'utf-8').trim(); } catch {}
 if (!OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY) OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
+// ── Known-safe token whitelist (Solana) ──────────────────────────────────────
+function loadSolanaWhitelist() {
+  try {
+    const data = JSON.parse(fs.readFileSync(require('path').join(__dirname, '../config/known-safe-tokens.json'), 'utf-8'));
+    return data.solana || {};
+  } catch { return {}; }
+}
+const SOLANA_WHITELIST = loadSolanaWhitelist();
+
 // Known program IDs
 const TOKEN_PROG      = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 const TOKEN_2022_PROG = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
@@ -595,6 +604,23 @@ async function auditToken(mintAddress, tokenName, options = {}) {
 
   rawScore = Math.min(100, rawScore);
 
+  // Apply known-safe whitelist — regulated assets (USDC, USDT) have active
+  // mint/freeze authorities by design. Downgrade findings and cap score.
+  const wlEntry = SOLANA_WHITELIST[mintAddress];
+  if (wlEntry) {
+    for (let i = 0; i < findings.length; i++) {
+      const f = findings[i];
+      if (f.category === 'mint-authority' && f.severity === 'high' && wlEntry.mint_authority_note) {
+        findings[i] = { ...f, severity: 'info', label: f.label + ` — ${wlEntry.mint_authority_note}` };
+      } else if (f.category === 'freeze-authority' && f.severity === 'high' && wlEntry.freeze_authority_note) {
+        findings[i] = { ...f, severity: 'info', label: f.label + ` — ${wlEntry.freeze_authority_note}` };
+      }
+    }
+    if (wlEntry.max_score != null && rawScore > wlEntry.max_score) {
+      rawScore = wlEntry.max_score;
+    }
+  }
+
   const auditData = {
     mint_address:    mintAddress,
     token_name:      tokenName || metadata?.name || 'Unknown',
@@ -823,4 +849,4 @@ function getShowcaseReport() {
   };
 }
 
-module.exports = { auditToken, getShowcaseReport };
+module.exports = { auditToken, getShowcaseReport, _test: { scoreToCategory, analyzeConcentration, WEIGHTS } };

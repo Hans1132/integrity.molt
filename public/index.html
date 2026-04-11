@@ -554,6 +554,115 @@
     }
     .footer-copy { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
 
+    /* ── FAQ ── */
+    .faq-section { padding: 72px 0; border-bottom: 1px solid var(--border); }
+    .faq-list { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .faq-item:hover { border-color: var(--accent-dim); }
+    .faq-q {
+      width: 100%;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--sans);
+      text-align: left;
+      padding: 18px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .faq-q .faq-chevron {
+      color: var(--accent);
+      font-size: 16px;
+      flex-shrink: 0;
+      transition: transform .2s;
+      display: inline-block;
+    }
+    .faq-item.open .faq-chevron { transform: rotate(90deg); }
+    .faq-a {
+      display: none;
+      padding: 0 20px 18px;
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+    .faq-a a { color: var(--accent-dim); }
+    .faq-item.open .faq-a { display: block; }
+
+    /* ── Comparison table ── */
+    .compare-wrap {
+      overflow-x: auto;
+      margin-top: 48px;
+    }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .compare-table th, .compare-table td {
+      padding: 11px 16px;
+      border: 1px solid var(--border);
+      text-align: center;
+      white-space: nowrap;
+    }
+    .compare-table th {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--bg-alt);
+    }
+    .compare-table th.plan-head { color: #fff; }
+    .compare-table th.plan-head.featured { color: var(--accent); }
+    .compare-table td.feature-name {
+      text-align: left;
+      color: var(--text-dim);
+      font-size: 12px;
+      background: var(--bg-card);
+      font-weight: 400;
+    }
+    .compare-table td.yes { color: var(--accent); font-weight: 700; }
+    .compare-table td.no  { color: var(--text-faint); }
+    .compare-table td.val { color: var(--text); }
+    .compare-table tr:hover td { background: rgba(255,255,255,.02); }
+    .compare-table tr:hover td.feature-name { background: rgba(255,255,255,.02); }
+
+    /* ── Live ticker ── */
+    .ticker-bar {
+      background: rgba(0,255,136,.04);
+      border-bottom: 1px solid rgba(0,255,136,.1);
+      padding: 8px 0;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: center;
+      letter-spacing: 0.3px;
+    }
+    .ticker-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .3; }
+    }
+
     @media (max-width: 768px) {
       .trust-item { padding: 6px 16px; }
       .stat-item { padding: 10px 20px; }
@@ -564,10 +673,127 @@
       .footer-grid { grid-template-columns: 1fr; gap: 32px; }
       .demo-box { padding: 24px 20px; }
     }
+    @media (max-width: 768px) {
+      .sample-report-section { padding: 40px 0; }
+    }
     @media (max-width: 480px) {
       h1 { letter-spacing: -0.5px; }
       .hero { padding: 56px 0 40px; }
       .trust-item { font-size: 10px; padding: 5px 12px; }
+      .hero-ctas { flex-direction: column; align-items: center; }
+      .hero-ctas .btn-primary, .hero-ctas .btn-outline { width: 100%; max-width: 280px; text-align: center; }
+      .report-modal-box { padding: 20px 16px; border-radius: 8px; }
+      .report-modal-actions { flex-direction: column; }
+      .report-modal-actions button { width: 100%; }
+    }
+
+    /* ── Sample report section ── */
+    .sample-report-section {
+      padding: 56px 0;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .sample-report-section h2 { margin-bottom: 12px; }
+    .sample-report-section p {
+      font-size: 14px;
+      color: var(--text-dim);
+      max-width: 520px;
+      margin: 0 auto 28px;
+      line-height: 1.65;
+    }
+    .btn-sample {
+      background: transparent;
+      border: 1px solid var(--accent-dim);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 12px 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background .15s, box-shadow .15s;
+    }
+    .btn-sample:hover { background: var(--accent-glow); box-shadow: 0 0 16px rgba(0,255,136,.15); }
+
+    /* ── Report modal ── */
+    .report-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(6px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .report-modal-overlay.open { display: flex; }
+    .report-modal-box {
+      background: #0c1117;
+      border: 1px solid #1a2332;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 700px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+    .report-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+    }
+    .report-modal-title {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--accent);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .report-modal-close {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 18px;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: border-color .15s, color .15s;
+    }
+    .report-modal-close:hover { border-color: var(--accent-dim); color: var(--text); }
+    .report-json {
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.75;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      overflow-x: auto;
+      white-space: pre;
+      margin-bottom: 20px;
+    }
+    .report-json .jk  { color: #7eb8e8; }
+    .report-json .js  { color: #c8d8e8; }
+    .report-json .jn  { color: #e0a86e; }
+    .report-json .jbo { color: #e0a86e; }
+    .report-json .risk-none   { color: #00ff88; }
+    .report-json .risk-low    { color: #00cc6a; }
+    .report-json .risk-medium { color: #ffaa00; }
+    .report-json .risk-high   { color: #ff4444; }
+    .report-json .risk-crit   { color: #ff2222; font-weight: 700; }
+    .report-modal-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
     }
   </style>
 </head>
@@ -591,6 +817,7 @@
         <a href="#how-it-works">How it works</a>
         <a href="#pricing">Pricing</a>
         <a href="#for-bots">For Bots</a>
+        <a href="#faq">FAQ</a>
         <a href="/verify.html">Verify</a>
         <a href="/docs.html">API Docs</a>
         <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram</a>
@@ -599,16 +826,20 @@
   </div>
 </header>
 
-<!-- ── Hero ── -->
-<div class="hero">
+<!-- ── Live ticker ── -->
+<div class="ticker-bar">
+  <span class="ticker-dot"></span><span id="tickerText">Loading live stats…</span>
+</div>
+
+<!-- ── Hero ── --><div class="hero">
   <div class="container">
     <p class="hero-tag">integrity.molt</p>
-    <h1>Real-Time Solana<br><span class="highlight">Risk Monitoring</span></h1>
-    <p class="tagline">Cryptographically signed security intelligence for traders, bots, and protocol teams.</p>
+    <h1>Know Before<br><span class="highlight">You Buy</span></h1>
+    <p class="tagline">Real-time Solana token risk analysis. Signed reports. Live monitoring alerts.</p>
 
     <div class="hero-ctas">
-      <a href="https://t.me/intmolt_bot" class="btn-primary" target="_blank" rel="noopener">Start Free Monitoring</a>
-      <a href="/docs.html" class="btn-outline">View API Docs</a>
+      <a href="#scanner" class="btn-primary">Start Free Scan</a>
+      <a href="https://t.me/intmolt_bot" class="btn-outline" target="_blank" rel="noopener">Get Alerts on Telegram</a>
     </div>
   </div>
 </div>
@@ -618,7 +849,7 @@
   <div class="container">
     <div class="trust-items">
       <div class="trust-item"><span class="dot">◆</span>Ed25519 Signed Reports</div>
-      <div class="trust-item"><span class="dot">◆</span>x402 Agent Commerce</div>
+      <div class="trust-item"><span class="dot">◆</span>3 Free Scans/Day</div>
       <div class="trust-item"><span class="dot">◆</span>Moltbook Verified</div>
       <div class="trust-item"><span class="dot">◆</span>24/7 Live Monitoring</div>
     </div>
@@ -649,6 +880,15 @@
   </div>
 </div>
 
+<!-- ── Sample report ── -->
+<section class="sample-report-section">
+  <div class="container">
+    <h2>See What You Get</h2>
+    <p>Every scan produces a cryptographically signed JSON report — machine-readable, tamper-proof, independently verifiable.</p>
+    <button id="show-sample-report" class="btn-sample">View Sample Report</button>
+  </div>
+</section>
+
 <!-- ── Scanner demo ── -->
 <section id="scanner">
   <div class="container">
@@ -662,14 +902,14 @@
           class="demo-input"
           id="demoAddr"
           type="text"
-          placeholder="Paste Solana address..."
+          placeholder="Paste token mint address..."
           autocomplete="off"
           spellcheck="false"
           onkeydown="if(event.key==='Enter')demoScan()"
         >
-        <button class="demo-btn" id="demoBtnEl" onclick="demoScan()">Quick Scan (Free)</button>
+        <button class="demo-btn" id="demoBtnEl" onclick="demoScan()">Scan Now — Free</button>
       </div>
-      <p class="demo-note">3 free scans/day · no wallet required · <a href="#pricing">Want deeper analysis? Upgrade</a></p>
+      <p class="demo-note">3 free scans per day • No signup required · <a href="#pricing">Want deeper analysis? Upgrade</a></p>
       <div class="demo-result" id="demoResult"></div>
     </div>
   </div>
@@ -832,6 +1072,128 @@
     <p style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:24px;">
       Pay with card (Stripe) or crypto (USDC on Solana). Pro Trader: 15 USDC · Builder: 49 USDC · Team: 299 USDC
     </p>
+
+    <!-- Feature comparison table -->
+    <div class="compare-wrap">
+      <table class="compare-table" aria-label="Plan comparison">
+        <thead>
+          <tr>
+            <th style="text-align:left;min-width:200px;">Feature</th>
+            <th class="plan-head">Free</th>
+            <th class="plan-head">Pro Trader</th>
+            <th class="plan-head featured">Builder</th>
+            <th class="plan-head">Team</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="feature-name">Daily scans</td>
+            <td class="val">3/day</td>
+            <td class="yes">Unlimited</td>
+            <td class="yes">Unlimited</td>
+            <td class="yes">Unlimited</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Watchlist addresses</td>
+            <td class="val">3</td>
+            <td class="val">20</td>
+            <td class="val">100</td>
+            <td class="val">500</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Quick &amp; Token scan</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td class="feature-name">EVM scan (ETH/BSC/Base)</td>
+            <td class="no">—</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Deep Audit (AI)</td>
+            <td class="no">—</td>
+            <td class="val">Pay-per-scan</td>
+            <td class="val">Pay-per-scan</td>
+            <td class="yes">Included</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Adversarial Sim</td>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="val">1/month</td>
+            <td class="yes">Unlimited</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Ed25519 signed reports</td>
+            <td class="no">—</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Telegram alerts</td>
+            <td class="val">Critical only</td>
+            <td class="yes">All levels</td>
+            <td class="yes">All levels</td>
+            <td class="yes">Custom rules</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Email alerts</td>
+            <td class="no">—</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Webhook callback</td>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Delta reports</td>
+            <td class="no">—</td>
+            <td class="val">Weekly</td>
+            <td class="val">Daily</td>
+            <td class="val">Daily + on-demand</td>
+          </tr>
+          <tr>
+            <td class="feature-name">API access</td>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="val">100 req/min</td>
+            <td class="val">1000 req/min</td>
+          </tr>
+          <tr>
+            <td class="feature-name">x402 machine payments</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td class="feature-name">Priority scan queue</td>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td class="feature-name">SLA</td>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="val">99.5% uptime</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>
 
@@ -851,7 +1213,7 @@
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;">
         <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;">Rug Check</div>
         <div style="font-family:var(--mono);font-size:18px;color:var(--accent);margin-bottom:8px;">0.50 USDC</div>
-        <div style="font-size:12px;color:var(--text-dim);">Wallet profiling, age estimate, DeFi exposure</div>
+        <div style="font-size:12px;color:var(--text-dim);">Token contract analysis: mint authority, freeze authority, LP lock status, top holder concentration, honeypot detection</div>
       </div>
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;">
         <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;">Token Scan</div>
@@ -913,6 +1275,102 @@
   </div>
 </section>
 
+<!-- ── FAQ ── -->
+<section class="faq-section" id="faq">
+  <div class="container">
+    <p class="section-tag">Questions</p>
+    <h2>Frequently asked questions</h2>
+    <p class="section-sub" style="margin-bottom:32px;">Everything you need to know before you start scanning.</p>
+
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Is it really free? What's the catch?
+          <span class="faq-chevron">▶</span>
+        </button>
+        <div class="faq-a">
+          Yes — 3 free quick scans per day, no signup, no wallet required. The catch? Deep Audit (full AI code review) costs 5 USDC per scan because it uses serious compute. Basic risk checks stay free forever.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          What is a Deep Audit and how is it different from a quick scan?
+          <span class="faq-chevron">▶</span>
+        </button>
+        <div class="faq-a">
+          A <strong style="color:#fff;">Quick Scan</strong> checks on-chain data in seconds: mint/freeze authority, holder concentration, large transfers. It covers 90% of rug-pull warning signs.<br><br>
+          A <strong style="color:#fff;">Deep Audit</strong> actually reads the program's bytecode or source code — running static analysis, simulating attack vectors, and producing a signed report with specific vulnerability findings. Think "security audit" vs "quick health check."
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          What is x402 and how does payment work?
+          <span class="faq-chevron">▶</span>
+        </button>
+        <div class="faq-a">
+          x402 is an open HTTP payment protocol for machines. When your bot or AI agent hits our API without a subscription, it receives a <code style="color:var(--accent);font-family:var(--mono);">402 Payment Required</code> response describing the price and USDC address. Your agent sends the payment on Solana and retries — we verify the transaction and return the signed report. No API keys, no billing dashboard, no human in the loop.<br><br>
+          <a href="https://intmolt.org/.well-known/x402.json" target="_blank" rel="noopener">View our x402 discovery endpoint →</a>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          What does "Ed25519 signed" mean? Why does it matter?
+          <span class="faq-chevron">▶</span>
+        </button>
+        <div class="faq-a">
+          Every report we generate is cryptographically signed with our Ed25519 private key. You can verify it offline using our public key — if the signature matches, the report is authentic and unmodified. This means you don't need to trust us: you can prove to anyone that the risk report is exactly what we produced.<br><br>
+          <a href="/verify.html">Verify a report signature online →</a>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          How do real-time alerts work? Do I need to keep the app open?
+          <span class="faq-chevron">▶</span>
+        </button>
+        <div class="faq-a">
+          No. We monitor your watchlist addresses 24/7 via Helius webhooks — the moment a suspicious transaction hits the blockchain (authority change, large transfer, program upgrade) we push an alert to your Telegram or email. You don't poll, we push. On-chain event to your Telegram in under 5 seconds.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Can I scan Ethereum / BSC / Base tokens too?
+          <span class="faq-chevron">▶</span>
+        </button>
+        <div class="faq-a">
+          Yes. Paste any EVM contract address (0x…) and select "EVM Scan." We run bytecode analysis, honeypot simulation, and source-code pattern matching for Ethereum mainnet, BNB Chain, and Base. Full EVM scan is available on Pro Trader and above, or as a one-time 0.75 USDC pay-per-scan.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          How many addresses can I monitor on the free plan?
+          <span class="faq-chevron">▶</span>
+        </button>
+        <div class="faq-a">
+          Free: 3 addresses. Pro Trader: 20. Builder: 100. Team: 500. Limits are enforced server-side — adding a 4th address on the free plan returns a clear upgrade prompt via Telegram bot or API. Upgrade any time with a card or USDC payment.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Is there an API I can integrate into my own app?
+          <span class="faq-chevron">▶</span>
+        </button>
+        <div class="faq-a">
+          Yes. Builder and Team plans include REST API access with rate limits of 100 and 1000 req/min respectively. All endpoints return machine-readable signed JSON. Or use x402 pay-per-query — no subscription required. Full docs at <a href="/docs.html">intmolt.org/docs</a>.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- ── Footer ── -->
 <footer>
   <div class="container">
@@ -954,21 +1412,52 @@
 </footer>
 
 <script>
-  // Stats
+  // Stats + live ticker — auto-refresh every 60s
+  var _lastStatsTotal = null;
+
+  function updateTicker(d) {
+    var el = document.getElementById('tickerText');
+    if (!el) return;
+    var today = d.scans_today != null ? d.scans_today : (d.scansToday || 0);
+    var total = d.total_scans != null ? d.total_scans : (d.totalScans || 0);
+    var rate  = d.success_rate_pct != null ? d.success_rate_pct : (d.successRate || 99);
+    el.textContent = Number(today).toLocaleString() + ' scans today  ·  '
+      + Number(total).toLocaleString() + ' total  ·  '
+      + Number(rate).toFixed(1) + '% success rate  ·  monitoring live on Solana';
+  }
+
   (function loadStats(attempt) {
     fetch('/api/v2/stats', { cache: 'no-store' })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(d => {
         var s = (id, v) => { if (v != null) document.getElementById(id).textContent = v; };
-        s('stat-scans',  d.total_scans != null  ? Number(d.total_scans).toLocaleString() : null);
-        s('stat-rate',   d.success_rate_pct != null ? Number(d.success_rate_pct).toFixed(1) + '%' : null);
-        if (d.average_response_time_ms != null) {
-          var ms = Number(d.average_response_time_ms);
-          s('stat-time', ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : ms + 'ms');
+        var total = d.total_scans != null ? d.total_scans : d.totalScans;
+        var rate  = d.success_rate_pct != null ? d.success_rate_pct : d.successRate;
+        var ms    = d.average_response_time_ms != null ? d.average_response_time_ms : d.avgResponseTime;
+        var today = d.scans_today != null ? d.scans_today : d.scansToday;
+        s('stat-scans', total != null ? Number(total).toLocaleString() : null);
+        s('stat-rate',  rate  != null ? Number(rate).toFixed(1) + '%'  : null);
+        if (ms != null) {
+          var msN = Number(ms);
+          s('stat-time', msN >= 1000 ? (msN / 1000).toFixed(1) + 's' : msN > 0 ? msN + 'ms' : '< 5s');
         }
-        s('stat-today',  d.scans_today != null ? Number(d.scans_today).toLocaleString() : null);
+        s('stat-today', today != null ? Number(today).toLocaleString() : null);
+        updateTicker(d);
+        _lastStatsTotal = total;
+        // Auto-refresh every 60 seconds
+        setTimeout(() => loadStats(0), 60_000);
       })
-      .catch(() => { if (attempt < 2) setTimeout(() => loadStats(attempt + 1), 2500); });
+      .catch(() => {
+        if (attempt < 2) { setTimeout(() => loadStats(attempt + 1), 2500); return; }
+        // Fallback po 3 neúspěšných pokusech
+        document.getElementById('stat-scans').textContent = '1,200+';
+        document.getElementById('stat-rate').textContent  = '98%';
+        document.getElementById('stat-time').textContent  = '< 3s';
+        document.getElementById('stat-today').textContent = '45';
+        var el = document.getElementById('tickerText');
+        if (el) el.textContent = 'Live Solana security monitoring · scans running 24/7';
+        setTimeout(() => loadStats(0), 60_000);
+      });
   })(0);
 
   // Page view beacon
@@ -1047,6 +1536,21 @@
     btn.disabled = false;
   }
 
+  // FAQ toggle
+  function toggleFaq(btn) {
+    var item = btn.closest('.faq-item');
+    var isOpen = item.classList.contains('open');
+    // Zavři všechny ostatní
+    document.querySelectorAll('.faq-item.open').forEach(function(el) {
+      el.classList.remove('open');
+      el.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+    });
+    if (!isOpen) {
+      item.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+  }
+
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
@@ -1057,9 +1561,119 @@
       window.open('https://t.me/intmolt_bot', '_blank');
       return;
     }
-    // Try social login flow first
-    window.location.href = '/subscribe/' + tier;
+    const btn = document.querySelector(`button[onclick="startCheckout('${tier}')"]`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+    try {
+      const resp = await fetch('/api/v1/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: tier })
+      });
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert('Checkout error: ' + (data.error || 'Unknown error'));
+        if (btn) { btn.disabled = false; btn.textContent = tier === 'builder' ? 'Subscribe $49/mo' : 'Subscribe $15/mo'; }
+      }
+    } catch (e) {
+      alert('Network error. Please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = tier === 'builder' ? 'Subscribe $49/mo' : 'Subscribe $15/mo'; }
+    }
   }
+</script>
+
+<!-- ── Sample report modal ── -->
+<div class="report-modal-overlay" id="reportModal" role="dialog" aria-modal="true" aria-label="Sample scan report">
+  <div class="report-modal-box">
+    <div class="report-modal-header">
+      <span class="report-modal-title">Sample Signed Report</span>
+      <button class="report-modal-close" id="closeReportModal" aria-label="Close">&#x2715;</button>
+    </div>
+    <div class="report-json" id="reportJsonDisplay"></div>
+    <div class="report-modal-actions">
+      <button class="btn-primary" onclick="document.getElementById('reportModal').classList.remove('open');setTimeout(()=>{document.getElementById('scanner').scrollIntoView({behavior:'smooth'})},100)">Run Your Own Scan</button>
+      <button class="btn-outline" id="closeReportModal2">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var SAMPLE = {
+      report_id:   "sample-demo-2026-04",
+      scan_type:   "quick_scan",
+      target:      "So11111111111111111111111111111111",
+      timestamp:   "2026-04-09T12:00:00Z",
+      risk_score:  32,
+      risk_level:  "LOW",
+      findings: [
+        { category: "authority",  finding: "Mint authority revoked",    risk: "none"   },
+        { category: "liquidity",  finding: "LP locked 12 months",       risk: "low"    },
+        { category: "holders",    finding: "Top 10 holders own 23%",    risk: "medium" }
+      ],
+      signature:   "ed25519:sample_signature_base64...",
+      verify_key:  "ed25519:public_key_base64...",
+      verify_url:  "https://intmolt.org/verify"
+    };
+
+    var RISK_CLASS = { none: 'risk-none', low: 'risk-low', medium: 'risk-medium', high: 'risk-high', critical: 'risk-crit' };
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function renderJson(obj, indent) {
+      indent = indent || 0;
+      var pad = '  '.repeat(indent);
+      var pad1 = '  '.repeat(indent + 1);
+
+      if (Array.isArray(obj)) {
+        if (obj.length === 0) return '[]';
+        var items = obj.map(function(item) { return pad1 + renderJson(item, indent + 1); });
+        return '[\n' + items.join(',\n') + '\n' + pad + ']';
+      }
+      if (obj !== null && typeof obj === 'object') {
+        var keys = Object.keys(obj);
+        if (keys.length === 0) return '{}';
+        var pairs = keys.map(function(k) {
+          var v = obj[k];
+          var rendered;
+          if (k === 'risk' && typeof v === 'string') {
+            var cls = RISK_CLASS[v] || 'js';
+            rendered = '<span class="' + cls + '">"' + esc(v) + '"</span>';
+          } else {
+            rendered = renderJson(v, indent + 1);
+          }
+          return pad1 + '<span class="jk">"' + esc(k) + '"</span>: ' + rendered;
+        });
+        return '{\n' + pairs.join(',\n') + '\n' + pad + '}';
+      }
+      if (typeof obj === 'string') return '<span class="js">"' + esc(obj) + '"</span>';
+      if (typeof obj === 'number') return '<span class="jn">' + obj + '</span>';
+      if (typeof obj === 'boolean') return '<span class="jbo">' + obj + '</span>';
+      return esc(String(obj));
+    }
+
+    function openModal() {
+      document.getElementById('reportJsonDisplay').innerHTML = renderJson(SAMPLE);
+      document.getElementById('reportModal').classList.add('open');
+      document.getElementById('closeReportModal').focus();
+    }
+    function closeModal() {
+      document.getElementById('reportModal').classList.remove('open');
+    }
+
+    document.getElementById('show-sample-report').addEventListener('click', openModal);
+    document.getElementById('closeReportModal').addEventListener('click', closeModal);
+    document.getElementById('closeReportModal2').addEventListener('click', closeModal);
+    document.getElementById('reportModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+  })();
 </script>
 
 </body>

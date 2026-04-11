@@ -9,6 +9,20 @@ const HELIUS_BASE = 'https://api-mainnet.helius-rpc.com/v0';
 // Webhook URL kterou Helius bude volat
 const WEBHOOK_URL = 'https://intmolt.org/api/v2/webhook/helius';
 
+// Pouze bezpečnostně relevantní typy — filtruje běžné swappy a DeFi txs na Helius straně.
+// 'ANY' by způsobilo miliony notifikací u aktivních adres (DEX pooly, AMM programy).
+const SECURITY_TX_TYPES = [
+  'SET_AUTHORITY',
+  'UPGRADE_PROGRAM_INSTRUCTION',
+  'CLOSE_ACCOUNT',
+  'BURN',
+  'BURN_NFT',
+  'TRANSFER',
+  'TRANSFER_CHECKED',
+  'MINT_TO',
+  'INITIALIZE_MINT',
+];
+
 function getApiKey() {
   const key = process.env.HELIUS_API_KEY;
   if (!key) throw new Error('HELIUS_API_KEY not set in environment');
@@ -74,7 +88,7 @@ async function setupWebhook(addresses = []) {
 
   const payload = {
     webhookURL:       WEBHOOK_URL,
-    transactionTypes: ['ANY'],
+    transactionTypes: SECURITY_TX_TYPES,
     accountAddresses: addresses,
     webhookType:      'enhanced',
     authHeader:       secret || undefined,
@@ -109,7 +123,7 @@ async function addAddresses(webhookId, newAddresses) {
 
   await heliusRequest('PUT', `/webhooks/${webhookId}`, {
     webhookURL:       WEBHOOK_URL,
-    transactionTypes: ['ANY'],
+    transactionTypes: SECURITY_TX_TYPES,
     accountAddresses: merged,
     webhookType:      'enhanced',
     authHeader:       process.env.HELIUS_WEBHOOK_SECRET || undefined,
@@ -138,7 +152,7 @@ async function removeAddresses(webhookId, toRemove) {
 
   await heliusRequest('PUT', `/webhooks/${webhookId}`, {
     webhookURL:       WEBHOOK_URL,
-    transactionTypes: ['ANY'],
+    transactionTypes: SECURITY_TX_TYPES,
     accountAddresses: remaining,
     webhookType:      'enhanced',
     authHeader:       process.env.HELIUS_WEBHOOK_SECRET || undefined,
@@ -182,7 +196,11 @@ async function syncWatchlistToWebhook() {
     console.error('[monitor] Cannot load watchlist:', e.message); return;
   }
 
-  const addresses = [...new Set(entries.map(e => e.address))];
+  // Vlastní wallet vždy sledujeme — detekce příchozích plateb bez pollingu
+  const ownWallet = process.env.SOLANA_WALLET_ADDRESS;
+  const baseAddresses = entries.map(e => e.address);
+  if (ownWallet && !baseAddresses.includes(ownWallet)) baseAddresses.push(ownWallet);
+  const addresses = [...new Set(baseAddresses)];
   const config    = loadConfig();
 
   if (!config.webhookId) {
@@ -214,7 +232,7 @@ async function syncWatchlistToWebhook() {
       console.log(`[monitor] Syncing: +${toAdd.length} / -${toRemove.length} addresses`);
       await heliusRequest('PUT', `/webhooks/${config.webhookId}`, {
         webhookURL:       WEBHOOK_URL,
-        transactionTypes: ['ANY'],
+        transactionTypes: SECURITY_TX_TYPES,
         accountAddresses: addresses,
         webhookType:      'enhanced',
         authHeader:       process.env.HELIUS_WEBHOOK_SECRET || undefined,

@@ -4,6 +4,23 @@
 // Žádné npm závislosti — pouze Node built-ins + fetch (Node 18+)
 
 const fs = require('fs');
+const path = require('path');
+
+// ── Known-safe token whitelist ────────────────────────────────────────────────
+function loadEvmWhitelist() {
+  try {
+    const wlPath = path.join(__dirname, '../config/known-safe-tokens.json');
+    const data = JSON.parse(fs.readFileSync(wlPath, 'utf-8'));
+    return data.evm || {};
+  } catch { return {}; }
+}
+
+const EVM_WHITELIST = loadEvmWhitelist();
+
+function getEvmWhitelistEntry(address, chain) {
+  const chainSection = EVM_WHITELIST[chain] || {};
+  return chainSection[address.toLowerCase()] || null;
+}
 
 // ── File key loader (sdílený helper) ─────────────────────────────────────────
 function loadKeyFromFile(filePath) {
@@ -293,6 +310,7 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
   if (!cfg) throw new Error(`Unknown chain: ${chain}. Supported: ${SUPPORTED_CHAINS.join('|')}`);
 
   const apiKey = getEtherscanKey();
+  const wlEntry = getEvmWhitelistEntry(contractAddress, chain);
 
   const findings = [];
   const meta = {
@@ -379,16 +397,17 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
   }
 
   // ── (d) Bytecode selector scan ────────────────────────────────────────────
+  // NOTE: Raw opcode byte matching (0xff, 0xf4) is intentionally NOT done here.
+  // The bytes 0xff and 0xf4 appear as data in PUSH instructions in virtually every
+  // production contract (addresses, constants, etc.), causing massive false positives.
+  // SELFDESTRUCT and DELEGATECALL are detected via source code pattern analysis (section f).
+  // Only 4-byte function selectors are scanned here — they are embedded as-is in bytecode.
   {
     const bytecode = code.toLowerCase().slice(2);
     for (const sel of DANGEROUS_SELECTORS) {
       if (bytecode.includes(sel.hex))
         findings.push({ label: sel.label, severity: sel.severity, category: sel.category });
     }
-    if (bytecode.includes('ff'))
-      findings.push({ label: 'SELFDESTRUCT opcode (0xff) in bytecode', severity: 'critical', category: 'contract-kill' });
-    if (!meta.isProxy && bytecode.includes('f4'))
-      findings.push({ label: 'DELEGATECALL opcode (0xf4) in non-proxy bytecode', severity: 'high', category: 'proxy' });
   }
 
   // ── (e) Impersonation check ───────────────────────────────────────────────
@@ -444,12 +463,39 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
     const transferData = await alchemyGetAssetTransfers(cfg.alchRpc, contractAddress);
     if (transferData?.transfers?.length) {
       meta.transferCount = transferData.transfers.length;
-      findings.push(...analyzeTransfers(transferData.transfers));
+      const transferFindings = analyzeTransfers(transferData.transfers);
+      if (wlEntry) {
+        // Downgrade high transfer velocity and proxy-related findings for whitelisted tokens
+        for (const f of transferFindings) {
+          if (f.severity === 'high' && f.category === 'activity') {
+            findings.push({ ...f, severity: 'info', label: f.label + ' — expected for high-liquidity regulated asset' });
+          } else {
+            findings.push(f);
+          }
+        }
+      } else {
+        findings.push(...transferFindings);
+      }
+    }
+  }
+
+  // ── Downgrade proxy/delegatecall findings for whitelisted contracts ──────
+  if (wlEntry) {
+    for (let i = 0; i < findings.length; i++) {
+      const f = findings[i];
+      if ((f.category === 'proxy' || f.category === 'contract-kill') && f.severity === 'high') {
+        findings[i] = { ...f, severity: 'info', label: f.label + (wlEntry.proxy_note ? ` — ${wlEntry.proxy_note}` : ' — Standard proxy pattern') };
+      }
     }
   }
 
   // ── Risk score + recommendation ───────────────────────────────────────────
-  const score = Math.min(100, findings.reduce((acc, f) => acc + (WEIGHTS[f.severity] || 0), 0));
+  let score = Math.min(100, findings.reduce((acc, f) => acc + (WEIGHTS[f.severity] || 0), 0));
+
+  // Cap score for whitelisted contracts
+  if (wlEntry && wlEntry.max_score != null) {
+    score = Math.min(score, wlEntry.max_score);
+  }
 
   let recommendation;
   if      (score >= 60) recommendation = 'HIGH RISK — multiple critical/high findings, proceed with extreme caution';
@@ -457,7 +503,14 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
   else if (score >= 10) recommendation = 'LOW RISK — minor issues present, standard due diligence advised';
   else                  recommendation = 'APPEARS SAFE — no significant risk patterns detected';
 
-  return { findings, meta, score, recommendation };
+  // risk_level alias (maps to Solana scanner convention)
+  let risk_level;
+  if      (score >= 60) risk_level = 'high';
+  else if (score >= 30) risk_level = 'medium';
+  else if (score >= 10) risk_level = 'low';
+  else                  risk_level = 'safe';
+
+  return { findings, meta, score, risk_score: score, recommendation, risk_level };
 }
 
 // Všechny chainy sdílí ETHERSCAN_API_KEY — chain argument se ignoruje
@@ -466,4 +519,4 @@ function hasExplorerKey(chain) {
   return !!getEtherscanKey();
 }
 
-module.exports = { scanEVMToken, SUPPORTED_CHAINS, getExplorerKey, hasExplorerKey };
+module.exports = { scanEVMToken, SUPPORTED_CHAINS, getExplorerKey, hasExplorerKey, _test: { analyzeSource, analyzeTransfers, detectFees, decodeString, decodeUint256, decodeAddress, WEIGHTS, PATTERNS } };

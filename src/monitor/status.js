@@ -160,32 +160,45 @@ function getAlertStats() {
 
 // ── webhook info ──────────────────────────────────────────────────────────────
 
+let _webhookInfoCache = null;
+let _webhookInfoCacheTs = 0;
+const WEBHOOK_INFO_TTL_MS = 60_000; // 1 minuta cache — admin status nesmí bít Helius API
+
 async function getWebhookInfo() {
+  if (_webhookInfoCache && (Date.now() - _webhookInfoCacheTs) < WEBHOOK_INFO_TTL_MS) {
+    return _webhookInfoCache;
+  }
   let cfg = {};
   try { cfg = JSON.parse(fs.readFileSync(WEBHOOK_CFG_FILE, 'utf8')); } catch { /* nový soubor */ }
 
   const webhookId = cfg.webhookId || null;
 
   if (!webhookId) {
-    return { id: null, active: false, tracked_addresses: 0, url: 'https://intmolt.org/api/v2/webhook/helius' };
+    const result = { id: null, active: false, tracked_addresses: 0, url: 'https://intmolt.org/api/v2/webhook/helius' };
+    _webhookInfoCache = result; _webhookInfoCacheTs = Date.now();
+    return result;
   }
 
   try {
     const wh = await getWebhookStatus(webhookId);
-    return {
+    const result = {
       id: webhookId,
       active: !!(wh && wh.webhookURL),
       tracked_addresses: Array.isArray(wh?.accountAddresses) ? wh.accountAddresses.length : (cfg.addressCount || 0),
       url: wh?.webhookURL || 'https://intmolt.org/api/v2/webhook/helius'
     };
+    _webhookInfoCache = result; _webhookInfoCacheTs = Date.now();
+    return result;
   } catch {
     // Helius nedostupný nebo limit — vrátíme data z configu
-    return {
+    const result = {
       id: webhookId,
       active: null,   // unknown
       tracked_addresses: cfg.addressCount || 0,
       url: 'https://intmolt.org/api/v2/webhook/helius'
     };
+    _webhookInfoCache = result; _webhookInfoCacheTs = Date.now();
+    return result;
   }
 }
 

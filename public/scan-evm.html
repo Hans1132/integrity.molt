@@ -203,7 +203,7 @@
       </div>
     </div>
     <button class="btn-scan" id="scanBtn" onclick="runScan()">SCAN TOKEN</button>
-    <p class="note">0.10 USDC via x402 · API key holders scan free · Ed25519 signed report</p>
+    <p class="note">0.50 USDC via x402 · API key holders scan free · Ed25519 signed report</p>
   </div>
 
   <div id="results"></div>
@@ -357,7 +357,7 @@ async function runScan() {
     const data = await res.json();
     if (res.status === 402) {
       el.innerHTML = `<div class="error-box">
-        <strong>Payment required (0.10 USDC)</strong><br>
+        <strong>Payment required (0.50 USDC)</strong><br>
         Use the x402 protocol with an <code>X-Payment</code> header, or get an API key at <a href="/subscribe/builder">intmolt.org/subscribe</a>.
         <pre style="margin-top:12px;font-size:11px;overflow-x:auto">${escHtml(JSON.stringify(data.accepts?.[0] || data, null, 2))}</pre>
       </div>`;

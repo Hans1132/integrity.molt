@@ -133,6 +133,38 @@
     .form-row select { cursor: pointer; }
     .form-row select option { background: var(--bg-alt); }
 
+    /* ── Scan type cards (1) ── */
+    .scan-type-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    @media (max-width: 600px) { .scan-type-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 360px) { .scan-type-grid { grid-template-columns: 1fr; } }
+
+    .type-card {
+      position: relative;
+      display: flex; flex-direction: column; gap: 3px;
+      padding: 10px 12px;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 8px; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .type-card:hover { border-color: var(--accent-dim); }
+    .type-card input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+    .type-card.active { border-color: var(--accent); background: #0d1520; }
+    .type-card-icon { font-size: 16px; line-height: 1; margin-bottom: 2px; }
+    .type-card-name { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text); }
+    .type-card-desc { font-size: 11px; color: var(--text-dim); line-height: 1.35; }
+    .type-card-badge {
+      margin-top: 4px; align-self: flex-start;
+      font-family: var(--mono); font-size: 10px;
+      padding: 1px 6px; border-radius: 3px;
+      background: var(--bg); border: 1px solid var(--border); color: var(--accent);
+    }
+    .type-card-badge.free { color: var(--green); border-color: #1e3a2f; background: #0d1f18; }
+
     .scan-type-meta {
       margin-top: 8px; font-size: 13px; color: var(--text-dim);
       display: flex; align-items: center; justify-content: space-between;
@@ -144,6 +176,59 @@
       color: var(--accent);
     }
     .price-tag.free { color: var(--green); border-color: #1e3a2f; background: #0d1f18; }
+
+    /* ── Address hint (7) ── */
+    .addr-hint-box {
+      margin-top: 8px; padding: 7px 10px;
+      border-radius: 6px; font-size: 12px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .addr-hint-box.evm  { background: rgba(77,166,255,.08); border: 1px solid rgba(77,166,255,.25); color: var(--accent); }
+    .addr-hint-box.sol  { background: rgba(63,185,80,.08);  border: 1px solid rgba(63,185,80,.25);  color: var(--green);  }
+    .addr-hint-box.err  { background: rgba(248,81,73,.08);  border: 1px solid rgba(248,81,73,.25);  color: var(--red);    }
+    .addr-hint-box.info { background: var(--bg-alt);        border: 1px solid var(--border);        color: var(--text-dim); }
+
+    /* ── Cached badge (8) ── */
+    .cached-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--mono); font-size: 11px;
+      padding: 4px 10px; border-radius: 4px;
+      background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.3);
+      color: var(--green); margin-bottom: 12px;
+    }
+
+    /* ── Soft paywall email capture (2) ── */
+    .soft-paywall {
+      padding: 24px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 10px;
+      margin-bottom: 16px;
+    }
+    .soft-paywall h3 { font-size: 16px; color: #fff; margin-bottom: 6px; }
+    .soft-paywall p  { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
+    .soft-paywall-row { display: flex; gap: 8px; }
+    .soft-paywall-row input {
+      flex: 1; padding: 10px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      font-family: var(--mono); font-size: 13px; outline: none;
+    }
+    .soft-paywall-row input:focus { border-color: var(--accent-dim); }
+    .soft-paywall-row button {
+      padding: 10px 18px; background: var(--accent); color: #000;
+      font-weight: 700; font-family: var(--mono); font-size: 13px;
+      border: none; border-radius: 6px; cursor: pointer; white-space: nowrap;
+    }
+    .soft-paywall-skip { font-size: 12px; color: var(--text-faint); margin-top: 10px; cursor: pointer; }
+    .soft-paywall-skip:hover { color: var(--text-dim); }
+
+    /* ── Share row (9) ── */
+    .share-x-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 12px; background: #000; border: 1px solid #333;
+      border-radius: 4px; color: #fff; font-size: 12px; cursor: pointer;
+      font-family: var(--mono); text-decoration: none;
+    }
+    .share-x-btn:hover { border-color: #fff; text-decoration: none; }
 
     .btn-submit {
       width: 100%; padding: 13px;
@@ -759,20 +844,56 @@
             spellcheck="false"
             autofocus
           >
-          <div id="addrHint" style="margin-top:6px;font-size:12px;color:var(--text-faint);display:none"></div>
+          <div id="addrHint" class="addr-hint-box info" style="display:none"></div>
         </div>
 
         <div class="form-row">
-          <label for="typeSelect">Scan Type</label>
-          <select id="typeSelect">
-            <option value="quick">Quick Scan — Solana address, account info, basic risk</option>
-            <option value="token">Token Audit — Solana token, mint/freeze authority, holder distribution</option>
-            <option value="wallet">Wallet Profile — Solana wallet, age, activity, DeFi exposure</option>
-            <option value="pool">Pool Scan — Solana DEX pool, liquidity depth, LP distribution</option>
-            <option value="evm-token">EVM Token Scan — Base/ETH/Arbitrum, honeypot + source analysis</option>
-            <option value="deep">Deep Audit — full swarm analysis, multi-agent vulnerability report</option>
-          </select>
-          <div class="scan-type-meta">
+          <label>Scan Type</label>
+          <div class="scan-type-grid" id="scanTypeGrid">
+            <label class="type-card active" onclick="selectType('quick')">
+              <input type="radio" name="scanType" value="quick" checked>
+              <span class="type-card-icon">⚡</span>
+              <span class="type-card-name">Quick Scan</span>
+              <span class="type-card-desc">Account info, risk score, ~10s</span>
+              <span class="type-card-badge free">FREE</span>
+            </label>
+            <label class="type-card" onclick="selectType('token')">
+              <input type="radio" name="scanType" value="token">
+              <span class="type-card-icon">🪙</span>
+              <span class="type-card-name">Token Audit</span>
+              <span class="type-card-desc">Mint authority, holders, rug risk</span>
+              <span class="type-card-badge free">FREE</span>
+            </label>
+            <label class="type-card" onclick="selectType('evm-token')">
+              <input type="radio" name="scanType" value="evm-token">
+              <span class="type-card-icon">🔷</span>
+              <span class="type-card-name">EVM Token</span>
+              <span class="type-card-desc">Honeypot + source, Base/ETH/ARB</span>
+              <span class="type-card-badge free">FREE</span>
+            </label>
+            <label class="type-card" onclick="selectType('wallet')">
+              <input type="radio" name="scanType" value="wallet">
+              <span class="type-card-icon">👛</span>
+              <span class="type-card-name">Wallet Profile</span>
+              <span class="type-card-desc">Age, activity, DeFi exposure</span>
+              <span class="type-card-badge free">FREE</span>
+            </label>
+            <label class="type-card" onclick="selectType('pool')">
+              <input type="radio" name="scanType" value="pool">
+              <span class="type-card-icon">💧</span>
+              <span class="type-card-name">Pool Scan</span>
+              <span class="type-card-desc">LP distribution, liquidity depth</span>
+              <span class="type-card-badge free">FREE</span>
+            </label>
+            <label class="type-card" onclick="selectType('deep')">
+              <input type="radio" name="scanType" value="deep">
+              <span class="type-card-icon">🔬</span>
+              <span class="type-card-name">Deep Audit</span>
+              <span class="type-card-desc">8 AI agents, full vulnerability report</span>
+              <span class="type-card-badge" id="deepBadge">$2.00</span>
+            </label>
+          </div>
+          <div class="scan-type-meta" style="margin-top:10px">
             <span id="typeDesc" style="color:var(--text-dim)">Fast on-chain check, results in ~10s</span>
             <span class="price-tag free" id="priceBadge">FREE</span>
           </div>
@@ -811,6 +932,9 @@
           </div>
           <div class="spinner-steps" id="spinnerSteps"></div>
         </div>
+
+        <!-- Cached badge (8) — zobrazí se při instant výsledku -->
+        <div id="cachedBadge" class="cached-badge" style="display:none">⚡ Instant result — cached scan · <a href="#" onclick="startScan();return false" style="color:var(--green)">Run fresh scan</a></div>
 
         <!-- Result content -->
         <div id="resultContent"></div>
@@ -880,10 +1004,10 @@ function fillExample(key) {
   if (!ex) return;
   const inp = document.getElementById('addressInput');
   inp.value = ex.address;
-  document.getElementById('typeSelect').value = ex.type;
+  selectType(ex.type);
   if (ex.chain !== 'solana') document.getElementById('chainSelect').value = ex.chain;
   updateTypeUI();
-  showAddrHint(ex.label + ' — known token, good for testing');
+  showAddrHint('📍 ' + ex.label + ' — known token, good for testing', 'info');
   if (typeof gtag !== 'undefined') gtag('event', 'example_filled', { example: key });
   startScan();
 }
@@ -894,11 +1018,28 @@ function detectAddressType(addr) {
   return null;
 }
 
-function showAddrHint(msg, color) {
+function showAddrHint(msg, kind) {
+  // kind: 'evm' | 'sol' | 'err' | 'info'
   const el = document.getElementById('addrHint');
+  el.className = 'addr-hint-box ' + (kind || 'info');
   el.textContent = msg;
-  el.style.color = color || 'var(--text-faint)';
-  el.style.display = 'block';
+  el.style.display = 'flex';
+}
+
+// ── Scan type card picker (1) ──────────────────────────────────────────────────
+function selectType(type) {
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
+  const radio = document.querySelector(`.type-card input[value="${type}"]`);
+  if (radio) {
+    radio.checked = true;
+    radio.closest('.type-card').classList.add('active');
+  }
+  updateTypeUI();
+}
+
+function getSelectedType() {
+  const checked = document.querySelector('.type-card input[type="radio"]:checked');
+  return checked ? checked.value : 'quick';
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
@@ -916,39 +1057,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const typeParam   = params.get('type')    || '';
 
   // Pre-select scan type from ?type= URL param
-  if (typeParam) {
-    const sel = document.getElementById('typeSelect');
-    if (Array.from(sel.options).some(o => o.value === typeParam)) sel.value = typeParam;
+  if (typeParam && SCAN_TYPES[typeParam]) {
+    selectType(typeParam);
   }
-
   updateTypeUI();
-  document.getElementById('typeSelect').addEventListener('change', updateTypeUI);
 
   // Enter key v address inputu spustí scan
   document.getElementById('addressInput').addEventListener('keydown', e => { if (e.key === 'Enter') startScan(); });
 
-  // Auto-detekce typu adresy při vložení
+  // Auto-detekce typu adresy při vložení (7)
   document.getElementById('addressInput').addEventListener('input', () => {
     const addr = document.getElementById('addressInput').value.trim();
     const kind = detectAddressType(addr);
     const hintEl = document.getElementById('addrHint');
     if (!addr) { hintEl.style.display = 'none'; return; }
     if (kind === 'evm') {
-      const curType = document.getElementById('typeSelect').value;
-      if (curType !== 'evm-token') {
-        document.getElementById('typeSelect').value = 'evm-token';
-        updateTypeUI();
-      }
-      showAddrHint('EVM address detected — switched to EVM Token Scan', 'var(--accent)');
+      const curType = getSelectedType();
+      if (curType !== 'evm-token') { selectType('evm-token'); updateTypeUI(); }
+      showAddrHint('🔷 EVM address detected — switched to EVM Token Scan', 'evm');
     } else if (kind === 'solana') {
-      const curType = document.getElementById('typeSelect').value;
-      if (curType === 'evm-token') {
-        document.getElementById('typeSelect').value = 'token';
-        updateTypeUI();
-      }
-      showAddrHint('Solana address detected', 'var(--green)');
+      const curType = getSelectedType();
+      if (curType === 'evm-token') { selectType('token'); updateTypeUI(); }
+      showAddrHint('◎ Solana address detected', 'sol');
     } else if (addr.length > 10) {
-      showAddrHint('Unrecognized format — expected Solana (base58) or EVM (0x…) address', 'var(--red)');
+      showAddrHint('⚠ Unrecognized format — expected Solana (base58) or EVM (0x…) address', 'err');
     } else {
       hintEl.style.display = 'none';
     }
@@ -967,15 +1099,14 @@ async function loadCachedOrScan(address, type) {
     if (r.ok) {
       const j = await r.json();
       if (j.cached && j.data) {
-        // Zobrazit cached výsledek bez spuštění nového scanu
         document.getElementById('resultSection').style.display = 'block';
         document.getElementById('spinnerWrap').style.display = 'none';
+        document.getElementById('cachedBadge').style.display = 'inline-flex'; // (8)
         renderResult(j.data, address, type);
         return;
       }
     }
   } catch {}
-  // Žádný cache — spustit scan automaticky
   startScan();
 }
 
@@ -1044,12 +1175,12 @@ function renderQuota(q) {
     btn.style.background = 'var(--bg-alt)';
     btn.style.color = 'var(--text-dim)';
     btn.style.border = '1px solid var(--border)';
-    btn.onclick = () => showPaywall(null, document.getElementById('typeSelect').value);
+    btn.onclick = () => showPaywall(null, getSelectedType());
   }
 }
 
 function updateTypeUI() {
-  const type = document.getElementById('typeSelect').value;
+  const type = getSelectedType();
   const info = SCAN_TYPES[type];
   document.getElementById('typeDesc').textContent = info.desc;
 
@@ -1084,8 +1215,9 @@ function updateTypeUI() {
 // ── Scan ───────────────────────────────────────────────────────────────────────
 async function startScan() {
   const address = document.getElementById('addressInput').value.trim();
-  const type    = document.getElementById('typeSelect').value;
+  const type    = getSelectedType();
   const chain   = document.getElementById('chainSelect').value;
+  document.getElementById('cachedBadge').style.display = 'none';
   const isEvm   = SCAN_TYPES[type]?.addrType === 'evm';
   window._lastScanAddress  = address;
   window._lastScanType     = type;
@@ -1227,6 +1359,10 @@ function renderResult(json, address, type) {
   _lastScanJson     = json;    // for download
   _lastScanAddress  = address; // for report filename
   _lastScanType     = type;    // for report type label
+  // Ulož risk data pro X share (9)
+  window._lastScanAddress   = address;
+  window._lastScanRiskScore = json?.data?.risk_score ?? json?.risk_score ?? null;
+  window._lastScanRiskLevel = json?.data?.risk_level ?? json?.risk_level ?? null;
   const el = document.getElementById('resultContent');
   const isFree = json.scans_remaining !== undefined;
 
@@ -1864,10 +2000,11 @@ function renderSignedFooter(signed, address, scanTypeName3) {
       ${sigSection}
       <div class="share-row">
         <button class="share-btn" onclick="copyText('${esc(shareUrl)}', this)">📋 Copy link</button>
-        <button class="share-btn download-report-btn" onclick="downloadReport('pdf')" id="dlPdfBtn">⬇ Download PDF</button>
-        <button class="share-btn download-report-btn" onclick="downloadReport('png')" id="dlPngBtn">🖼 Download PNG</button>
+        <a class="share-x-btn" href="${esc(buildXShareUrl(shareUrl, signed))}" target="_blank" rel="noopener">𝕏 Share</a>
+        <button class="share-btn download-report-btn" onclick="downloadReport('pdf')" id="dlPdfBtn">⬇ PDF</button>
+        <button class="share-btn download-report-btn" onclick="downloadReport('png')" id="dlPngBtn">🖼 PNG</button>
         <button class="share-btn" onclick="downloadJson()" style="opacity:0.6;font-size:10px">JSON</button>
-        <a class="share-btn" href="/#plans">🚀 Upgrade plan</a>
+        <a class="share-btn" href="/#plans">🚀 Upgrade</a>
       </div>
       <div class="footer-brand-note" style="margin-top:10px">Powered by <strong style="color:var(--accent)">integrity.molt</strong> — AI-native Solana security · ${esc(now)}</div>
     </div>`;
@@ -1950,6 +2087,16 @@ function showPaywall(json, type) {
   const isDeep  = type === 'deep';
 
   if (typeof gtag !== 'undefined') gtag('event', 'paywall_shown', { scan_type: type });
+
+  // Soft paywall (2): pokud je kvóta exhausted a není to deep scan, nabídni email capture
+  if (!isDeep && !json) {
+    const alreadyShownSoft = sessionStorage.getItem('soft_paywall_shown');
+    if (!alreadyShownSoft) {
+      sessionStorage.setItem('soft_paywall_shown', '1');
+      showSoftPaywall(() => { sessionStorage.setItem('soft_paywall_hard', '1'); showPaywall(json, type); });
+      return;
+    }
+  }
 
   const html = `
     <div class="paywall-card">
@@ -2128,11 +2275,32 @@ function startSubscription(tier) {
 }
 
 // ── Error ──────────────────────────────────────────────────────────────────────
+// Mapa technických chyb na user-friendly zprávy (3)
+const ERROR_MAP = [
+  { pattern: /rate.?limit|too many req|429/i,       msg: 'Too many requests — please wait a moment and try again.' },
+  { pattern: /timeout|timed.?out|ETIMEDOUT/i,        msg: 'The scan took too long to respond. The network may be congested — try again in a few seconds.' },
+  { pattern: /network|ECONNRESET|ENOTFOUND|fetch/i,  msg: 'Network error — check your connection and try again.' },
+  { pattern: /invalid.*address|not.*base58/i,        msg: 'Invalid address format. Paste a Solana address (base58) or EVM address (0x…).' },
+  { pattern: /not found|404/i,                       msg: 'Address not found on-chain. Double-check the address or try a different network.' },
+  { pattern: /RPC error|jsonrpc/i,                   msg: 'Blockchain node returned an error. This is usually temporary — try again.' },
+  { pattern: /Script exited|exit code|stderr/i,      msg: 'Scan service encountered an issue. Our team has been notified. Please try again.' },
+];
+
+function friendlyError(title, detail) {
+  const raw = (title + ' ' + detail).toLowerCase();
+  for (const { pattern, msg } of ERROR_MAP) {
+    if (pattern.test(raw)) return { title: 'Scan failed', detail: msg };
+  }
+  return { title, detail: detail || 'An unexpected error occurred. Please try again.' };
+}
+
 function showError(title, detail) {
+  const { title: t, detail: d } = friendlyError(title, detail);
   document.getElementById('resultContent').innerHTML = `
-    <div style="padding:20px;background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px">
-      <div style="font-family:var(--mono);font-size:13px;color:var(--red);margin-bottom:6px">${esc(title)}</div>
-      <div style="font-size:13px;color:var(--text-dim)">${esc(detail)}</div>
+    <div style="padding:20px 24px;background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px">
+      <div style="font-family:var(--mono);font-size:13px;color:var(--red);margin-bottom:6px">${esc(t)}</div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:14px">${esc(d)}</div>
+      <button onclick="startScan()" style="padding:8px 16px;background:var(--bg-alt);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer">↺ Try Again</button>
     </div>
   `;
 }
@@ -2203,6 +2371,54 @@ function copyText(text, btn) {
 let _lastScanJson = null;
 let _lastScanAddress = window._lastScanAddress || '';
 let _lastScanType    = '';
+
+// ── X/Twitter share (9) ────────────────────────────────────────────────────────
+function buildXShareUrl(pageUrl, signed) {
+  const riskLevel = (window._lastScanRiskLevel || '').toUpperCase();
+  const riskScore = window._lastScanRiskScore;
+  const addr = (window._lastScanAddress || '').slice(0, 10) + '…';
+  let text = `🔍 Just scanned ${addr} on @intmolt`;
+  if (riskLevel && riskScore != null) text += ` — ${riskLevel} RISK (${riskScore}/100)`;
+  text += '\n\nCheck any Solana or EVM address for rug pulls & honeypots — first 3 scans free.';
+  return `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(pageUrl)}`;
+}
+
+// ── Soft paywall email capture (2) ────────────────────────────────────────────
+function showSoftPaywall(onSkip) {
+  const div = document.getElementById('paywallContent');
+  div.innerHTML = `
+    <div class="soft-paywall">
+      <h3>📬 Get 1 extra free scan + rug alerts</h3>
+      <p>Enter your email to unlock one more free scan today and receive critical risk alerts when the tokens you've scanned change status.</p>
+      <div class="soft-paywall-row">
+        <input type="email" id="softEmail" placeholder="you@example.com" autocomplete="email">
+        <button onclick="submitSoftPaywall()">Unlock →</button>
+      </div>
+      <div class="soft-paywall-skip" onclick="(${onSkip.toString()})()">No thanks, show upgrade options →</div>
+    </div>
+  `;
+  document.getElementById('resultSection').style.display = 'block';
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function submitSoftPaywall() {
+  const email = document.getElementById('softEmail')?.value?.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    document.getElementById('softEmail').style.borderColor = 'var(--red)';
+    setTimeout(() => { const el = document.getElementById('softEmail'); if (el) el.style.borderColor = ''; }, 1500);
+    return;
+  }
+  try {
+    await fetch('/email/capture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, source: 'soft_paywall', scan_type: window._lastScanType || 'quick' })
+    });
+  } catch {}
+  // Schovat soft paywall, spustit scan znovu (server dá 1 extra)
+  document.getElementById('paywallContent').innerHTML = '';
+  startScan();
+}
 
 function downloadJson() {
   if (!_lastScanJson) return;

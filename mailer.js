@@ -10,9 +10,10 @@
  */
 
 const nodemailer = require('nodemailer');
-const { Pool }   = require('pg');
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const {
+  getActiveSubscribers, getSubscriberWatchlist, getWeeklyScanSummary,
+  getDigestAd, getRecentHighRiskScans, trackAdImpression
+} = require('./db');
 
 // ── Email transporter ──────────────────────────────────────────────────────────
 
@@ -31,79 +32,9 @@ function getTransporter() {
 
 const FROM = () => process.env.SMTP_FROM || process.env.SMTP_USER || 'alerts@intmolt.org';
 
-// ── DB queries pro digest ──────────────────────────────────────────────────────
-
-async function getActiveSubscribers() {
-  const { rows } = await pool.query(`
-    SELECT DISTINCT ON (email) email, tier, current_period_end
-    FROM subscriptions
-    WHERE status = 'active'
-      AND (current_period_end IS NULL OR current_period_end > now())
-      AND digest_unsubscribed = FALSE
-    ORDER BY email, current_period_end DESC
-  `);
-  return rows;
-}
-
-async function getSubscriberWatchlist(email) {
-  const { rows } = await pool.query(`
-    SELECT address, label, last_risk_level, last_risk_score, last_checked_at
-    FROM watchlist
-    WHERE notify_email = $1 AND active = TRUE
-    ORDER BY last_risk_score DESC NULLS LAST, created_at
-  `, [email]);
-  return rows;
-}
-
-async function getWeeklyScanSummary(email) {
-  const { rows } = await pool.query(`
-    SELECT
-      COUNT(*)                                             AS total_scans,
-      COUNT(*) FILTER (WHERE risk_level = 'high')         AS high_risk,
-      COUNT(*) FILTER (WHERE risk_level = 'critical')     AS critical_risk,
-      COUNT(*) FILTER (WHERE risk_level = 'medium')       AS medium_risk,
-      COUNT(*) FILTER (WHERE scan_type  = 'deep')         AS deep_scans,
-      MAX(risk_score)                                      AS max_score,
-      COUNT(DISTINCT address)                              AS unique_addresses
-    FROM scan_history
-    WHERE email = $1
-      AND created_at >= now() - INTERVAL '7 days'
-  `, [email]);
-  return rows[0] || {};
-}
-
-async function getDigestAd() {
-  const { rows } = await pool.query(`
-    SELECT id, advertiser, headline, tagline, cta_text, cta_url, image_url, cpm_usd
-    FROM ads
-    WHERE active = TRUE AND (placement = 'digest' OR placement = 'all')
-      AND (expires_at IS NULL OR expires_at > now())
-      AND (budget_usd IS NULL OR spent_usd < budget_usd)
-    ORDER BY impressions ASC, RANDOM()
-    LIMIT 1
-  `);
-  return rows[0] || null;
-}
-
 async function trackDigestAdImpression(ad) {
   const cpm = parseFloat(ad.cpm_usd || 0);
-  await pool.query(
-    `UPDATE ads SET impressions = impressions + 1, spent_usd = spent_usd + $2 WHERE id = $1`,
-    [ad.id, cpm / 1000]
-  );
-}
-
-async function getRecentHighRiskScans(email) {
-  const { rows } = await pool.query(`
-    SELECT address, scan_type, risk_score, risk_level, summary, created_at
-    FROM scan_history
-    WHERE email = $1
-      AND risk_level IN ('high', 'critical')
-      AND created_at >= now() - INTERVAL '7 days'
-    ORDER BY risk_score DESC, created_at DESC
-    LIMIT 5
-  `, [email]);
-  return rows;
+  await trackAdImpression(ad.id, cpm / 1000);
 }
 
 // ── HTML builder ──────────────────────────────────────────────────────────────

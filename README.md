@@ -26,27 +26,27 @@ On-chain risk intelligence with cryptographically verifiable reports and x402 mi
 | Endpoint | Method | Price | Description |
 |----------|--------|-------|-------------|
 | `/api/v2/scan/quick` | POST | 1.00 USDC | Fast RPC-only risk assessment |
-| `/api/v2/scan/deep` | POST | 2.00 USDC | Full multi-agent security audit |
+| `/api/v2/scan/deep` | POST | 5.00 USDC | Full multi-agent security audit |
 | `/api/v2/scan/token` | POST | 1.00 USDC | Token security audit (mint/freeze authority, supply) |
 | `/api/v2/scan/wallet` | POST | 1.00 USDC | Wallet profiling and risk classification |
 | `/api/v2/scan/pool` | POST | 1.00 USDC | DeFi pool safety scan |
 | `/api/v2/scan/evm-token` | POST | 1.00 USDC | EVM token honeypot + source analysis |
-| `/api/v1/scan/token-audit` | POST | 0.15 USDC | Deep token security audit with LLM analysis |
+| `/api/v1/scan/token-audit` | POST | 0.75 USDC | Deep token security audit with LLM analysis |
 
 ### Delta & history endpoints
 
 | Endpoint | Method | Price | Description |
 |----------|--------|-------|-------------|
 | `/api/v1/history/:address` | GET | Free | Snapshot history for an address |
-| `/api/v1/delta/:address` | GET | 0.15 USDC | Signed diff: latest vs. baseline snapshot |
-| `/api/v1/delta/:address/:ts1/:ts2` | GET | 0.15 USDC | Signed diff between two specific snapshots |
+| `/api/v1/delta/:address` | GET | 0.50 USDC | Signed diff: latest vs. baseline snapshot |
+| `/api/v1/delta/:address/:ts1/:ts2` | GET | 0.50 USDC | Signed diff between two specific snapshots |
 
 ### Adversarial simulation
 
 | Endpoint | Method | Price | Description |
 |----------|--------|-------|-------------|
 | `/api/v1/adversarial/playbooks` | GET | Free | List all attack playbooks |
-| `/api/v1/adversarial/simulate` | POST | 2.00 USDC | Full adversarial simulation against a program |
+| `/api/v1/adversarial/simulate` | POST | 5.00 USDC | Full adversarial simulation against a program |
 
 ### Discovery endpoints (free)
 

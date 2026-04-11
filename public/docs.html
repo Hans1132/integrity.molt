@@ -247,11 +247,11 @@
       <table class="param-table">
         <thead><tr><th>Endpoint</th><th>Price</th><th>Best for</th></tr></thead>
         <tbody>
-          <tr><td class="param-name">/scan/quick</td><td class="param-type">0.10 USDC</td><td>Quick risk check, trading bots, AI agents</td></tr>
-          <tr><td class="param-name">/scan/wallet</td><td class="param-type">0.15 USDC</td><td>Wallet age, DeFi exposure, risk class</td></tr>
-          <tr><td class="param-name">/scan/token</td><td class="param-type">0.25 USDC</td><td>Token mint/freeze authority, holder distribution</td></tr>
-          <tr><td class="param-name">/scan/pool</td><td class="param-type">0.25 USDC</td><td>DeFi pool liquidity, LP distribution, rug risk</td></tr>
-          <tr><td class="param-name">/scan/deep</td><td class="param-type">2.00 USDC</td><td>Full AI swarm audit (4 agents, ~60s)</td></tr>
+          <tr><td class="param-name">/scan/quick</td><td class="param-type">0.50 USDC</td><td>Quick risk check, trading bots, AI agents</td></tr>
+          <tr><td class="param-name">/scan/wallet</td><td class="param-type">0.50 USDC</td><td>Wallet age, DeFi exposure, risk class</td></tr>
+          <tr><td class="param-name">/scan/token</td><td class="param-type">0.75 USDC</td><td>Token mint/freeze authority, holder distribution</td></tr>
+          <tr><td class="param-name">/scan/pool</td><td class="param-type">0.50 USDC</td><td>DeFi pool liquidity, LP distribution, rug risk</td></tr>
+          <tr><td class="param-name">/scan/deep</td><td class="param-type">5.00 USDC</td><td>Full AI swarm audit (4 agents, ~60s)</td></tr>
         </tbody>
       </table>
     </section>
@@ -415,7 +415,7 @@ print(result.json()["report"])</pre>
       <div class="endpoint">
         <span class="method post">POST</span>
         <span class="path">/scan/quick</span>
-        <span class="price-badge">0.10 USDC</span>
+        <span class="price-badge">0.50 USDC</span>
       </div>
       <p>Fast AI risk scan of any Solana address. Returns safety score, flags, and signed report. Best for trading bots and AI agents.</p>
       <h3>Request</h3>
@@ -461,7 +461,7 @@ print(r.json())</pre>
       <div class="endpoint">
         <span class="method post">POST</span>
         <span class="path">/scan/token</span>
-        <span class="price-badge">0.25 USDC</span>
+        <span class="price-badge">0.75 USDC</span>
       </div>
       <p>Audit a token mint: mint authority status, freeze authority, top-10 holder distribution, supply analysis, rug risk rating.</p>
       <h3>Request fields</h3>
@@ -498,7 +498,7 @@ print(r.json()["report"])</pre>
       <div class="endpoint">
         <span class="method post">POST</span>
         <span class="path">/scan/wallet</span>
-        <span class="price-badge">0.15 USDC</span>
+        <span class="price-badge">0.50 USDC</span>
       </div>
       <p>Profile a wallet: age estimate, activity level, DeFi exposure, risk classification (fresh / whale / dormant / normal).</p>
       <div class="tabs">
@@ -519,7 +519,7 @@ curl -s -X POST https://intmolt.org/api/v2/scan/wallet \
       <div class="endpoint">
         <span class="method post">POST</span>
         <span class="path">/scan/pool</span>
-        <span class="price-badge">0.25 USDC</span>
+        <span class="price-badge">0.50 USDC</span>
       </div>
       <p>Scan a Raydium / Orca / Meteora pool: liquidity depth, LP token distribution, withdrawal risk assessment.</p>
       <div class="tabs">
@@ -540,7 +540,7 @@ curl -s -X POST https://intmolt.org/api/v2/scan/pool \
       <div class="endpoint">
         <span class="method post">POST</span>
         <span class="path">/scan/deep</span>
-        <span class="price-badge">2.00 USDC</span>
+        <span class="price-badge">5.00 USDC</span>
       </div>
       <p>Full multi-agent swarm audit. Four AI agents run in parallel (scanner → analyst → reputation → meta-scorecard), cross-validate findings, and produce a consensus-based signed report. Allow ~60–120 seconds.</p>
       <div class="tabs">

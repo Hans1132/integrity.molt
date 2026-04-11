@@ -9,7 +9,7 @@
   },
   "verifyKey": "qzppeeRmbyQ4hE4BYOW+4VbQ5muyplTP4GP4uxIhVwY=",
   "reputation": {
-    "stats_endpoint": "https://intmolt.org/api/v1/stats",
+    "stats_endpoint": "https://intmolt.org/api/v2/stats",
     "description": "Live scan count, success rate, and average response time. Updated after every scan."
   },
   "reportSigning": {
@@ -51,7 +51,7 @@
   ],
   "services": [
     {
-      "path": "/api/v1/scan/quick",
+      "path": "/api/v2/scan/quick",
       "method": "POST",
       "description": "Quick on-chain security scan of any Solana address. Returns account info, balance, owner program, risk assessment based on real data.",
       "price": "0.50",
@@ -64,7 +64,7 @@
       "tags": ["security", "audit", "solana", "smart-contract", "scanner"]
     },
     {
-      "path": "/api/v1/scan/deep",
+      "path": "/api/v2/scan/deep",
       "method": "POST",
       "description": "Comprehensive security audit including source code review, vulnerability assessment, token distribution analysis, and detailed written report.",
       "price": "5.00",
@@ -77,7 +77,7 @@
       "tags": ["security", "deep-audit", "solana", "vulnerability", "code-review"]
     },
     {
-      "path": "/api/v1/scan/token",
+      "path": "/api/v2/scan/token",
       "method": "POST",
       "description": "Token scan: checks mint authority (can more tokens be created?), freeze authority (can accounts be frozen?), top-10 holder concentration, total supply. Returns risk rating per factor.",
       "price": "0.75",
@@ -90,7 +90,7 @@
       "tags": ["token", "mint", "rug-check", "distribution", "solana"]
     },
     {
-      "path": "/api/v1/scan/wallet",
+      "path": "/api/v2/scan/wallet",
       "method": "POST",
       "description": "Rug check: estimates wallet age from transaction history, activity level, DeFi exposure via token holdings, and classifies risk profile (fresh wallet / whale / dormant / normal user).",
       "price": "0.50",
@@ -103,7 +103,7 @@
       "tags": ["wallet", "profiling", "due-diligence", "solana"]
     },
     {
-      "path": "/api/v1/scan/pool",
+      "path": "/api/v2/scan/pool",
       "method": "POST",
       "description": "DeFi pool safety scan for Raydium, Orca, Meteora pools: liquidity depth, LP token distribution, recent transaction activity, withdrawal risk.",
       "price": "0.50",
@@ -116,7 +116,7 @@
       "tags": ["defi", "pool", "liquidity", "raydium", "orca", "solana"]
     },
     {
-      "path": "/api/v1/scan/evm-token",
+      "path": "/api/v2/scan/evm-token",
       "method": "POST",
       "description": "EVM token risk scan for Base, Ethereum, and Arbitrum. Honeypot detection, source code analysis (blacklist, adjustable fees, mint, pause, selfdestruct, proxy, ownership), contract age, deployer info. Risk score 0-100 with Ed25519 signed report.",
       "price": "0.75",
@@ -129,7 +129,7 @@
       "tags": ["evm", "token", "honeypot", "base", "ethereum", "arbitrum", "security", "risk-score"]
     },
     {
-      "path": "/api/v1/delta/:address",
+      "path": "/api/v2/delta/:address",
       "method": "GET",
       "description": "Signed delta report — cryptographically signed diff between current and baseline security scan. Detects authority changes, supply changes, risk escalations.",
       "price": "1.00",
@@ -142,7 +142,7 @@
       "tags": ["delta", "monitoring", "signed", "diff", "solana"]
     },
     {
-      "path": "/api/v1/adversarial/simulate",
+      "path": "/api/v2/adversarial/simulate",
       "method": "POST",
       "description": "Adversarial simulation — forks on-chain state and systematically probes 7 exploit paths: authority_takeover, oracle_manipulation, flash_loan, etc. Returns signed risk report.",
       "price": "10.00",

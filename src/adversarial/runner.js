@@ -23,7 +23,12 @@ let OPENROUTER_API_KEY = '';
 try { OPENROUTER_API_KEY = fs.readFileSync('/root/.secrets/openrouter_api_key', 'utf-8').trim(); } catch {}
 if (!OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY) OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-async function llm(prompt, maxTokens = 800) {
+const { runWithAdvisor }          = require('../llm/anthropic-advisor');
+const { SECURITY_ANALYST_SYSTEM } = require('../llm/prompts/security-analyst');
+const { logAdvisorUsage }         = require('../../db');
+
+// OpenRouter fallback (gemini-2.5-flash)
+async function analyzeWithOpenRouter(prompt, maxTokens = 800) {
   if (!OPENROUTER_API_KEY) return { error: 'no_api_key', text: '' };
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -44,6 +49,55 @@ async function llm(prompt, maxTokens = 800) {
   } catch (e) {
     return { error: e.message, text: '' };
   }
+}
+
+// Anthropic Sonnet + Opus advisor pro komplexní bezpečnostní analýzu
+async function analyzeWithAdvisor(scanData, scanType) {
+  const userMessage = `Analyzuj následující ${scanType} scan data a vytvoř bezpečnostní report:\n\n${JSON.stringify(scanData, null, 2)}`;
+
+  const result = await runWithAdvisor({
+    systemPrompt:    SECURITY_ANALYST_SYSTEM,
+    userMessage,
+    maxAdvisorUses:  scanType === 'deep' ? 3 : 2,
+  });
+
+  let parsed = null;
+  try {
+    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+  } catch (e) {
+    console.error('[adversarial] Failed to parse advisor response:', e.message);
+  }
+
+  // Loguj usage do DB (non-blocking)
+  try { logAdvisorUsage(null, scanType, result); } catch {}
+
+  return {
+    analysis:    parsed,
+    rawText:     result.text,
+    advisorUsed: result.advisorUsed,
+    usage:       result.usage,
+  };
+}
+
+// Unified LLM helper — Anthropic advisor s fallbackem na OpenRouter
+async function llm(prompt, maxTokens = 800, scanType = 'adversarial') {
+  let text = '';
+  try {
+    if (process.env.ANTHROPIC_API_KEY) {
+      const r = await analyzeWithAdvisor({ prompt }, scanType);
+      text = r.rawText || '';
+      if (r.advisorUsed) console.log('[adversarial] advisor consulted');
+    } else {
+      const r = await analyzeWithOpenRouter(prompt, maxTokens);
+      text = r.text || '';
+    }
+  } catch (err) {
+    console.error('[adversarial] Advisor failed, falling back to OpenRouter:', err.message);
+    const r = await analyzeWithOpenRouter(prompt, maxTokens);
+    text = r.text || '';
+  }
+  return { text };
 }
 
 // Parse JSON out of LLM output even if wrapped in markdown code fences.
@@ -79,8 +133,21 @@ Based on the account types and sizes, answer in JSON:
   "recommended_playbooks": ["<playbook ids from: authority_takeover, oracle_manipulation, missing_signer_check, account_confusion, drain_vault, reentrancy_cpi, integer_overflow>"]
 }`;
 
-  const { text } = await llm(prompt, 600);
-  return parseLLMJson(text) || {
+  let analysisResult;
+  try {
+    if (process.env.ANTHROPIC_API_KEY) {
+      analysisResult = await analyzeWithAdvisor({ programId, accounts: accountSummary, task: 'program_analysis' }, 'deep');
+    } else {
+      const { text } = await analyzeWithOpenRouter(prompt, 600);
+      analysisResult = { rawText: text, advisorUsed: false };
+    }
+  } catch (err) {
+    console.error('[adversarial] analyzeProgram advisor failed, falling back:', err.message);
+    const { text } = await analyzeWithOpenRouter(prompt, 600);
+    analysisResult = { rawText: text, advisorUsed: false };
+  }
+
+  return parseLLMJson(analysisResult.rawText) || {
     program_type: 'unknown',
     likely_instructions: [],
     likely_cpi_targets: [],
@@ -88,7 +155,7 @@ Based on the account types and sizes, answer in JSON:
     authority_accounts: [],
     oracle_accounts: [],
     risk_profile: 'Unable to analyze — LLM unavailable.',
-    recommended_playbooks: []
+    recommended_playbooks: [],
   };
 }
 
@@ -122,15 +189,30 @@ Based on the account structure and test results, provide a security analysis in 
   "severity": "<critical|high|medium|low|info>"
 }`;
 
-  const { text } = await llm(prompt, 500);
-  const parsed = parseLLMJson(text);
-  return parsed || {
+  let analysisResult;
+  try {
+    if (process.env.ANTHROPIC_API_KEY) {
+      analysisResult = await analyzeWithAdvisor(
+        { playbook: playbook.id, programId, accounts: accounts.map(a => a.pubkey), txResults },
+        'adversarial'
+      );
+    } else {
+      const { text } = await analyzeWithOpenRouter(prompt, 500);
+      analysisResult = { rawText: text, advisorUsed: false };
+    }
+  } catch (err) {
+    console.error('[adversarial] analyzePlaybook advisor failed, falling back:', err.message);
+    const { text } = await analyzeWithOpenRouter(prompt, 500);
+    analysisResult = { rawText: text, advisorUsed: false };
+  }
+
+  return parseLLMJson(analysisResult.rawText) || {
     verdict: 'INCONCLUSIVE',
     confidence: 0,
     evidence: ['LLM analysis unavailable'],
     exploitation_path: 'N/A',
     remediation: [],
-    severity: 'info'
+    severity: 'info',
   };
 }
 

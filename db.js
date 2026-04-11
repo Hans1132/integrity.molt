@@ -1,524 +1,883 @@
-const { Pool } = require('pg');
-const crypto = require('crypto');
+'use strict';
+/**
+ * db.js — SQLite databázová vrstva (better-sqlite3)
+ *
+ * Náhrada za pg (PostgreSQL). Synchronní API better-sqlite3 je zabaleno
+ * do async funkcí kvůli zpětné kompatibilitě se zbytkem kódu.
+ *
+ * Všechna boolean pole jsou ukládána jako INTEGER (0/1).
+ * Všechna časová razítka jako TEXT (ISO 8601 UTC).
+ * JSONB → TEXT (JSON.stringify / JSON.parse).
+ */
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const Database = require('better-sqlite3');
+const path     = require('path');
+const crypto   = require('crypto');
+const fs       = require('fs');
 
-// Vytvoří tabulky pokud neexistují; volá se při startu serveru.
-async function initSchema() {
-  await pool.query(`
+const DB_PATH = process.env.SQLITE_DB_PATH
+  || path.join(__dirname, 'data', 'intmolt.db');
+
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+
+const db = new Database(DB_PATH);
+
+// Výkonnostní nastavení
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout  = 5000');
+db.pragma('synchronous   = NORMAL');
+
+// ── Schéma ────────────────────────────────────────────────────────────────────
+
+function initSchema() {
+  db.exec(`
     CREATE TABLE IF NOT EXISTS payments (
-      id                  BIGSERIAL PRIMARY KEY,
-      tx_sig              TEXT        NOT NULL UNIQUE,
-      resource            TEXT        NOT NULL,
-      required_micro_usdc BIGINT      NOT NULL,
-      micro_usdc          BIGINT      NOT NULL DEFAULT 0,
-      verified            BOOLEAN     NOT NULL DEFAULT FALSE,
+      id                  INTEGER PRIMARY KEY,
+      tx_sig              TEXT    NOT NULL UNIQUE,
+      resource            TEXT    NOT NULL,
+      required_micro_usdc INTEGER NOT NULL,
+      micro_usdc          INTEGER NOT NULL DEFAULT 0,
+      verified            INTEGER NOT NULL DEFAULT 0,
       reason              TEXT,
       ip                  TEXT,
-      created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+      created_at          TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS payments_created_at ON payments (created_at DESC);
     CREATE INDEX IF NOT EXISTS payments_verified   ON payments (verified, created_at DESC);
 
     CREATE TABLE IF NOT EXISTS events (
-      id         BIGSERIAL PRIMARY KEY,
-      name       TEXT        NOT NULL,
+      id         INTEGER PRIMARY KEY,
+      name       TEXT    NOT NULL,
       resource   TEXT,
       ip         TEXT,
-      meta       JSONB,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      meta       TEXT,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS events_name_created ON events (name, created_at DESC);
     CREATE INDEX IF NOT EXISTS events_created_at   ON events (created_at DESC);
 
     CREATE TABLE IF NOT EXISTS watchlist (
-      id                   BIGSERIAL    PRIMARY KEY,
-      address              TEXT         NOT NULL,
+      id                   INTEGER PRIMARY KEY,
+      address              TEXT    NOT NULL,
       label                TEXT,
       notify_telegram_chat TEXT,
       notify_email         TEXT,
-      last_checked_at      TIMESTAMPTZ,
+      last_checked_at      TEXT,
       last_risk_level      TEXT,
       last_risk_summary    TEXT,
-      created_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
-      active               BOOLEAN      NOT NULL DEFAULT TRUE,
-      CONSTRAINT watchlist_address_chat_uniq UNIQUE (address, notify_telegram_chat)
+      last_risk_score      INTEGER,
+      created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+      active               INTEGER NOT NULL DEFAULT 1,
+      UNIQUE (address, notify_telegram_chat)
     );
     CREATE INDEX IF NOT EXISTS watchlist_active  ON watchlist (active, last_checked_at);
     CREATE INDEX IF NOT EXISTS watchlist_address ON watchlist (address);
+    CREATE INDEX IF NOT EXISTS watchlist_email   ON watchlist (notify_email, active);
 
     CREATE TABLE IF NOT EXISTS subscriptions (
-      id                  BIGSERIAL    PRIMARY KEY,
-      stripe_customer_id  TEXT         NOT NULL,
-      stripe_sub_id       TEXT         UNIQUE,
-      email               TEXT         NOT NULL,
-      tier                TEXT         NOT NULL,
-      status              TEXT         NOT NULL DEFAULT 'incomplete',
-      current_period_end  TIMESTAMPTZ,
-      telegram_chat_id    TEXT,
-      created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
-      updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now()
+      id                    INTEGER PRIMARY KEY,
+      stripe_customer_id    TEXT    NOT NULL,
+      stripe_sub_id         TEXT    UNIQUE,
+      email                 TEXT    NOT NULL,
+      tier                  TEXT    NOT NULL,
+      status                TEXT    NOT NULL DEFAULT 'incomplete',
+      current_period_end    TEXT,
+      telegram_chat_id      TEXT,
+      digest_unsubscribed   INTEGER NOT NULL DEFAULT 0,
+      created_at            TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at            TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS subscriptions_email  ON subscriptions (email);
     CREATE INDEX IF NOT EXISTS subscriptions_status ON subscriptions (status, current_period_end);
 
     CREATE TABLE IF NOT EXISTS api_keys (
-      id            BIGSERIAL    PRIMARY KEY,
-      key_hash      TEXT         NOT NULL UNIQUE,
-      key_prefix    TEXT         NOT NULL,
-      email         TEXT         NOT NULL,
-      tier          TEXT         NOT NULL,
+      id            INTEGER PRIMARY KEY,
+      key_hash      TEXT    NOT NULL UNIQUE,
+      key_prefix    TEXT    NOT NULL,
+      email         TEXT    NOT NULL,
+      tier          TEXT    NOT NULL,
       label         TEXT,
-      usage_count   BIGINT       NOT NULL DEFAULT 0,
-      last_used_at  TIMESTAMPTZ,
-      created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
-      revoked_at    TIMESTAMPTZ,
-      active        BOOLEAN      NOT NULL DEFAULT TRUE
+      usage_count   INTEGER NOT NULL DEFAULT 0,
+      last_used_at  TEXT,
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+      revoked_at    TEXT,
+      active        INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX IF NOT EXISTS api_keys_email ON api_keys (email, active);
     CREATE INDEX IF NOT EXISTS api_keys_hash  ON api_keys (key_hash);
 
     CREATE TABLE IF NOT EXISTS scan_history (
-      id         BIGSERIAL    PRIMARY KEY,
-      email      TEXT,
-      address    TEXT         NOT NULL,
-      scan_type  TEXT         NOT NULL,
-      risk_score INTEGER,
-      risk_level TEXT,
-      summary    TEXT,
-      cached     BOOLEAN      NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMPTZ  NOT NULL DEFAULT now()
+      id          INTEGER PRIMARY KEY,
+      email       TEXT,
+      address     TEXT    NOT NULL,
+      scan_type   TEXT    NOT NULL,
+      risk_score  INTEGER,
+      risk_level  TEXT,
+      summary     TEXT,
+      cached      INTEGER NOT NULL DEFAULT 0,
+      result_json TEXT,
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE INDEX IF NOT EXISTS scan_history_email ON scan_history (email, created_at DESC);
-    CREATE INDEX IF NOT EXISTS scan_history_created ON scan_history (created_at DESC);
-  `);
-  // Migrate existing scan_history + watchlist tables
-  await pool.query(`
-    ALTER TABLE scan_history ADD COLUMN IF NOT EXISTS result_json JSONB;
+    CREATE INDEX IF NOT EXISTS scan_history_email     ON scan_history (email, created_at DESC);
+    CREATE INDEX IF NOT EXISTS scan_history_created   ON scan_history (created_at DESC);
     CREATE INDEX IF NOT EXISTS scan_history_addr_type ON scan_history (address, scan_type, created_at DESC);
-    ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS notify_email TEXT;
-    ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS last_risk_score INTEGER;
-    CREATE INDEX IF NOT EXISTS watchlist_email ON watchlist (notify_email, active);
-  `).catch(() => {});
+
+    CREATE TABLE IF NOT EXISTS ads (
+      id          INTEGER PRIMARY KEY,
+      advertiser  TEXT    NOT NULL,
+      headline    TEXT    NOT NULL,
+      tagline     TEXT,
+      cta_text    TEXT    NOT NULL DEFAULT 'Learn more',
+      cta_url     TEXT    NOT NULL,
+      image_url   TEXT,
+      placement   TEXT    NOT NULL DEFAULT 'scan_result',
+      active      INTEGER NOT NULL DEFAULT 1,
+      impressions INTEGER NOT NULL DEFAULT 0,
+      clicks      INTEGER NOT NULL DEFAULT 0,
+      budget_usd  REAL,
+      spent_usd   REAL    NOT NULL DEFAULT 0,
+      cpm_usd     REAL    NOT NULL DEFAULT 5.00,
+      expires_at  TEXT,
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS ads_placement_active ON ads (placement, active, expires_at);
+
+    CREATE TABLE IF NOT EXISTS users (
+      id                   INTEGER PRIMARY KEY,
+      email                TEXT    NOT NULL UNIQUE,
+      name                 TEXT,
+      avatar_url           TEXT,
+      provider             TEXT,
+      provider_id          TEXT,
+      password_hash        TEXT,
+      reset_token          TEXT,
+      reset_token_expires  TEXT,
+      stripe_customer_id   TEXT,
+      created_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS users_email    ON users (email);
+    CREATE INDEX IF NOT EXISTS users_provider ON users (provider, provider_id);
+
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      sid      TEXT PRIMARY KEY,
+      sess     TEXT NOT NULL,
+      expires  TEXT
+    );
+    CREATE INDEX IF NOT EXISTS sessions_expires ON user_sessions (expires);
+
+    CREATE TABLE IF NOT EXISTS advisor_calls (
+      id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+      scan_id                 TEXT,
+      scan_type               TEXT,
+      advisor_invoked         INTEGER NOT NULL DEFAULT 0,
+      executor_input_tokens   INTEGER NOT NULL DEFAULT 0,
+      executor_output_tokens  INTEGER NOT NULL DEFAULT 0,
+      advisor_input_tokens    INTEGER NOT NULL DEFAULT 0,
+      advisor_output_tokens   INTEGER NOT NULL DEFAULT 0,
+      estimated_cost_usd      REAL    NOT NULL DEFAULT 0,
+      created_at              TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS advisor_calls_created ON advisor_calls (created_at DESC);
+    CREATE INDEX IF NOT EXISTS advisor_calls_type    ON advisor_calls (scan_type, created_at DESC);
+  `);
+  return Promise.resolve();
 }
 
-// Uloží záznam o platbě. tx_sig má UNIQUE constraint — duplicitní INSERT je ignorován.
+// auth.js volá initUsersSchema() samostatně — mapujeme na initSchema
+function initUsersSchema() { return initSchema(); }
+
+// ── Pool compatibility shim ────────────────────────────────────────────────────
+// server.js a mailer.js používají db.pool.query(...) přímo pro ad-hoc dotazy.
+// Tento shim konvertuje PostgreSQL parametrové značky ($1, $2, ...) na SQLite (?)
+// a PostgreSQL-specifické funkce na SQLite ekvivalenty.
+
+function pgToSqlite(sql) {
+  return sql
+    // Parametrové zástupné symboly
+    .replace(/\$(\d+)/g, '?')
+    // Typy
+    .replace(/::interval/gi, '')
+    .replace(/::text/gi, '')
+    .replace(/::integer/gi, '')
+    // now() → datetime('now')
+    .replace(/\bnow\(\)/g, "datetime('now')")
+    // TIMESTAMPTZ / BOOLEAN DEFAULT — ignoruj (jen pro CREATE TABLE, ale tam nepoužíváme)
+    // date_trunc('day', col AT TIME ZONE 'UTC') → date(col)
+    .replace(/date_trunc\('day',\s*\w+\s+AT\s+TIME\s+ZONE\s+'UTC'\)/gi, (m) => {
+      const colMatch = m.match(/date_trunc\('day',\s*(\w+)/i);
+      return colMatch ? `date(${colMatch[1]})` : m;
+    })
+    // current_period_end > now() → current_period_end > datetime('now')
+    // (already handled by now() replacement above)
+    // LOWER( → lower(
+    .replace(/\bLOWER\s*\(/g, 'lower(')
+    // RANDOM() → RANDOM()  (same in SQLite)
+    // meta->>'path' → json_extract(meta, '$.path')
+    .replace(/(\w+)->>'(\w+)'/g, "json_extract($1, '$.$2')")
+    // NULLIF → nullif (same, just normalize)
+    .replace(/\bNULLIF\s*\(/g, 'nullif(')
+    // digest_unsubscribed = FALSE → digest_unsubscribed = 0
+    .replace(/= FALSE\b/gi, '= 0')
+    .replace(/= TRUE\b/gi, '= 1')
+    // current_period_end IS NULL OR current_period_end > datetime('now')
+    // (no change needed, already valid SQLite)
+    ;
+}
+
+const pool = {
+  async query(sql, params = []) {
+    try {
+      const sqlLite = pgToSqlite(sql);
+      const trimmed = sqlLite.trim().replace(/^\/\*.*?\*\/\s*/s, '').trimStart();
+      const isSelect = /^(SELECT|WITH|PRAGMA)\b/i.test(trimmed);
+      if (isSelect) {
+        const rows = db.prepare(sqlLite).all(params);
+        return { rows, rowCount: rows.length };
+      } else {
+        const result = db.prepare(sqlLite).run(params);
+        return { rows: [], rowCount: result.changes };
+      }
+    } catch (e) {
+      console.error('[db.pool.query] error:', e.message, '\nSQL:', sql.slice(0, 200));
+      throw e;
+    }
+  }
+};
+
+// ── Platby ────────────────────────────────────────────────────────────────────
+
 async function logPayment({ tx_sig, resource, required_micro_usdc, micro_usdc, verified, reason, ip }) {
-  await pool.query(
-    `INSERT INTO payments (tx_sig, resource, required_micro_usdc, micro_usdc, verified, reason, ip)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (tx_sig) DO NOTHING`,
-    [tx_sig, resource, required_micro_usdc, micro_usdc, verified, reason, ip]
-  );
+  db.prepare(`
+    INSERT INTO payments (tx_sig, resource, required_micro_usdc, micro_usdc, verified, reason, ip)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (tx_sig) DO NOTHING
+  `).run(tx_sig, resource, required_micro_usdc, micro_usdc, verified ? 1 : 0, reason || null, ip || null);
 }
 
-// Vrátí true pokud transakce se stejným sig už byla úspěšně ověřena.
-// UNIQUE constraint + tato kontrola spolu zabraňují replay útokům.
 async function isAlreadyUsed(sig) {
-  const { rows } = await pool.query(
-    'SELECT 1 FROM payments WHERE tx_sig = $1 AND verified = TRUE LIMIT 1',
-    [sig]
-  );
-  return rows.length > 0;
+  const row = db.prepare(
+    'SELECT 1 FROM payments WHERE tx_sig = ? AND verified = 1 LIMIT 1'
+  ).get(sig);
+  return !!row;
 }
 
-// Zaznamená funnel událost. Fire-and-forget — chyby se logují, ale neblokují response.
+// ── Events ────────────────────────────────────────────────────────────────────
+
 async function logEvent({ name, resource, ip, meta }) {
-  await pool.query(
-    'INSERT INTO events (name, resource, ip, meta) VALUES ($1, $2, $3, $4)',
-    [name, resource || null, ip || null, meta ? JSON.stringify(meta) : null]
-  );
+  db.prepare(
+    'INSERT INTO events (name, resource, ip, meta) VALUES (?, ?, ?, ?)'
+  ).run(name, resource || null, ip || null, meta ? JSON.stringify(meta) : null);
 }
 
-// Vrátí konverzní statistiky funnelu za posledních N dní.
 async function getFunnelStats(days = 30) {
-  const { rows } = await pool.query(`
-    SELECT
-      name,
-      COUNT(*)                                          AS total,
-      COUNT(DISTINCT ip)                                AS unique_ips,
-      date_trunc('day', created_at AT TIME ZONE 'UTC') AS day
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  return db.prepare(`
+    SELECT name,
+           COUNT(*)          AS total,
+           COUNT(DISTINCT ip) AS unique_ips,
+           date(created_at)  AS day
     FROM events
-    WHERE created_at >= now() - ($1 || ' days')::INTERVAL
+    WHERE created_at >= ?
     GROUP BY name, day
     ORDER BY day DESC, name
-  `, [days]);
-  return rows;
+  `).all(cutoff);
 }
 
-// Vrátí přehled úspěšnosti plateb za posledních N dní.
 async function getPaymentStats(days = 30) {
-  const { rows } = await pool.query(`
-    SELECT
-      date_trunc('day', created_at AT TIME ZONE 'UTC') AS day,
-      resource,
-      COUNT(*)                                          AS attempts,
-      SUM(CASE WHEN verified THEN 1 ELSE 0 END)        AS verified,
-      ROUND(
-        100.0 * SUM(CASE WHEN verified THEN 1 ELSE 0 END)
-        / NULLIF(COUNT(*), 0), 1
-      )                                                 AS verified_pct,
-      SUM(CASE WHEN verified THEN micro_usdc ELSE 0 END) AS revenue_micro_usdc
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  return db.prepare(`
+    SELECT date(created_at)                                         AS day,
+           resource,
+           COUNT(*)                                                  AS attempts,
+           SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END)            AS verified,
+           ROUND(100.0 * SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END)
+                 / nullif(COUNT(*), 0), 1)                           AS verified_pct,
+           SUM(CASE WHEN verified = 1 THEN micro_usdc ELSE 0 END)   AS revenue_micro_usdc
     FROM payments
-    WHERE created_at >= now() - ($1 || ' days')::INTERVAL
+    WHERE created_at >= ?
     GROUP BY day, resource
     ORDER BY day DESC, resource
-  `, [days]);
-  return rows;
+  `).all(cutoff);
 }
 
-// ── Watchlist ──────────────────────────────────────────────────────────────────
+async function getPageviewStats(days = 30) {
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  return db.prepare(`
+    SELECT date(created_at)              AS day,
+           json_extract(meta, '$.path')  AS path,
+           COUNT(*)                      AS views,
+           COUNT(DISTINCT ip)            AS uniq
+    FROM events
+    WHERE name = 'page_view' AND created_at >= ?
+    GROUP BY day, path
+    ORDER BY day DESC, views DESC
+  `).all(cutoff);
+}
+
+async function countFreeScansToday(ip) {
+  const dayStart = new Date();
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const row = db.prepare(`
+    SELECT COUNT(*) AS cnt FROM events
+    WHERE name = 'free_scan_used' AND ip = ? AND created_at >= ?
+  `).get(ip, dayStart.toISOString());
+  return parseInt(row?.cnt ?? 0, 10);
+}
+
+// ── Watchlist ─────────────────────────────────────────────────────────────────
 
 async function addWatchlistEntry({ address, label, notify_telegram_chat, notify_email }) {
-  const { rows } = await pool.query(
-    `INSERT INTO watchlist (address, label, notify_telegram_chat, notify_email)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (address, notify_telegram_chat) DO UPDATE
-       SET active = TRUE, label = EXCLUDED.label
-     RETURNING id, address, label, created_at`,
-    [address, label || null, notify_telegram_chat || null, notify_email || null]
-  );
-  return rows[0];
+  try {
+    const result = db.prepare(`
+      INSERT INTO watchlist (address, label, notify_telegram_chat, notify_email)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT (address, notify_telegram_chat) DO UPDATE
+        SET active = 1, label = EXCLUDED.label
+    `).run(address, label || null, notify_telegram_chat || null, notify_email || null);
+    const id = result.lastInsertRowid || db.prepare(
+      'SELECT id FROM watchlist WHERE address = ? AND notify_telegram_chat IS ?'
+    ).get(address, notify_telegram_chat || null)?.id;
+    return db.prepare('SELECT id, address, label, created_at FROM watchlist WHERE id = ?').get(id);
+  } catch (e) {
+    throw e;
+  }
 }
 
 async function removeWatchlistEntry(id, notify_telegram_chat) {
-  const { rowCount } = await pool.query(
-    `UPDATE watchlist SET active = FALSE
-     WHERE id = $1 AND (notify_telegram_chat = $2 OR $2 IS NULL)`,
-    [id, notify_telegram_chat || null]
-  );
-  return rowCount > 0;
+  const result = db.prepare(`
+    UPDATE watchlist SET active = 0
+    WHERE id = ? AND (notify_telegram_chat = ? OR ? IS NULL)
+  `).run(id, notify_telegram_chat || null, notify_telegram_chat || null);
+  return result.changes > 0;
 }
 
 async function getActiveWatchlist() {
-  const { rows } = await pool.query(
-    `SELECT id, address, label, notify_telegram_chat, notify_email,
-            last_checked_at, last_risk_level
-     FROM watchlist
-     WHERE active = TRUE
-     ORDER BY last_checked_at ASC NULLS FIRST`
-  );
-  return rows;
+  return db.prepare(`
+    SELECT id, address, label, notify_telegram_chat, notify_email,
+           last_checked_at, last_risk_level
+    FROM watchlist
+    WHERE active = 1
+    ORDER BY last_checked_at ASC NULLS FIRST
+  `).all();
 }
 
 async function updateWatchlistRisk(id, { risk_level, risk_score, risk_summary }) {
-  await pool.query(
-    `UPDATE watchlist
-     SET last_checked_at = now(), last_risk_level = $2, last_risk_score = $3, last_risk_summary = $4
-     WHERE id = $1`,
-    [id, risk_level, risk_score ?? null, risk_summary]
-  );
+  db.prepare(`
+    UPDATE watchlist
+    SET last_checked_at = datetime('now'),
+        last_risk_level = ?,
+        last_risk_score = ?,
+        last_risk_summary = ?
+    WHERE id = ?
+  `).run(risk_level, risk_score ?? null, risk_summary || null, id);
 }
 
 async function listWatchlistForChat(notify_telegram_chat) {
-  const { rows } = await pool.query(
-    `SELECT id, address, label, last_risk_level, last_checked_at
-     FROM watchlist
-     WHERE notify_telegram_chat = $1 AND active = TRUE
-     ORDER BY created_at`,
-    [notify_telegram_chat]
-  );
-  return rows;
+  return db.prepare(`
+    SELECT id, address, label, last_risk_level, last_checked_at
+    FROM watchlist
+    WHERE notify_telegram_chat = ? AND active = 1
+    ORDER BY created_at
+  `).all(notify_telegram_chat);
 }
 
-// ── Subscriptions ──────────────────────────────────────────────────────────────
+async function addUserWatchlistEntry({ email, address, label, notify_email }) {
+  const notifyEmail = notify_email !== undefined ? notify_email : email;
+  try {
+    const result = db.prepare(`
+      INSERT INTO watchlist (address, label, notify_email)
+      VALUES (?, ?, ?)
+    `).run(address, label || null, notifyEmail);
+    return db.prepare('SELECT id, address, label, created_at FROM watchlist WHERE id = ?')
+      .get(result.lastInsertRowid);
+  } catch (e) {
+    // Conflict — reactivate if inactive
+    const existing = db.prepare(`
+      UPDATE watchlist SET active = 1,
+        label = COALESCE(?, label), notify_email = ?
+      WHERE address = ? AND (notify_email = ? OR ? IS NULL) AND active = 0
+    `).run(label || null, notifyEmail, address, notifyEmail, notifyEmail);
+    if (existing.changes > 0) {
+      return db.prepare('SELECT id, address, label, created_at FROM watchlist WHERE address = ? AND notify_email = ?')
+        .get(address, notifyEmail);
+    }
+    return null;
+  }
+}
+
+async function removeUserWatchlistEntry({ email, id }) {
+  const result = db.prepare(
+    'UPDATE watchlist SET active = 0 WHERE id = ? AND notify_email = ?'
+  ).run(id, email);
+  return result.changes > 0;
+}
+
+async function getUserWatchlist(email) {
+  return db.prepare(`
+    SELECT id, address, label, last_risk_level, last_risk_score, last_checked_at, created_at
+    FROM watchlist
+    WHERE notify_email = ? AND active = 1
+    ORDER BY created_at DESC
+  `).all(email);
+}
+
+// ── Subscriptions ─────────────────────────────────────────────────────────────
 
 async function upsertSubscription({ stripe_customer_id, stripe_sub_id, email, tier, status, current_period_end, telegram_chat_id }) {
-  await pool.query(
-    `INSERT INTO subscriptions (stripe_customer_id, stripe_sub_id, email, tier, status, current_period_end, telegram_chat_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (stripe_sub_id) DO UPDATE SET
-       status             = EXCLUDED.status,
-       current_period_end = EXCLUDED.current_period_end,
-       tier               = EXCLUDED.tier,
-       updated_at         = now()`,
-    [stripe_customer_id, stripe_sub_id, email, tier, status,
-     current_period_end ? new Date(current_period_end * 1000) : null,
-     telegram_chat_id || null]
-  );
+  const periodEnd = current_period_end
+    ? new Date(current_period_end * 1000).toISOString()
+    : null;
+  db.prepare(`
+    INSERT INTO subscriptions
+      (stripe_customer_id, stripe_sub_id, email, tier, status, current_period_end, telegram_chat_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (stripe_sub_id) DO UPDATE SET
+      status             = excluded.status,
+      current_period_end = excluded.current_period_end,
+      tier               = excluded.tier,
+      updated_at         = datetime('now')
+  `).run(stripe_customer_id, stripe_sub_id, email, tier, status, periodEnd, telegram_chat_id || null);
 }
 
 async function getActiveSubscription(email) {
-  const { rows } = await pool.query(
-    `SELECT * FROM subscriptions
-     WHERE email = $1 AND status = 'active'
-       AND (current_period_end IS NULL OR current_period_end > now())
-     ORDER BY current_period_end DESC NULLS LAST
-     LIMIT 1`,
-    [email]
-  );
-  return rows[0] || null;
+  return db.prepare(`
+    SELECT * FROM subscriptions
+    WHERE email = ? AND status = 'active'
+      AND (current_period_end IS NULL OR current_period_end > datetime('now'))
+    ORDER BY current_period_end DESC
+    LIMIT 1
+  `).get(email) || null;
 }
 
-// Vrátí statistiky zobrazení stránek za posledních N dní.
-async function getPageviewStats(days = 30) {
-  const { rows } = await pool.query(`
-    SELECT
-      date_trunc('day', created_at AT TIME ZONE 'UTC') AS day,
-      meta->>'path'                                     AS path,
-      COUNT(*)                                          AS views,
-      COUNT(DISTINCT ip)                                AS uniq
-    FROM events
-    WHERE name = 'page_view'
-      AND created_at >= now() - ($1 || ' days')::INTERVAL
-    GROUP BY day, path
-    ORDER BY day DESC, views DESC
-  `, [days]);
-  return rows;
+async function getActiveSubscriptionByChatId(telegram_chat_id) {
+  if (!telegram_chat_id) return null;
+  return db.prepare(`
+    SELECT * FROM subscriptions
+    WHERE telegram_chat_id = ? AND status = 'active'
+      AND (current_period_end IS NULL OR current_period_end > datetime('now'))
+    ORDER BY current_period_end DESC
+    LIMIT 1
+  `).get(String(telegram_chat_id)) || null;
 }
 
-// ── API Keys ────────────────────────────────────────────────────────────────────
+function countWatchlistForEmail(email) {
+  return db.prepare(
+    `SELECT COUNT(*) as n FROM watchlist WHERE notify_email = ? AND active = 1`
+  ).get(email)?.n ?? 0;
+}
 
-// Vygeneruje nový API klíč tvaru im_<64hex>, uloží SHA-256 hash; vrátí raw key (jen jednou).
+function countWatchlistForChat(telegram_chat_id) {
+  return db.prepare(
+    `SELECT COUNT(*) as n FROM watchlist WHERE notify_telegram_chat = ? AND active = 1`
+  ).get(String(telegram_chat_id))?.n ?? 0;
+}
+
+// ── API Keys ──────────────────────────────────────────────────────────────────
+
 async function createApiKey({ email, tier, label }) {
   const raw    = 'im_' + crypto.randomBytes(32).toString('hex');
   const hash   = crypto.createHash('sha256').update(raw).digest('hex');
-  const prefix = raw.substring(0, 10); // "im_" + 7 znaků pro zobrazení
-  const { rows } = await pool.query(
-    `INSERT INTO api_keys (key_hash, key_prefix, email, tier, label)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, key_prefix, email, tier, label, created_at`,
-    [hash, prefix, email, tier, label || null]
-  );
-  return { ...rows[0], key: raw };
+  const prefix = raw.substring(0, 10);
+  const result = db.prepare(
+    'INSERT INTO api_keys (key_hash, key_prefix, email, tier, label) VALUES (?, ?, ?, ?, ?)'
+  ).run(hash, prefix, email, tier, label || null);
+  const row = db.prepare('SELECT id, key_prefix, email, tier, label, created_at FROM api_keys WHERE id = ?')
+    .get(result.lastInsertRowid);
+  return { ...row, key: raw };
 }
 
-// Ověří raw API klíč; vrátí záznam nebo null.
 async function validateApiKey(rawKey) {
   if (!rawKey || !rawKey.startsWith('im_')) return null;
   const hash = crypto.createHash('sha256').update(rawKey).digest('hex');
-  const { rows } = await pool.query(
-    `SELECT * FROM api_keys WHERE key_hash = $1 AND active = TRUE LIMIT 1`,
-    [hash]
-  );
-  return rows[0] || null;
+  return db.prepare('SELECT * FROM api_keys WHERE key_hash = ? AND active = 1 LIMIT 1').get(hash) || null;
 }
 
-// Inkrementuje usage_count a nastaví last_used_at.
 async function incrementApiKeyUsage(id) {
-  await pool.query(
-    `UPDATE api_keys SET usage_count = usage_count + 1, last_used_at = now() WHERE id = $1`,
-    [id]
-  );
+  db.prepare(
+    "UPDATE api_keys SET usage_count = usage_count + 1, last_used_at = datetime('now') WHERE id = ?"
+  ).run(id);
 }
 
-// Vrátí seznam aktivních klíčů pro daný email (bez hash hodnot).
 async function listApiKeys(email) {
-  const { rows } = await pool.query(
-    `SELECT id, key_prefix, email, tier, label, usage_count, last_used_at, created_at
-     FROM api_keys
-     WHERE email = $1 AND active = TRUE
-     ORDER BY created_at DESC`,
-    [email]
-  );
-  return rows;
+  return db.prepare(`
+    SELECT id, key_prefix, email, tier, label, usage_count, last_used_at, created_at
+    FROM api_keys WHERE email = ? AND active = 1 ORDER BY created_at DESC
+  `).all(email);
 }
 
-// Odvolá klíč (soft delete); vrátí true pokud byl klíč nalezen a vlastněn emailem.
 async function revokeApiKey(id, email) {
-  const { rowCount } = await pool.query(
-    `UPDATE api_keys SET active = FALSE, revoked_at = now()
-     WHERE id = $1 AND email = $2`,
-    [id, email]
-  );
-  return rowCount > 0;
+  const result = db.prepare(
+    "UPDATE api_keys SET active = 0, revoked_at = datetime('now') WHERE id = ? AND email = ?"
+  ).run(id, email);
+  return result.changes > 0;
 }
 
-// ── Scan history ───────────────────────────────────────────────────────────────
+// ── Scan history ──────────────────────────────────────────────────────────────
 
 async function logScanToHistory({ email, address, scan_type, risk_score, risk_level, summary, cached, result_json }) {
-  await pool.query(
-    `INSERT INTO scan_history (email, address, scan_type, risk_score, risk_level, summary, cached, result_json)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [email || null, address, scan_type, risk_score ?? null, risk_level || null,
-     (summary || '').slice(0, 300), cached ? true : false, result_json ? JSON.stringify(result_json) : null]
+  db.prepare(`
+    INSERT INTO scan_history
+      (email, address, scan_type, risk_score, risk_level, summary, cached, result_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    email || null, address, scan_type,
+    risk_score ?? null, risk_level || null,
+    (summary || '').slice(0, 300),
+    cached ? 1 : 0,
+    result_json ? JSON.stringify(result_json) : null
   );
 }
 
 async function getCachedScanFromDb(address, scan_type, maxAgeMs = 3_600_000) {
-  const { rows } = await pool.query(
-    `SELECT result_json, risk_score, risk_level, summary, created_at
-     FROM scan_history
-     WHERE address = $1 AND scan_type = $2 AND result_json IS NOT NULL
-       AND created_at > now() - ($3 || ' milliseconds')::interval
-     ORDER BY created_at DESC
-     LIMIT 1`,
-    [address, scan_type, maxAgeMs]
-  );
-  if (!rows.length) return null;
-  return rows[0].result_json;
+  const cutoff = new Date(Date.now() - maxAgeMs).toISOString();
+  const row = db.prepare(`
+    SELECT result_json FROM scan_history
+    WHERE address = ? AND scan_type = ? AND result_json IS NOT NULL
+      AND created_at > ?
+    ORDER BY created_at DESC LIMIT 1
+  `).get(address, scan_type, cutoff);
+  if (!row) return null;
+  try { return JSON.parse(row.result_json); } catch { return null; }
 }
 
 async function getScanHistory(email, limit = 50) {
-  const { rows } = await pool.query(
-    `SELECT id, address, scan_type, risk_score, risk_level, summary, cached, created_at
-     FROM scan_history
-     WHERE email = $1
-     ORDER BY created_at DESC
-     LIMIT $2`,
-    [email, limit]
-  );
-  return rows;
+  return db.prepare(`
+    SELECT id, address, scan_type, risk_score, risk_level, summary, cached, created_at
+    FROM scan_history WHERE email = ?
+    ORDER BY created_at DESC LIMIT ?
+  `).all(email, limit);
 }
 
-// ── User-based watchlist (keyed by email, no telegram_chat_id required) ────────
+// ── Ads ───────────────────────────────────────────────────────────────────────
 
-async function addUserWatchlistEntry({ email, address, label, notify_email }) {
-  // notify_email může být null (uživatel nechce email notifikace)
-  // email je vždy účet vlastníka záznamu — ukládáme jako notify_email pokud chce notifikace
-  const notifyEmail = notify_email !== undefined ? notify_email : email;
-  const { rows } = await pool.query(
-    `INSERT INTO watchlist (address, label, notify_email)
-     VALUES ($1, $2, $3)
-     ON CONFLICT DO NOTHING
-     RETURNING id, address, label, created_at`,
-    [address, label || null, notifyEmail]
-  );
-  // If conflict (reactivate deactivated entry)
-  if (!rows[0]) {
-    const existing = await pool.query(
-      `UPDATE watchlist SET active = TRUE, label = COALESCE($3, label), notify_email = $4
-       WHERE address = $1 AND (notify_email = $2 OR $2 IS NULL) AND active = FALSE
-       RETURNING id, address, label, created_at`,
-      [address, notifyEmail, label || null, notifyEmail]
-    );
-    return existing.rows[0] || null;
-  }
-  return rows[0];
-}
+function initAdsSchema() { return initSchema(); }
 
-async function removeUserWatchlistEntry({ email, id }) {
-  const { rowCount } = await pool.query(
-    `UPDATE watchlist SET active = FALSE WHERE id = $1 AND notify_email = $2`,
-    [id, email]
-  );
-  return rowCount > 0;
-}
-
-async function getUserWatchlist(email) {
-  const { rows } = await pool.query(
-    `SELECT id, address, label, last_risk_level, last_risk_score, last_checked_at, created_at
-     FROM watchlist
-     WHERE notify_email = $1 AND active = TRUE
-     ORDER BY created_at DESC`,
-    [email]
-  );
-  return rows;
-}
-
-// ── Ads ────────────────────────────────────────────────────────────────────────
-
-async function initAdsSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS ads (
-      id              BIGSERIAL    PRIMARY KEY,
-      advertiser      TEXT         NOT NULL,
-      headline        TEXT         NOT NULL,
-      tagline         TEXT,
-      cta_text        TEXT         NOT NULL DEFAULT 'Learn more',
-      cta_url         TEXT         NOT NULL,
-      image_url       TEXT,
-      placement       TEXT         NOT NULL DEFAULT 'scan_result',
-      -- scan_result | homepage | digest | all
-      active          BOOLEAN      NOT NULL DEFAULT TRUE,
-      impressions     BIGINT       NOT NULL DEFAULT 0,
-      clicks          BIGINT       NOT NULL DEFAULT 0,
-      budget_usd      NUMERIC(10,2),
-      spent_usd       NUMERIC(10,2) NOT NULL DEFAULT 0,
-      cpm_usd         NUMERIC(6,2) NOT NULL DEFAULT 5.00,
-      -- expires_at NULL = nikdy
-      expires_at      TIMESTAMPTZ,
-      created_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS ads_placement_active ON ads (placement, active, expires_at);
-  `);
-}
-
-// Vrátí aktivní reklamu pro daný placement (round-robin dle nejméně zobrazené)
 async function getAdForPlacement(placement) {
-  const { rows } = await pool.query(`
+  return db.prepare(`
     SELECT id, advertiser, headline, tagline, cta_text, cta_url, image_url, impressions, clicks
     FROM ads
-    WHERE active = TRUE
-      AND (placement = $1 OR placement = 'all')
-      AND (expires_at IS NULL OR expires_at > now())
+    WHERE active = 1
+      AND (placement = ? OR placement = 'all')
+      AND (expires_at IS NULL OR expires_at > datetime('now'))
       AND (budget_usd IS NULL OR spent_usd < budget_usd)
     ORDER BY impressions ASC, RANDOM()
     LIMIT 1
-  `, [placement]);
-  return rows[0] || null;
+  `).get(placement) || null;
 }
 
 async function trackAdImpression(id, spent_increment_usd) {
-  await pool.query(
-    `UPDATE ads SET impressions = impressions + 1, spent_usd = spent_usd + $2 WHERE id = $1`,
-    [id, spent_increment_usd || 0]
-  );
+  db.prepare(
+    'UPDATE ads SET impressions = impressions + 1, spent_usd = spent_usd + ? WHERE id = ?'
+  ).run(spent_increment_usd || 0, id);
 }
 
 async function trackAdClick(id) {
-  const { rows } = await pool.query(
-    `UPDATE ads SET clicks = clicks + 1 WHERE id = $1 RETURNING cta_url`,
-    [id]
-  );
-  return rows[0]?.cta_url || null;
+  db.prepare('UPDATE ads SET clicks = clicks + 1 WHERE id = ?').run(id);
+  return db.prepare('SELECT cta_url FROM ads WHERE id = ?').get(id)?.cta_url || null;
 }
 
 async function listAds() {
-  const { rows } = await pool.query(
-    `SELECT *, ROUND(100.0 * clicks / NULLIF(impressions, 0), 2) AS ctr
-     FROM ads ORDER BY created_at DESC`
-  );
-  return rows;
+  return db.prepare(`
+    SELECT *, ROUND(100.0 * clicks / nullif(impressions, 0), 2) AS ctr
+    FROM ads ORDER BY created_at DESC
+  `).all();
 }
 
 async function createAd({ advertiser, headline, tagline, cta_text, cta_url, image_url, placement, budget_usd, cpm_usd, expires_at }) {
-  const { rows } = await pool.query(
-    `INSERT INTO ads (advertiser, headline, tagline, cta_text, cta_url, image_url, placement, budget_usd, cpm_usd, expires_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-    [advertiser, headline, tagline || null, cta_text || 'Learn more', cta_url,
-     image_url || null, placement || 'scan_result',
-     budget_usd || null, cpm_usd || 5.00, expires_at || null]
+  const result = db.prepare(`
+    INSERT INTO ads
+      (advertiser, headline, tagline, cta_text, cta_url, image_url, placement, budget_usd, cpm_usd, expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    advertiser, headline, tagline || null, cta_text || 'Learn more', cta_url,
+    image_url || null, placement || 'scan_result',
+    budget_usd || null, cpm_usd || 5.00, expires_at || null
   );
-  return rows[0];
+  return db.prepare('SELECT * FROM ads WHERE id = ?').get(result.lastInsertRowid);
 }
 
 async function updateAd(id, fields) {
   const allowed = ['headline','tagline','cta_text','cta_url','image_url','placement','active','budget_usd','cpm_usd','expires_at'];
-  const sets = [];
-  const vals = [];
-  let i = 1;
+  const sets = []; const vals = [];
   for (const [k, v] of Object.entries(fields)) {
-    if (allowed.includes(k)) { sets.push(`${k} = $${i++}`); vals.push(v); }
+    if (allowed.includes(k)) { sets.push(`${k} = ?`); vals.push(v); }
   }
   if (!sets.length) return null;
   vals.push(id);
-  const { rows } = await pool.query(
-    `UPDATE ads SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, vals
-  );
-  return rows[0] || null;
+  db.prepare(`UPDATE ads SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+  return db.prepare('SELECT * FROM ads WHERE id = ?').get(id) || null;
 }
 
-// ── Vrátí počet free scanů pro danou IP od začátku dnešního dne (UTC).
-async function countFreeScansToday(ip) {
-  const { rows } = await pool.query(
-    `SELECT COUNT(*) AS cnt FROM events
-     WHERE name = 'free_scan_used' AND ip = $1
-       AND created_at >= date_trunc('day', now() AT TIME ZONE 'UTC')`,
-    [ip]
+// ── Users (přesunuto z auth.js) ───────────────────────────────────────────────
+
+async function findOrCreateUser({ email, name, avatar_url, provider, provider_id }) {
+  if (!email) email = `${provider}_${provider_id}@noemail.local`;
+  try {
+    const result = db.prepare(`
+      INSERT INTO users (email, name, avatar_url, provider, provider_id)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(email, name || null, avatar_url || null, provider, String(provider_id));
+    return db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+  } catch {
+    // Conflict — update existing
+    db.prepare(`
+      UPDATE users
+      SET name        = COALESCE(?, name),
+          avatar_url  = COALESCE(?, avatar_url),
+          provider    = ?,
+          provider_id = ?
+      WHERE email = ?
+    `).run(name || null, avatar_url || null, provider, String(provider_id), email);
+    return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  }
+}
+
+async function findUserById(id) {
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(id) || null;
+}
+
+async function findUserByEmail(email) {
+  return db.prepare('SELECT * FROM users WHERE email = ?').get(email) || null;
+}
+
+async function createLocalUser({ email, password_hash, name }) {
+  try {
+    const result = db.prepare(`
+      INSERT INTO users (email, name, password_hash, provider) VALUES (?, ?, ?, 'local')
+    `).run(email, name || null, password_hash);
+    return db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+  } catch { return null; }
+}
+
+async function createPasswordResetToken(email) {
+  const token   = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+  db.prepare('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE email = ?')
+    .run(token, expires, email);
+  return token;
+}
+
+async function consumePasswordResetToken(token, newPasswordHash) {
+  const user = db.prepare(
+    "SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > datetime('now')"
+  ).get(token);
+  if (!user) return null;
+  db.prepare(
+    'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?'
+  ).run(newPasswordHash, user.id);
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(user.id) || null;
+}
+
+// ── Mailer helpers (přesunuto z mailer.js) ─────────────────────────────────────
+
+async function getActiveSubscribers() {
+  // SQLite nemá DISTINCT ON — emulujeme přes GROUP BY + MAX
+  return db.prepare(`
+    SELECT email, tier, current_period_end
+    FROM subscriptions
+    WHERE status = 'active'
+      AND (current_period_end IS NULL OR current_period_end > datetime('now'))
+      AND digest_unsubscribed = 0
+    GROUP BY email
+    ORDER BY email
+  `).all();
+}
+
+async function getSubscriberWatchlist(email) {
+  return db.prepare(`
+    SELECT address, label, last_risk_level, last_risk_score, last_checked_at
+    FROM watchlist
+    WHERE notify_email = ? AND active = 1
+    ORDER BY last_risk_score DESC, created_at
+  `).all(email);
+}
+
+async function getWeeklyScanSummary(email) {
+  const cutoff = new Date(Date.now() - 7 * 86400000).toISOString();
+  return db.prepare(`
+    SELECT
+      COUNT(*)                                                         AS total_scans,
+      SUM(CASE WHEN risk_level = 'high'     THEN 1 ELSE 0 END)        AS high_risk,
+      SUM(CASE WHEN risk_level = 'critical' THEN 1 ELSE 0 END)        AS critical_risk,
+      SUM(CASE WHEN risk_level = 'medium'   THEN 1 ELSE 0 END)        AS medium_risk,
+      SUM(CASE WHEN scan_type  = 'deep'     THEN 1 ELSE 0 END)        AS deep_scans,
+      MAX(risk_score)                                                  AS max_score,
+      COUNT(DISTINCT address)                                          AS unique_addresses
+    FROM scan_history
+    WHERE email = ? AND created_at >= ?
+  `).get(email, cutoff) || {};
+}
+
+async function getDigestAd() {
+  return db.prepare(`
+    SELECT id, advertiser, headline, tagline, cta_text, cta_url, image_url, cpm_usd
+    FROM ads
+    WHERE active = 1
+      AND (placement = 'digest' OR placement = 'all')
+      AND (expires_at IS NULL OR expires_at > datetime('now'))
+      AND (budget_usd IS NULL OR spent_usd < budget_usd)
+    ORDER BY impressions ASC, RANDOM()
+    LIMIT 1
+  `).get() || null;
+}
+
+async function getRecentHighRiskScans(email) {
+  const cutoff = new Date(Date.now() - 7 * 86400000).toISOString();
+  return db.prepare(`
+    SELECT address, scan_type, risk_score, risk_level, summary, created_at
+    FROM scan_history
+    WHERE email = ?
+      AND risk_level IN ('high', 'critical')
+      AND created_at >= ?
+    ORDER BY risk_score DESC, created_at DESC
+    LIMIT 5
+  `).all(email, cutoff);
+}
+
+// ── Live stats (server.js /stats endpoint) ────────────────────────────────────
+
+async function getLiveStats() {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const r = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM scan_history)                            AS total_scans,
+      (SELECT COUNT(*) FROM scan_history WHERE created_at >= ?)      AS scans_today,
+      (SELECT COUNT(*) FROM payments WHERE verified = 1)             AS total_payments,
+      (SELECT ROUND(AVG(CAST(meta AS REAL)), 0) FROM events
+        WHERE name = 'scan_complete')                                 AS avg_ms
+  `).get(today.toISOString());
+  const successRow = db.prepare(`
+    SELECT ROUND(100.0 * SUM(CASE WHEN verified=1 THEN 1 ELSE 0 END)
+           / nullif(COUNT(*), 0), 1) AS rate
+    FROM payments
+  `).get();
+  return {
+    total_scans: r?.total_scans || 0,
+    scans_today: r?.scans_today || 0,
+    total_payments: r?.total_payments || 0,
+    success_rate_pct: successRow?.rate || 0,
+    average_response_time_ms: null
+  };
+}
+
+// ── Advisor usage tracking ────────────────────────────────────────────────────
+
+// Sonnet 4.6: $3/M input,  $15/M output  (executor)
+// Opus 4.6:   $5/M input,  $25/M output  (advisor) — source: docs.anthropic.com/en/docs/about-claude/pricing
+function logAdvisorUsage(scanId, scanType, result) {
+  const usage = result.usage || {};
+  const executorCost = ((usage.input_tokens || 0) * 3 + (usage.output_tokens || 0) * 15) / 1_000_000;
+  const advisorInputTokens  = usage.advisor_input_tokens  || 0;
+  const advisorOutputTokens = usage.advisor_output_tokens || 0;
+  const advisorCost = (advisorInputTokens * 5 + advisorOutputTokens * 25) / 1_000_000;
+
+  db.prepare(`
+    INSERT INTO advisor_calls
+      (scan_id, scan_type, advisor_invoked,
+       executor_input_tokens, executor_output_tokens,
+       advisor_input_tokens, advisor_output_tokens,
+       estimated_cost_usd)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    scanId || null,
+    scanType || null,
+    result.advisorUsed ? 1 : 0,
+    usage.input_tokens  || 0,
+    usage.output_tokens || 0,
+    advisorInputTokens,
+    advisorOutputTokens,
+    executorCost + advisorCost
   );
-  return parseInt(rows[0].cnt, 10);
+}
+
+function getAdvisorStats(days = 30) {
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  return db.prepare(`
+    SELECT
+      COUNT(*)                                                              AS total_scans,
+      SUM(CASE WHEN advisor_invoked = 1 THEN 1 ELSE 0 END)                 AS advisor_scans,
+      ROUND(AVG(CASE WHEN advisor_invoked = 1
+                THEN advisor_output_tokens END), 0)                        AS avg_advisor_tokens,
+      ROUND(SUM(estimated_cost_usd), 4)                                    AS total_cost_usd,
+      ROUND(AVG(estimated_cost_usd), 4)                                    AS avg_cost_per_scan
+    FROM advisor_calls
+    WHERE created_at >= ?
+  `).get(cutoff);
+}
+
+// ── SQLite session store (pro auth.js) ────────────────────────────────────────
+
+const session = require('express-session');
+
+class SqliteStore extends session.Store {
+  constructor() {
+    super();
+    // Periodické čištění prošlých sessions (každých 15 minut)
+    setInterval(() => {
+      db.prepare("DELETE FROM user_sessions WHERE expires IS NOT NULL AND expires < datetime('now')")
+        .run();
+    }, 15 * 60 * 1000).unref();
+  }
+
+  get(sid, cb) {
+    try {
+      const row = db.prepare('SELECT sess, expires FROM user_sessions WHERE sid = ?').get(sid);
+      if (!row) return cb(null, null);
+      if (row.expires && new Date(row.expires) < new Date()) {
+        db.prepare('DELETE FROM user_sessions WHERE sid = ?').run(sid);
+        return cb(null, null);
+      }
+      cb(null, JSON.parse(row.sess));
+    } catch (e) { cb(e); }
+  }
+
+  set(sid, sess, cb) {
+    try {
+      const expires = sess.cookie?.expires
+        ? new Date(sess.cookie.expires).toISOString()
+        : new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+      db.prepare(
+        'INSERT OR REPLACE INTO user_sessions (sid, sess, expires) VALUES (?, ?, ?)'
+      ).run(sid, JSON.stringify(sess), expires);
+      cb(null);
+    } catch (e) { cb(e); }
+  }
+
+  destroy(sid, cb) {
+    try {
+      db.prepare('DELETE FROM user_sessions WHERE sid = ?').run(sid);
+      cb(null);
+    } catch (e) { cb(e); }
+  }
+
+  touch(sid, sess, cb) { this.set(sid, sess, cb); }
 }
 
 module.exports = {
-  pool, initSchema, logPayment, isAlreadyUsed, logEvent,
-  getFunnelStats, getPaymentStats,
+  db, pool, initSchema, initUsersSchema, initAdsSchema,
+  logPayment, isAlreadyUsed, logEvent,
+  getFunnelStats, getPaymentStats, getPageviewStats,
+  countFreeScansToday,
   addWatchlistEntry, removeWatchlistEntry, getActiveWatchlist,
   updateWatchlistRisk, listWatchlistForChat,
-  upsertSubscription, getActiveSubscription,
-  createApiKey, validateApiKey, incrementApiKeyUsage, listApiKeys, revokeApiKey,
-  getPageviewStats, countFreeScansToday,
-  logScanToHistory, getScanHistory, getCachedScanFromDb,
   addUserWatchlistEntry, removeUserWatchlistEntry, getUserWatchlist,
-  initAdsSchema, getAdForPlacement, trackAdImpression, trackAdClick, listAds, createAd, updateAd
+  upsertSubscription, getActiveSubscription, getActiveSubscriptionByChatId,
+  countWatchlistForEmail, countWatchlistForChat,
+  createApiKey, validateApiKey, incrementApiKeyUsage, listApiKeys, revokeApiKey,
+  logScanToHistory, getScanHistory, getCachedScanFromDb,
+  getAdForPlacement, trackAdImpression, trackAdClick, listAds, createAd, updateAd,
+  // Users (přesunuto z auth.js)
+  findOrCreateUser, findUserById, findUserByEmail,
+  createLocalUser, createPasswordResetToken, consumePasswordResetToken,
+  // Mailer helpers
+  getActiveSubscribers, getSubscriberWatchlist, getWeeklyScanSummary,
+  getDigestAd, getRecentHighRiskScans,
+  // Live stats
+  getLiveStats,
+  // Advisor usage
+  logAdvisorUsage, getAdvisorStats,
+  // Session store
+  SqliteStore
 };

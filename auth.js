@@ -1,90 +1,29 @@
 /**
  * auth.js — Passport.js social login (Google, GitHub, Twitter/X)
- * Session stored in Postgres via connect-pg-simple.
+ * Session stored in SQLite via SqliteStore from db.js.
  */
 'use strict';
 
-const passport    = require('passport');
-const express     = require('express');
-const session     = require('express-session');
-const PgSession   = require('connect-pg-simple')(session);
-const { Pool }    = require('pg');
-const bcrypt      = require('bcrypt');
-const crypto      = require('crypto');
+const passport = require('passport');
+const express  = require('express');
+const session  = require('express-session');
+const bcrypt   = require('bcrypt');
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const {
+  SqliteStore,
+  findOrCreateUser, findUserById, findUserByEmail,
+  createLocalUser, createPasswordResetToken, consumePasswordResetToken
+} = require('./db');
 
 // ── User serialization ─────────────────────────────────────────────────────────
 passport.serializeUser((user, done) => done(null, user.id));
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-    done(null, rows[0] || null);
+    const user = await findUserById(id);
+    done(null, user || null);
   } catch (e) { done(e, null); }
 });
-
-// ── Upsert user in DB ──────────────────────────────────────────────────────────
-async function findOrCreateUser({ email, name, avatar_url, provider, provider_id }) {
-  if (!email) email = `${provider}_${provider_id}@noemail.local`;
-  const { rows } = await pool.query(
-    `INSERT INTO users (email, name, avatar_url, provider, provider_id)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (email) DO UPDATE SET
-       name       = COALESCE(EXCLUDED.name, users.name),
-       avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
-       provider   = EXCLUDED.provider,
-       provider_id = EXCLUDED.provider_id
-     RETURNING *`,
-    [email, name || null, avatar_url || null, provider, String(provider_id)]
-  );
-  return rows[0];
-}
-
-// ── Email/password user helpers ────────────────────────────────────────────────
-
-async function findUserByEmail(email) {
-  const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-  return rows[0] || null;
-}
-
-async function createLocalUser({ email, password, name }) {
-  const password_hash = await bcrypt.hash(password, 12);
-  const { rows } = await pool.query(
-    `INSERT INTO users (email, name, password_hash, provider)
-     VALUES ($1, $2, $3, 'local')
-     ON CONFLICT (email) DO NOTHING
-     RETURNING *`,
-    [email, name || null, password_hash]
-  );
-  return rows[0] || null;
-}
-
-// Vygeneruje token pro reset hesla, uloží ho do DB, vrátí token
-async function createPasswordResetToken(email) {
-  const token = crypto.randomBytes(32).toString('hex');
-  const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hodiny
-  await pool.query(
-    `UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3`,
-    [token, expires, email]
-  );
-  return token;
-}
-
-async function consumePasswordResetToken(token, newPassword) {
-  const { rows } = await pool.query(
-    `SELECT * FROM users WHERE reset_token = $1 AND reset_token_expires > now()`,
-    [token]
-  );
-  if (!rows[0]) return null;
-  const password_hash = await bcrypt.hash(newPassword, 12);
-  const { rows: updated } = await pool.query(
-    `UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL
-     WHERE id = $2 RETURNING *`,
-    [password_hash, rows[0].id]
-  );
-  return updated[0] || null;
-}
 
 // ── Strategies ─────────────────────────────────────────────────────────────────
 function setupStrategies() {
@@ -193,11 +132,7 @@ function setupStrategies() {
 // ── Session middleware ─────────────────────────────────────────────────────────
 function configureSession(app) {
   app.use(session({
-    store: new PgSession({
-      pool,
-      tableName: 'user_sessions',
-      createTableIfMissing: true
-    }),
+    store: new SqliteStore(),
     secret:            process.env.SESSION_SECRET || 'dev-secret-please-change',
     resave:            false,
     saveUninitialized: false,
@@ -372,30 +307,4 @@ function registerAuthRoutes(app) {
   });
 }
 
-// ── DB schema for users table ──────────────────────────────────────────────────
-async function initUsersSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id            SERIAL PRIMARY KEY,
-      email         TEXT UNIQUE NOT NULL,
-      name          TEXT,
-      avatar_url    TEXT,
-      provider      TEXT,
-      provider_id   TEXT,
-      password_hash TEXT,
-      reset_token   TEXT,
-      reset_token_expires TIMESTAMPTZ,
-      stripe_customer_id TEXT,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;
-    ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);
-    ALTER TABLE api_keys      ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);
-    ALTER TABLE watchlist     ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);
-  `);
-  console.log('[auth] users schema ready');
-}
-
-module.exports = { passport, configureSession, setupStrategies, registerAuthRoutes, initUsersSchema, findUserByEmail };
+module.exports = { passport, configureSession, setupStrategies, registerAuthRoutes, findUserByEmail };

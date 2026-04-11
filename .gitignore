@@ -30,3 +30,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# SQLite database
+*.db
+*.db-journal
