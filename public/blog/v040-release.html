@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>integrity.molt v0.4.0: UX Overhaul, Watchlist Limits, Webhook Hardening | intmolt.org</title>
+  <meta name="description" content="v0.4.0 ships a full UX overhaul — visual scan type picker, soft paywall, FAQ, live stats ticker, pricing comparison table — plus server-side watchlist tier enforcement and Helius webhook hardening.">
+  <meta name="keywords" content="integrity.molt v0.4.0, Solana security scanner update, watchlist monitoring, Helius webhook, scan UX, x402 payment">
+  <link rel="canonical" href="https://intmolt.org/blog/v040-release">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="integrity.molt v0.4.0: UX Overhaul + Webhook Hardening">
+  <meta property="og:description" content="Visual scan type picker, FAQ, live stats ticker, pricing comparison table. Plus: server-side watchlist limits and Helius flooding prevention.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://intmolt.org/blog/v040-release">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta property="article:published_time" content="2026-04-11T00:00:00Z">
+  <meta property="article:author" content="integrity.molt">
+  <meta property="article:section" content="Release Notes">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="integrity.molt v0.4.0 — UX overhaul + webhook hardening">
+  <meta name="twitter:description" content="Visual scan cards, soft paywall, FAQ section, live ticker, pricing comparison table. Plus tier limits and Helius flood protection.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "integrity.molt v0.4.0: UX Overhaul, Watchlist Limits, Webhook Hardening",
+    "description": "v0.4.0 ships a full UX overhaul and server-side hardening for the integrity.molt Solana security scanner.",
+    "url": "https://intmolt.org/blog/v040-release",
+    "datePublished": "2026-04-11",
+    "author": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
+    "publisher": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
+    "image": "https://intmolt.org/og-image.png",
+    "keywords": "Solana security scanner, integrity.molt, watchlist monitoring, Helius webhook, x402"
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --surface: #111820;
+      --surface2: #1a2332;
+      --border: #1e3050;
+      --accent: #00ff88;
+      --accent2: #4da6ff;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    nav {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav .inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    nav .logo { font-family: monospace; font-size: 18px; color: var(--accent); text-decoration: none; font-weight: 700; }
+    nav .links { display: flex; gap: 24px; }
+    nav .links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+    nav .links a:hover { color: var(--text); }
+
+    article {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-family: monospace;
+      background: rgba(0,255,136,.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,255,136,.2);
+      padding: 3px 10px;
+      border-radius: 4px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      letter-spacing: -.01em;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 40px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .tldr {
+      background: var(--surface2);
+      border-left: 3px solid var(--accent);
+      padding: 20px 24px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 48px;
+      font-size: 15px;
+    }
+    .tldr strong { color: var(--accent); display: block; margin-bottom: 8px; font-family: monospace; font-size: 12px; letter-spacing: .1em; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 56px;
+      margin-bottom: 20px;
+      color: var(--accent);
+      font-family: monospace;
+    }
+    h2::before { content: "## "; opacity: .4; }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    p { margin-bottom: 18px; color: #c8d8e8; }
+
+    ul, ol { padding-left: 24px; margin-bottom: 18px; }
+    li { margin-bottom: 8px; color: #c8d8e8; }
+    li strong { color: var(--text); }
+
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      margin: 24px 0;
+      color: #a0b8d0;
+    }
+
+    code {
+      font-family: monospace;
+      font-size: 13px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 6px;
+      color: var(--accent);
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .change-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin: 28px 0;
+    }
+    .change-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 20px;
+    }
+    .change-card .label {
+      font-family: monospace;
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .change-card .label.ux { color: #4da6ff; }
+    .change-card .label.security { color: #f59e0b; }
+    .change-card .label.infra { color: #a78bfa; }
+    .change-card ul { padding-left: 16px; margin: 0; }
+    .change-card li { font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+
+    .callout {
+      background: rgba(0,255,136,.05);
+      border: 1px solid rgba(0,255,136,.15);
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin: 28px 0;
+      font-size: 14px;
+    }
+    .callout strong { color: var(--accent); }
+
+    .dim { color: var(--muted); }
+    .ok  { color: var(--green); }
+    .warn { color: var(--yellow); }
+    .err { color: var(--red); }
+
+    .version-badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 13px;
+      background: rgba(0,255,136,.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,255,136,.3);
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    footer a { color: var(--muted); margin: 0 8px; }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      article { padding: 40px 16px 60px; }
+      .change-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a href="/" class="logo">integrity.molt</a>
+    <div class="links">
+      <a href="/scan">Scanner</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/docs.html">API</a>
+      <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram</a>
+    </div>
+  </div>
+</nav>
+
+<article>
+
+  <div class="tag">Release Notes</div>
+  <h1>integrity.molt v0.4.0 <span class="version-badge">2026-04-11</span></h1>
+
+  <div class="meta">
+    <span>📅 April 11, 2026</span>
+    <span>🏷 UX · Security · Infrastructure</span>
+    <span>⏱ 5 min read</span>
+  </div>
+
+  <div class="tldr">
+    <strong>TL;DR</strong>
+    v0.4.0 ships a complete UX overhaul of the scanner and landing page, server-side enforcement of watchlist tier limits, and Helius webhook hardening that eliminates the risk of API credit burning on active DeFi addresses. 38 new unit tests for scanner logic included.
+  </div>
+
+  <h2>What changed</h2>
+
+  <div class="change-grid">
+    <div class="change-card">
+      <div class="label ux">UX — Scanner</div>
+      <ul>
+        <li>Visual scan type card picker</li>
+        <li>Soft paywall email capture</li>
+        <li>Friendly error messages</li>
+        <li>Cached results badge</li>
+        <li>X/Twitter share button</li>
+        <li>Address type hint (SOL/EVM)</li>
+      </ul>
+    </div>
+    <div class="change-card">
+      <div class="label ux">UX — Landing page</div>
+      <ul>
+        <li>Live activity ticker</li>
+        <li>FAQ section (8 questions)</li>
+        <li>Feature comparison table</li>
+        <li>Stats auto-refresh (60s)</li>
+        <li>FAQ nav link in header</li>
+      </ul>
+    </div>
+    <div class="change-card">
+      <div class="label security">Security & limits</div>
+      <ul>
+        <li>Watchlist tier limits enforced</li>
+        <li>Helius txn type filter</li>
+        <li>Webhook rate limit (300/min)</li>
+        <li>events.jsonl 50MB cap</li>
+      </ul>
+    </div>
+    <div class="change-card">
+      <div class="label infra">Infrastructure</div>
+      <ul>
+        <li>38 unit tests (no network)</li>
+        <li>LLM advisor module</li>
+        <li>Known-safe token whitelist</li>
+        <li>3 new DB helper functions</li>
+        <li>/email/capture endpoint</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>UX overhaul: scanner (scan.html)</h2>
+
+  <p>The most visible change is the scan type selector. The old HTML <code>&lt;select&gt;</code> dropdown is replaced with six visual radio-button cards — Quick, Token, EVM, Wallet, Pool, Deep. Each card shows the price, a one-line description, and highlights when selected. Clicking auto-detects the right scan type when you paste an address.</p>
+
+  <p>The paywall flow now has two stages. If you haven't given us your email this session, we show a soft "stay updated" prompt before the hard paywall. One-shot per browser session (stored in <code>sessionStorage</code>), never shown again once submitted, never shown for deep scan (which goes straight to payment). Captured emails go to the <code>/email/capture</code> endpoint and are logged for follow-up campaigns.</p>
+
+  <p>Error messages are now human. Instead of <code>429</code> or <code>"scan failed"</code>, users see messages like <em>"You've used all 3 free scans today. Come back tomorrow or upgrade for unlimited."</em> — with a retry button where appropriate. The <code>ERROR_MAP</code> covers quota exhaustion, invalid address, RPC timeouts, and unknown errors.</p>
+
+  <p>Two small additions that improve trust signals: a <strong>cached results badge</strong> ("⚡ Instant result — cached scan") appears when a result is served from cache, so users know they're not hitting the network. And a <strong>X/Twitter share button</strong> lets users post their risk score with a pre-written tweet.</p>
+
+  <h2>UX overhaul: landing page (index.html)</h2>
+
+  <h3>Live activity ticker</h3>
+  <p>A slim green bar below the header now shows real-time stats: scans today, total scans, and success rate — pulled from <code>/api/v2/stats</code> and auto-refreshed every 60 seconds. On load failure it falls back to a static message. The pulsing dot keeps it visually alive without being distracting.</p>
+
+  <h3>FAQ section</h3>
+  <p>Eight collapsible questions before the footer cover the things we kept getting asked in Telegram: Is it really free? What's the difference between quick scan and Deep Audit? What is x402? What does Ed25519 signed mean? Accordion-style: opening one closes the others. Linked from header nav as <code>#faq</code>.</p>
+
+  <h3>Feature comparison table</h3>
+  <p>A full-width matrix below the pricing cards compares all four plans across 15 features — scan types, watchlist limits, alert channels, delta reports, API access, SLA. The Builder column is highlighted in green. On mobile it scrolls horizontally.</p>
+
+  <h2>Watchlist tier limits</h2>
+
+  <p>Free users have always been limited to 3 watchlist addresses by design, but that limit wasn't enforced in code — it was only shown in the UI. v0.4.0 enforces it server-side in both API paths (Telegram bot and REST API).</p>
+
+  <pre><span class="dim">// server.js — enforced limits</span>
+<span class="ok">const WATCHLIST_TIER_LIMITS = {
+  free:        3,
+  pro_trader: 20,
+  builder:   100,
+  team:      500,
+};</span>
+
+<span class="dim">// Adding a 4th address on free tier returns:</span>
+<span class="err">HTTP 403 {
+  "error": "Watchlist limit reached (3/3). Upgrade to Pro Trader for 20 addresses.",
+  "tier": "free",
+  "limit": 3,
+  "current": 3
+}</span></pre>
+
+  <p>The check runs before the Helius webhook sync — so adding an address over the limit neither saves to the DB nor registers with Helius. Users get a clear upgrade message with their current tier and the next tier's limit.</p>
+
+  <h2>Helius webhook hardening</h2>
+
+  <p>This was the riskiest silent issue before this release. The previous webhook configuration used <code>transactionTypes: ["ANY"]</code> — meaning Helius would push <em>every transaction</em> for every watched address. For a quiet wallet this is fine. For an address associated with a Raydium pool or active DeFi protocol, this can mean tens of thousands of webhooks per hour.</p>
+
+  <p>v0.4.0 replaces <code>ANY</code> with a targeted list of security-relevant transaction types only:</p>
+
+  <pre><span class="ok">const SECURITY_TX_TYPES = [
+  'SET_AUTHORITY',
+  'UPGRADE_PROGRAM_INSTRUCTION',
+  'CLOSE_ACCOUNT',
+  'BURN',
+  'BURN_NFT',
+  'TRANSFER',
+  'TRANSFER_CHECKED',
+  'MINT_TO',
+  'INITIALIZE_MINT',
+];</span></pre>
+
+  <p>This eliminates swap transactions, AMM rebalances, liquidity events — the high-volume noise that drives Helius credit consumption without adding security signal. The filter applies to all four Helius API calls: <code>setupWebhook</code>, <code>addAddresses</code>, <code>removeAddresses</code>, and <code>syncWatchlistToWebhook</code>.</p>
+
+  <p>Two additional safeguards:</p>
+  <ul>
+    <li><strong>Global rate limit</strong>: max 300 webhook requests per minute at the Express layer. Requests over the limit get a <code>200 OK</code> with <code>{ ok: false, error: "rate limited" }</code> — returning 200 prevents Helius retry storms.</li>
+    <li><strong>Disk cap</strong>: <code>events.jsonl</code> stops growing at 50 MB. The check runs every 100 webhook calls (not every call) to avoid <code>stat()</code> overhead. When paused, events are silently dropped rather than crashing the process.</li>
+  </ul>
+
+  <h2>Unit tests</h2>
+
+  <p>38 tests covering pure scanner logic — no network, no DB, no RPC calls required. Run with:</p>
+
+  <pre>node tests/scan-logic.test.js</pre>
+
+  <p>Coverage: <code>scoreToCategory</code> boundary conditions, <code>analyzeConcentration</code> thresholds, WEIGHTS sum validation, <code>analyzeSource</code> pattern matching, <code>detectFees</code>, <code>analyzeTransfers</code>, ABI decoders (<code>decodeString</code>, <code>decodeUint256</code>, <code>decodeAddress</code>), and cross-scanner WEIGHTS consistency check.</p>
+
+  <div class="callout">
+    <strong>Try v0.4.0 now →</strong> The scanner at <a href="/scan">intmolt.org/scan</a> is already running v0.4.0. 3 free scans per day, no signup required. For live wallet monitoring, <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">add the Telegram bot</a> and use <code>/watch &lt;address&gt;</code>.
+  </div>
+
+  <h2>What's next</h2>
+
+  <ul>
+    <li><strong>Etherscan API key integration</strong> — EVM scanner currently falls back to bytecode-only analysis. With a verified API key, source code pattern matching and simulation runs on every EVM scan.</li>
+    <li><strong>Nosana deep scan</strong> — Phase 0 (cargo-audit + clippy + grep) is implemented. Pending: end-to-end test on Nosana compute network with a real program.</li>
+    <li><strong>PDF + PNG report download</strong> — signed reports exportable as printable PDF or shareable image.</li>
+    <li><strong>Delta report automation</strong> — weekly (Pro Trader) and daily (Builder+) signed diffs, delivered via Telegram/email without manual trigger.</li>
+  </ul>
+
+  <p style="margin-top: 40px; font-size: 14px; color: var(--muted);">
+    Questions or feedback? <a href="https://t.me/intmolt_bot">Telegram bot</a> · <a href="/docs.html">API docs</a> · <a href="/verify.html">Verify reports</a>
+  </p>
+
+</article>
+
+<footer>
+  <p>&copy; 2026 integrity.molt &mdash; AI-native Solana security scanner</p>
+  <p style="margin-top: 8px;">
+    <a href="/scan">Scanner</a> &nbsp;&middot;&nbsp;
+    <a href="/#pricing">Pricing</a> &nbsp;&middot;&nbsp;
+    <a href="/docs.html">API Docs</a> &nbsp;&middot;&nbsp;
+    <a href="/blog/rugcheck-methodology">Security Research</a> &nbsp;&middot;&nbsp;
+    <a href="/verify.html">Verify Reports</a>
+  </p>
+</footer>
+
+</body>
+</html>
