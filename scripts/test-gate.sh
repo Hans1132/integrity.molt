@@ -99,6 +99,15 @@ else
   ERRORS="$ERRORS\n- Adversarial tests failed"
 fi
 
+# 9. Golden dataset accuracy tests
+echo "🎯 Accuracy (golden dataset)..."
+if node tests/scanner/accuracy.test.js 2>/dev/null; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- Golden dataset accuracy tests failed"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"

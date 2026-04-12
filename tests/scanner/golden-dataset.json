@@ -1,0 +1,196 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "created": "2026-04-12",
+    "description": "Golden dataset for integrity.molt scan accuracy regression testing",
+    "sources": [
+      "Jupiter Validated Token List (jup-ag/token-list)",
+      "SolRPDS: A Dataset for Analyzing Rug Pulls in Solana DeFi (arxiv 2504.07132)",
+      "DeFiLabX/SolRPDS GitHub (CC BY 4.0)",
+      "RugCheck.xyz API",
+      "Solana Explorer on-chain verification"
+    ],
+    "categories": {
+      "safe": "Verified legitimate tokens — mint/freeze authority renounced, deep liquidity",
+      "scam": "Verified rug pulls from SolRPDS academic dataset, pool inactive",
+      "edge": "Legitimate tokens with features that may trigger false positives"
+    }
+  },
+  "tokens": [
+    {
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "name": "USD Coin",
+      "symbol": "USDC",
+      "category": "safe",
+      "reason": "Circle stablecoin, mint authority = null, freeze authority = null, rugcheck score 0",
+      "expected_category": "SAFE",
+      "expected_score_range": [0, 10],
+      "must_not_flag": ["mint_authority_active", "freeze_authority_active"],
+      "source": "Jupiter validated-tokens.csv + rugcheck API"
+    },
+    {
+      "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "name": "Tether USD",
+      "symbol": "USDT",
+      "category": "safe",
+      "reason": "Tether stablecoin, mint authority = null, freeze authority = null, rugcheck score 0",
+      "expected_category": "SAFE",
+      "expected_score_range": [0, 10],
+      "must_not_flag": ["mint_authority_active", "freeze_authority_active"],
+      "source": "Solana Explorer + rugcheck API"
+    },
+    {
+      "mint": "So11111111111111111111111111111111111111112",
+      "name": "Wrapped SOL",
+      "symbol": "wSOL",
+      "category": "safe",
+      "reason": "Canonical wrapped native SOL, system token, mint/freeze null",
+      "expected_category": "SAFE",
+      "expected_score_range": [0, 10],
+      "must_not_flag": ["mint_authority_active", "freeze_authority_active"],
+      "source": "Jupiter validated-tokens.csv"
+    },
+    {
+      "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "name": "Jupiter",
+      "symbol": "JUP",
+      "category": "safe",
+      "reason": "Jupiter DEX governance token, mint/freeze authority revoked, rugcheck score 7",
+      "expected_category": "SAFE",
+      "expected_score_range": [0, 20],
+      "must_not_flag": ["mint_authority_active", "freeze_authority_active"],
+      "source": "Jupiter validated-tokens.csv + rugcheck API"
+    },
+    {
+      "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "name": "Bonk",
+      "symbol": "BONK",
+      "category": "safe",
+      "reason": "Largest Solana memecoin, mint/freeze authority revoked, rugcheck score 7",
+      "expected_category": "SAFE",
+      "expected_score_range": [0, 20],
+      "must_not_flag": ["mint_authority_active", "freeze_authority_active"],
+      "source": "Jupiter validated-tokens.csv + rugcheck API"
+    },
+    {
+      "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+      "name": "Raydium",
+      "symbol": "RAY",
+      "category": "safe",
+      "reason": "Raydium AMM governance token, mint/freeze authority revoked. High top10 concentration is DAO treasury — not a scam signal",
+      "expected_category": "SAFE",
+      "expected_score_range": [0, 60],
+      "notes": "Scanner may flag high top-10 concentration — this is acceptable as CAUTION but not DANGER",
+      "must_not_be": "DANGER",
+      "source": "Jupiter validated-tokens.csv + rugcheck API"
+    },
+    {
+      "mint": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+      "name": "dogwifhat",
+      "symbol": "WIF",
+      "category": "edge",
+      "reason": "Memecoin, mint/freeze revoked, rugcheck score 1. Tests false alarm on mutable metadata + no LP lock",
+      "expected_category": "SAFE",
+      "expected_score_range": [0, 25],
+      "must_not_be": "DANGER",
+      "source": "Coinbase Assets + Solana Explorer + rugcheck API"
+    },
+    {
+      "mint": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
+      "name": "Popcat",
+      "symbol": "POPCAT",
+      "category": "edge",
+      "reason": "Memecoin, mint/freeze revoked, rugcheck score 1. Tests 'technically clean' memecoin without LP lock",
+      "expected_category": "SAFE",
+      "expected_score_range": [0, 20],
+      "must_not_be": "DANGER",
+      "source": "Coinbase Assets + Solana Explorer + rugcheck API"
+    },
+    {
+      "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+      "name": "PayPal USD",
+      "symbol": "PYUSD",
+      "category": "edge",
+      "reason": "Token-2022 with Permanent Delegate + Transfer Fee extensions. Legitimate stablecoin but extensions trigger false positives. Tests context-aware scanner",
+      "expected_category": "CAUTION",
+      "expected_score_range": [0, 40],
+      "notes": "Permanent Delegate is a real risk signal but Paxos is regulated — scanner should flag but not DANGER",
+      "must_not_be": "DANGER",
+      "source": "PayPal/Paxos official + Solana Explorer + rugcheck API"
+    },
+    {
+      "mint": "CKfatsPMUf8SkiURsDXs7eK6GWb4Jsd6UDbs7twMCWxo",
+      "name": "BonkEarn",
+      "symbol": "BERN",
+      "category": "edge",
+      "reason": "Token-2022 with Transfer Fee Extension. Legitimate Bonk ecosystem token but transfer fee triggers scam warning in many tools",
+      "expected_category": "CAUTION",
+      "expected_score_range": [10, 40],
+      "source": "Phantom developer docs (Token-2022 example) + rugcheck API"
+    },
+    {
+      "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+      "name": "OFFICIAL TRUMP",
+      "symbol": "TRUMP",
+      "category": "edge",
+      "reason": "Legitimate token (issued by Trump Org), mint/freeze revoked, but 80% supply in one wallet (CIC Digital LLC). Tests 'concentrated but legitimate' vs rug pull distinction",
+      "expected_category": "CAUTION",
+      "expected_score_range": [40, 70],
+      "notes": "High concentration is real risk signal. CAUTION is correct. DANGER would be a false positive",
+      "source": "TRM Labs trace + Solana Explorer + rugcheck API (score 58)"
+    },
+    {
+      "mint": "3Vse7Heee7Yb3U95vjQXDHqDBor6ERNQrA88GjeSVVj3",
+      "name": "(unnamed — empty metadata)",
+      "symbol": "",
+      "category": "scam",
+      "reason": "Verified rug pull (SolRPDS). Active mint+freeze authority same wallet, top holder 89.99%, ADD_TO_REMOVE_RATIO 1.99B, pool INACTIVE",
+      "expected_category": "DANGER",
+      "expected_score_range": [70, 100],
+      "must_have_flags": ["mint_authority_active", "freeze_authority_active"],
+      "source": "SolRPDS academic dataset 2024 + rugcheck API (score 79)"
+    },
+    {
+      "mint": "5uU9Ma9vYLXmYDFMES2NYUzduDEwuf6C6cuajiw3obr4",
+      "name": "(unnamed — empty metadata)",
+      "symbol": "",
+      "category": "scam",
+      "reason": "Verified honeypot (SolRPDS). Active mint authority, top holder 100% supply, ADD_TO_REMOVE_RATIO 1.82B, pool INACTIVE",
+      "expected_category": "DANGER",
+      "expected_score_range": [65, 100],
+      "must_have_flags": ["mint_authority_active"],
+      "source": "SolRPDS academic dataset 2024 + rugcheck API (score 74)"
+    },
+    {
+      "mint": "4KLEwLeVUcmSX8FtxnZpZmX8Wfd6myq3mAsCHwMFMigz",
+      "name": "(unnamed — empty metadata)",
+      "symbol": "",
+      "category": "scam",
+      "reason": "Verified rug pull (SolRPDS). ADD_TO_REMOVE_RATIO 972M, Large LP Unlocked, Low Liquidity, pool INACTIVE",
+      "expected_category": "DANGER",
+      "expected_score_range": [55, 100],
+      "source": "SolRPDS academic dataset 2024 + rugcheck API (score 63)"
+    },
+    {
+      "mint": "H31MfvGCN4H8jH94pCyWEJThKLJ68CPugcppPQCHnDS2",
+      "name": "(unnamed — empty metadata)",
+      "symbol": "",
+      "category": "scam",
+      "reason": "Verified rug pull (SolRPDS). Top holder 83.98%, dev wallet 16%, ADD_TO_REMOVE_RATIO 402M, pool INACTIVE",
+      "expected_category": "DANGER",
+      "expected_score_range": [65, 100],
+      "source": "SolRPDS academic dataset 2024 + rugcheck API (score 70)"
+    },
+    {
+      "mint": "J5gLhk6mmQ4PSoir1Ufh8JY2ytEHA93YupzYiTFVCgcL",
+      "name": "(unnamed — empty metadata)",
+      "symbol": "",
+      "category": "scam",
+      "reason": "Verified rug pull (SolRPDS). Active mint authority, top holders 50%+10%, ADD_TO_REMOVE_RATIO 4.17M, pool INACTIVE",
+      "expected_category": "DANGER",
+      "expected_score_range": [65, 100],
+      "must_have_flags": ["mint_authority_active"],
+      "source": "SolRPDS academic dataset 2022 + rugcheck API (score 75)"
+    }
+  ]
+}
