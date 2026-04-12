@@ -753,27 +753,23 @@ async function getRecentHighRiskScans(email) {
 // ── Live stats (server.js /stats endpoint) ────────────────────────────────────
 
 async function getLiveStats() {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  // created_at is stored as 'YYYY-MM-DD HH:MM:SS' (space, no timezone) — use strftime for date comparison
   const r = db.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM scan_history)                            AS total_scans,
-      (SELECT COUNT(*) FROM scan_history WHERE created_at >= ?)      AS scans_today,
-      (SELECT COUNT(*) FROM payments WHERE verified = 1)             AS total_payments,
-      (SELECT ROUND(AVG(CAST(meta AS REAL)), 0) FROM events
-        WHERE name = 'scan_complete')                                 AS avg_ms
-  `).get(today.toISOString());
-  const successRow = db.prepare(`
-    SELECT ROUND(100.0 * SUM(CASE WHEN verified=1 THEN 1 ELSE 0 END)
-           / nullif(COUNT(*), 0), 1) AS rate
-    FROM payments
+      (SELECT COUNT(*) FROM scan_history)                                                AS total_scans,
+      (SELECT COUNT(*) FROM scan_history
+        WHERE strftime('%Y-%m-%d', created_at) = date('now'))                           AS scans_today,
+      (SELECT COUNT(*) FROM payments WHERE verified = 1)                                AS total_payments,
+      (SELECT ROUND(100.0 * COUNT(CASE WHEN risk_score IS NOT NULL THEN 1 END)
+              / NULLIF(COUNT(*), 0), 1)
+        FROM scan_history WHERE scan_type != 'legacy-import')                           AS success_rate_pct
   `).get();
   return {
-    total_scans: r?.total_scans || 0,
-    scans_today: r?.scans_today || 0,
-    total_payments: r?.total_payments || 0,
-    success_rate_pct: successRow?.rate || 0,
-    average_response_time_ms: null
+    total_scans:             r?.total_scans        || 0,
+    scans_today:             r?.scans_today        || 0,
+    total_payments:          r?.total_payments     || 0,
+    success_rate_pct:        r?.success_rate_pct   || 0,
+    average_response_time_ms: null   // timing not yet stored in scan_history
   };
 }
 
