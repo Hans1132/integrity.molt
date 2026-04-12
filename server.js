@@ -5,6 +5,9 @@ const path = require('path');
 const morgan = require('morgan');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const db = require('./db');
+const { PRICING, PRICING_DISPLAY } = require('./config/pricing');
+const { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } = require('@solana/spl-token');
+const { PublicKey } = require('@solana/web3.js');
 const Stripe = require('stripe');
 const { scanEVMToken, SUPPORTED_CHAINS: EVM_CHAINS, getExplorerKey: evmGetKey, hasExplorerKey: evmHasKey } = require('./scanners/evm-token');
 const { auditToken, getShowcaseReport } = require('./scanners/token-audit');
@@ -349,6 +352,14 @@ async function verifyPayment(xPaymentHeader, requiredMicroUsdc, resource) {
   }
 
   const verified = transferredMicroUsdc >= requiredMicroUsdc;
+
+  // Anti-replay: INSERT immediately after successful on-chain verification.
+  // This must happen before returning ok:true to close the race window between
+  // isAlreadyUsed() check and the caller's logPayment().
+  if (verified) {
+    db.markSignatureUsed(sig);
+  }
+
   return {
     ok: verified,
     reason: verified
@@ -367,6 +378,24 @@ if (!WALLET) {
   console.error('FATAL: SOLANA_WALLET_ADDRESS env var is not set');
   process.exit(1);
 }
+
+// Derive the ATA (Associated Token Account) for USDC payments to our wallet.
+// SPL token transfers must go to the ATA, not directly to the wallet address.
+// x402 clients use this as the `payTo` destination for USDC transfers.
+const USDC_ATA = (() => {
+  try {
+    return getAssociatedTokenAddressSync(
+      new PublicKey(USDC_MINT),
+      new PublicKey(WALLET),
+      false,             // allowOwnerOffCurve = false (normal wallet)
+      TOKEN_PROGRAM_ID
+    ).toBase58();
+  } catch (e) {
+    console.error('[payment] FATAL: cannot derive USDC ATA:', e.message);
+    process.exit(1);
+  }
+})();
+console.log(`[payment] USDC ATA for wallet ${WALLET}: ${USDC_ATA}`);
 
 // ── Session + Passport middleware (before routes) ─────────────────────────────
 setupStrategies();
@@ -459,10 +488,10 @@ function requirePayment(accepts, requiredMicroUsdc = 0) {
 const quickPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '500000',
+  maxAmountRequired: String(PRICING.quick),
   resource: 'https://intmolt.org/api/v2/scan/quick',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'Quick on-chain security scan of any Solana address',
   mimeType: 'application/json',
   maxTimeoutSeconds: 60,
@@ -486,10 +515,10 @@ const quickPaymentAccepts = [{
 const deepPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '5000000',
+  maxAmountRequired: String(PRICING.deep),
   resource: 'https://intmolt.org/api/v2/scan/deep',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'Comprehensive security audit with source code review and vulnerability assessment',
   mimeType: 'application/json',
   maxTimeoutSeconds: 120,
@@ -513,10 +542,10 @@ const deepPaymentAccepts = [{
 const tokenAuditPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '750000',
+  maxAmountRequired: String(PRICING.token),
   resource: 'https://intmolt.org/api/v2/scan/token',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'Token launch audit: mint authority, freeze authority, top-10 holder distribution, supply analysis',
   mimeType: 'application/json',
   maxTimeoutSeconds: 90,
@@ -540,10 +569,10 @@ const tokenAuditPaymentAccepts = [{
 const walletProfilePaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '500000',
+  maxAmountRequired: String(PRICING.wallet),
   resource: 'https://intmolt.org/api/v2/scan/wallet',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'Wallet profiling: age estimate, activity level, DeFi exposure, risk classification',
   mimeType: 'application/json',
   maxTimeoutSeconds: 60,
@@ -567,10 +596,10 @@ const walletProfilePaymentAccepts = [{
 const poolScanPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '500000',
+  maxAmountRequired: String(PRICING.pool),
   resource: 'https://intmolt.org/api/v2/scan/pool',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'DeFi pool safety scan: liquidity depth, LP distribution, Raydium/Orca pool analysis',
   mimeType: 'application/json',
   maxTimeoutSeconds: 90,
@@ -594,10 +623,10 @@ const poolScanPaymentAccepts = [{
 const evmTokenPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '750000',
+  maxAmountRequired: String(PRICING['evm-token']),
   resource: 'https://intmolt.org/api/v2/scan/evm-token',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'EVM token risk scan — honeypot detection, source code analysis, ownership check',
   mimeType: 'application/json',
   maxTimeoutSeconds: 60,
@@ -610,10 +639,10 @@ const evmTokenPaymentAccepts = [{
 const evmScanPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '750000',
+  maxAmountRequired: String(PRICING['evm-scan']),
   resource: 'https://intmolt.org/api/v2/scan/evm',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'EVM token risk scan — honeypot detection, source code analysis, ownership check',
   mimeType: 'application/json',
   maxTimeoutSeconds: 60,
@@ -626,10 +655,10 @@ const evmScanPaymentAccepts = [{
 const contractAuditPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '5000000',
+  maxAmountRequired: String(PRICING.contract),
   resource: 'https://intmolt.org/api/v2/scan/contract',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'Contract Audit — static analysis (cargo-audit, clippy, semgrep), LLM-verified findings with CVE mapping and Immunefi impact assessment',
   mimeType: 'application/json',
   maxTimeoutSeconds: 600,
@@ -661,10 +690,10 @@ const contractAuditPaymentAccepts = [{
 const tokenSecurityAuditPaymentAccepts = [{
   scheme: 'exact',
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '500000',
+  maxAmountRequired: String(PRICING['token-audit']),
   resource: 'https://intmolt.org/api/v1/scan/token-audit',
   asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo: WALLET,
+  payTo: USDC_ATA,
   description: 'Token Security Audit — mint/freeze authority, supply distribution, treasury multisig check, Token-2022 extensions, Metaplex metadata, Beggars Allocation risk',
   mimeType: 'application/json',
   maxTimeoutSeconds: 90,
@@ -716,6 +745,19 @@ app.get('/.well-known/x402.json', (req, res) => {
   res.json(discovery);
 });
 
+// ── A2A (Agent-to-Agent) protocol — Google A2A spec ──────────────────────────
+
+const { handleA2ARequest, buildAgentCard } = require('./src/a2a/handler');
+
+// Agent card — machine-readable capability description for A2A discovery
+app.get('/.well-known/agent.json', (req, res) => {
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  res.json(buildAgentCard(baseUrl));
+});
+
+// A2A JSON-RPC 2.0 endpoint — tasks/send, tasks/get, tasks/cancel
+app.post('/a2a', express.json({ limit: '64kb' }), handleA2ARequest);
+
 // Health check - free
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'integrity.molt security scanner', version: '1.0' });
@@ -729,42 +771,42 @@ app.get('/services', (req, res) => {
     services: [
       {
         endpoint: 'POST /scan/quick',
-        price: '0.50 USDC',
+        price: PRICING_DISPLAY.quick,
         description: 'Quick on-chain scan of a Solana address - account info, balance, basic risk assessment'
       },
       {
         endpoint: 'POST /scan/deep',
-        price: '5.00 USDC',
+        price: PRICING_DISPLAY.deep,
         description: 'Comprehensive security audit - full code review, vulnerability assessment, detailed report'
       },
       {
         endpoint: 'POST /scan/token',
-        price: '0.75 USDC',
+        price: PRICING_DISPLAY.token,
         description: 'Token launch audit - mint authority status, freeze authority status, top-10 holder distribution, supply analysis, rug risk rating'
       },
       {
         endpoint: 'POST /scan/wallet',
-        price: '0.50 USDC',
+        price: PRICING_DISPLAY.wallet,
         description: 'Wallet profiling - age estimate, activity level, DeFi exposure, risk classification (fresh wallet / whale / dormant / normal)'
       },
       {
         endpoint: 'POST /scan/pool',
-        price: '0.50 USDC',
+        price: PRICING_DISPLAY.pool,
         description: 'DeFi pool safety scan - liquidity depth, LP token distribution, Raydium/Orca/Meteora pool analysis, withdrawal risk'
       },
       {
         endpoint: 'POST /scan/contract',
-        price: '5.00 USDC',
+        price: PRICING_DISPLAY.contract,
         description: 'Contract Audit — static analysis (cargo-audit CVEs, clippy, semgrep) + LLM-verified findings with Immunefi impact mapping. Input: GitHub URL of a Solana/Rust project.'
       },
       {
         endpoint: 'GET /api/v1/delta/:address',
-        price: '1.00 USDC',
+        price: PRICING_DISPLAY.delta,
         description: 'Signed delta report — cryptographically signed diff between two security scans'
       },
       {
         endpoint: 'POST /api/v1/adversarial/simulate',
-        price: '10.00 USDC',
+        price: PRICING_DISPLAY.adversarial,
         description: 'Adversarial simulation — forks on-chain state and probes exploit paths with 7 attack playbooks'
       }
     ],
@@ -790,7 +832,7 @@ app.get('/services', (req, res) => {
     ],
     x402: true,
     network: 'solana',
-    payTo: WALLET,
+    payTo: USDC_ATA,
     reportSigning: {
       algorithm: 'Ed25519',
       verifyKey: getVerifyKeyBase64(),
@@ -851,7 +893,7 @@ app.get('/api/v1/stats/advisor', (req, res) => {
 });
 
 // Quick Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
-app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quickPaymentAccepts, 500000), express.json(), async (req, res) => {
+app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quickPaymentAccepts, PRICING.quick), express.json(), async (req, res) => {
   const address = req.body.address || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -919,7 +961,7 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
 
 // Deep Audit - paid endpoint (5.00 USDC = 5000000 micro-USDC)
 // Volá multi-agent swarm orchestrator (scanner → analyst → reputation → meta-scorecard)
-app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPaymentAccepts, 5000000), express.json(), async (req, res) => {
+app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPaymentAccepts, PRICING.deep), express.json(), async (req, res) => {
   const address = req.body.address || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -980,7 +1022,7 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPa
 });
 
 // Token Audit - paid endpoint (0.75 USDC = 750000 micro-USDC)
-app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(tokenAuditPaymentAccepts, 750000), express.json(), async (req, res) => {
+app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(tokenAuditPaymentAccepts, PRICING.token), express.json(), async (req, res) => {
   const address = req.body.address || req.body.mint || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -1026,7 +1068,7 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
 });
 
 // Wallet Deep Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
-app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(walletProfilePaymentAccepts, 500000), express.json(), async (req, res) => {
+app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(walletProfilePaymentAccepts, PRICING.wallet), express.json(), async (req, res) => {
   const address = req.body.address || req.body.wallet || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -1065,7 +1107,7 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(wa
 });
 
 // Pool Deep Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
-app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolScanPaymentAccepts, 500000), express.json(), async (req, res) => {
+app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolScanPaymentAccepts, PRICING.pool), express.json(), async (req, res) => {
   const address = req.body.address || req.body.pool || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
 
@@ -1104,7 +1146,7 @@ app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolSc
 });
 
 // EVM Token Risk Scan - paid endpoint (0.75 USDC = 750000 micro-USDC)
-app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePayment(evmTokenPaymentAccepts, 750000), express.json(), async (req, res) => {
+app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePayment(evmTokenPaymentAccepts, PRICING['evm-token']), express.json(), async (req, res) => {
   const address = (req.body?.address || '').trim();
   const chain   = (req.body?.chain   || 'ethereum').trim().toLowerCase();
 
@@ -1200,7 +1242,7 @@ function evmPreValidate(req, res, next) {
     return res.status(400).json({ error: `API key not configured for ${chain}`, hint: 'Set ETHERSCAN_API_KEY in server .env' });
   next();
 }
-app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireApiKey, requirePayment(evmScanPaymentAccepts, 750000), async (req, res) => {
+app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireApiKey, requirePayment(evmScanPaymentAccepts, PRICING['evm-scan']), async (req, res) => {
   const address = (req.params.address || '').trim();
   const chain   = (req.query.chain    || 'ethereum').trim().toLowerCase();
 
@@ -1276,7 +1318,7 @@ app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireAp
 // POST /scan/contract
 // Body: { github_url, project_name? }
 // Spouští bounty-hunter/deep-scan.sh: cargo-audit + clippy + semgrep + LLM verification
-app.post('/scan/contract', trackFunnel('contract'), requireApiKey, requirePayment(contractAuditPaymentAccepts, 5000000), express.json(), async (req, res) => {
+app.post('/scan/contract', trackFunnel('contract'), requireApiKey, requirePayment(contractAuditPaymentAccepts, PRICING.contract), express.json(), async (req, res) => {
   const rawUrl     = (req.body?.github_url || '').trim();
   const projName   = (req.body?.project_name || '').trim().replace(/[^a-zA-Z0-9_\- ]/g, '').slice(0, 64) || 'unknown';
 
@@ -1341,7 +1383,7 @@ app.post(
   '/api/v1/scan/token-audit',
   trackFunnel('token-security-audit'),
   requireApiKey,
-  requirePayment(tokenSecurityAuditPaymentAccepts, 500000),
+  requirePayment(tokenSecurityAuditPaymentAccepts, PRICING['token-audit']),
   express.json(),
   async (req, res) => {
     const { token_mint, token_name, callback_url } = req.body || {};
@@ -1524,10 +1566,10 @@ app.get('/api/v1/token-audit/showcase', (req, res) => {
 const adversarialPaymentAccepts = [{
   scheme:            'exact',
   network:           'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired: '10000000',
+  maxAmountRequired: String(PRICING.adversarial),
   resource:          'https://intmolt.org/api/v1/adversarial/simulate',
   asset:             'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo:             WALLET,
+  payTo:             USDC_ATA,
   description:       'AI-powered adversarial simulation — forks on-chain state and systematically probes exploit paths',
   mimeType:          'application/json',
   maxTimeoutSeconds: 360,
@@ -1585,7 +1627,7 @@ app.post(
   '/api/v1/adversarial/simulate',
   trackFunnel('adversarial'),
   requireApiKey,
-  requirePayment(adversarialPaymentAccepts, 10000000),
+  requirePayment(adversarialPaymentAccepts, PRICING.adversarial),
   express.json(),
   async (req, res) => {
     const { program_id, playbook_ids, skip_fork } = req.body || {};
@@ -1635,10 +1677,10 @@ app.post(
 const deltaPaymentAccepts = [{
   scheme:           'exact',
   network:          'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  maxAmountRequired:'1000000',
+  maxAmountRequired: String(PRICING.delta),
   resource:         'https://intmolt.org/api/v1/delta',
   asset:            'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  payTo:            WALLET,
+  payTo:            USDC_ATA,
   description:      'Verified Delta Report — cryptographically signed diff between two Solana security scans',
   mimeType:         'application/json',
   maxTimeoutSeconds: 120
@@ -1684,7 +1726,7 @@ app.get('/api/v1/history/:address', async (req, res) => {
 app.get(
   '/api/v1/delta/:address',
   requireApiKey,
-  requirePayment(deltaPaymentAccepts, 1000000),
+  requirePayment(deltaPaymentAccepts, PRICING.delta),
   async (req, res) => {
     const raw = (req.params.address || '').trim();
     const safeAddress = raw.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
@@ -1743,7 +1785,7 @@ app.get(
 app.get(
   '/api/v1/delta/:address/:ts1/:ts2',
   requireApiKey,
-  requirePayment(deltaPaymentAccepts, 1000000),
+  requirePayment(deltaPaymentAccepts, PRICING.delta),
   async (req, res) => {
     const raw = (req.params.address || '').trim();
     const safeAddress = raw.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
@@ -1886,8 +1928,8 @@ app.get('/watchlist', async (req, res) => {
 const SCAN_PRICES_USD = {
   quick:       0.50,
   deep:        5.00,
-  token:       0.75,
-  wallet:      0.50,
+  token:       1.00,
+  wallet:      1.00,
   pool:        0.50,
   'evm-token': 0.75,
   contract:    5.00
@@ -2803,8 +2845,9 @@ app.post('/scan/free', express.json(), async (req, res) => {
 
   if (!address) return res.status(400).json({ error: 'Missing address' });
 
-  // Turnstile CAPTCHA verifikace
-  const turnstileOk = await verifyTurnstile(cfToken, req.ip);
+  // Turnstile CAPTCHA verifikace (přeskočí se pro interní A2A volání ze stejného serveru)
+  const isInternalA2A = req.headers['x-a2a-caller'] === '1' && req.ip === '127.0.0.1';
+  const turnstileOk = isInternalA2A || await verifyTurnstile(cfToken, req.ip);
   if (!turnstileOk) {
     return res.status(403).json({ error: 'CAPTCHA verification failed', captcha_required: true });
   }
@@ -2862,7 +2905,7 @@ app.post('/scan/free', express.json(), async (req, res) => {
       scans_limit:     0,
       scans_remaining: 0,
       payment_options: {
-        deep: { endpoint: '/scan/deep', price_usdc: 5.00, micro_usdc: 5000000, accepts: deepPaymentAccepts }
+        deep: { endpoint: '/scan/deep', price_usdc: PRICING.deep / 1_000_000, micro_usdc: PRICING.deep, accepts: deepPaymentAccepts }
       },
       subscription: {
         pro_trader: { price: '$15/mo', url: 'https://intmolt.org/subscribe/pro_trader' },
@@ -2883,13 +2926,13 @@ app.post('/scan/free', express.json(), async (req, res) => {
       scans_limit:     FREE_SCAN_LIMIT,
       scans_remaining: 0,
       payment_options: {
-        quick:     { endpoint: '/scan/quick',     price_usdc: 0.50, micro_usdc: 500000,   accepts: quickPaymentAccepts },
-        deep:      { endpoint: '/scan/deep',      price_usdc: 5.00, micro_usdc: 5000000,  accepts: deepPaymentAccepts },
-        token:     { endpoint: '/scan/token',     price_usdc: 0.75, micro_usdc: 750000,   accepts: tokenAuditPaymentAccepts },
-        wallet:    { endpoint: '/scan/wallet',    price_usdc: 0.50, micro_usdc: 500000,   accepts: walletProfilePaymentAccepts },
-        pool:      { endpoint: '/scan/pool',      price_usdc: 0.50, micro_usdc: 500000,   accepts: poolScanPaymentAccepts },
-        'evm-token': { endpoint: '/scan/evm-token', price_usdc: 0.75, micro_usdc: 750000, accepts: evmTokenPaymentAccepts },
-        contract:  { endpoint: '/scan/contract',  price_usdc: 5.00, micro_usdc: 5000000,  accepts: contractAuditPaymentAccepts }
+        quick:     { endpoint: '/scan/quick',     price_usdc: PRICING.quick / 1_000_000,          micro_usdc: PRICING.quick,           accepts: quickPaymentAccepts },
+        deep:      { endpoint: '/scan/deep',      price_usdc: PRICING.deep / 1_000_000,           micro_usdc: PRICING.deep,            accepts: deepPaymentAccepts },
+        token:     { endpoint: '/scan/token',     price_usdc: PRICING.token / 1_000_000,          micro_usdc: PRICING.token,           accepts: tokenAuditPaymentAccepts },
+        wallet:    { endpoint: '/scan/wallet',    price_usdc: PRICING.wallet / 1_000_000,         micro_usdc: PRICING.wallet,          accepts: walletProfilePaymentAccepts },
+        pool:      { endpoint: '/scan/pool',      price_usdc: PRICING.pool / 1_000_000,           micro_usdc: PRICING.pool,            accepts: poolScanPaymentAccepts },
+        'evm-token': { endpoint: '/scan/evm-token', price_usdc: PRICING['evm-token'] / 1_000_000, micro_usdc: PRICING['evm-token'],   accepts: evmTokenPaymentAccepts },
+        contract:  { endpoint: '/scan/contract',  price_usdc: PRICING.contract / 1_000_000,       micro_usdc: PRICING.contract,        accepts: contractAuditPaymentAccepts }
       },
       subscription: {
         pro_trader: { price: '$15/mo', url: 'https://intmolt.org/subscribe/pro_trader' },
@@ -3708,6 +3751,7 @@ app.post('/internal/bot/evm', requireBotKey, express.json(), async (req, res) =>
       chain,
       address,
       score:          evmRes.score,
+      risk_level:     evmRes.risk_level || null,
       recommendation: evmRes.recommendation,
       findings:       evmRes.findings,
       meta:           evmRes.meta,

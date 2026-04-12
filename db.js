@@ -180,6 +180,12 @@ function initSchema() {
     );
     CREATE INDEX IF NOT EXISTS advisor_calls_created ON advisor_calls (created_at DESC);
     CREATE INDEX IF NOT EXISTS advisor_calls_type    ON advisor_calls (scan_type, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS used_signatures (
+      sig        TEXT    PRIMARY KEY,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+    );
+    CREATE INDEX IF NOT EXISTS used_signatures_created ON used_signatures (created_at DESC);
   `);
   return Promise.resolve();
 }
@@ -255,11 +261,20 @@ async function logPayment({ tx_sig, resource, required_micro_usdc, micro_usdc, v
   `).run(tx_sig, resource, required_micro_usdc, micro_usdc, verified ? 1 : 0, reason || null, ip || null);
 }
 
+// Anti-replay: check used_signatures table (dedicated, fast PRIMARY KEY lookup).
 async function isAlreadyUsed(sig) {
   const row = db.prepare(
-    'SELECT 1 FROM payments WHERE tx_sig = ? AND verified = 1 LIMIT 1'
+    'SELECT 1 FROM used_signatures WHERE sig = ? LIMIT 1'
   ).get(sig);
   return !!row;
+}
+
+// Anti-replay: mark a signature as used immediately after successful on-chain verification.
+// INSERT OR IGNORE prevents errors if two concurrent requests race on the same sig.
+function markSignatureUsed(sig) {
+  db.prepare(
+    'INSERT OR IGNORE INTO used_signatures (sig) VALUES (?)'
+  ).run(sig);
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -792,6 +807,54 @@ function logAdvisorUsage(scanId, scanType, result) {
   );
 }
 
+// ── Měsíční scan kvóty per subscription tier ─────────────────────────────────
+
+// Limity: kolik paid scanů může subscriber odeslat za měsíc.
+// "Paid scan" = jakýkoliv endpoint chráněný requirePayment (quick, token, wallet, pool, evm, deep, contract, adversarial, delta).
+// Adversarial sims mají navíc vlastní sub-limit.
+const MONTHLY_SCAN_LIMITS = {
+  free:       0,      // bez API klíče — neaplikuje se (řídí FREE_SCAN_LIMIT per IP)
+  pro_trader: 200,    // $15/mo → break-even ~200 scanů při avg $0.03 LLM/scan
+  builder:    700,    // $49/mo → break-even ~700 scanů
+  team:       3000,   // $299/mo → break-even ~3000 scanů
+};
+
+const MONTHLY_ADVERSARIAL_LIMITS = {
+  pro_trader: 0,   // adversarial není zahrnut v Pro
+  builder:    1,   // 1 sim/mo (jak je popsáno v ceníku)
+  team:       10,  // 10 sim/mo (bonus: $20/sim za každý další)
+};
+
+/**
+ * Vrátí počet paid scanů pro daný email v aktuálním kalendářním měsíci.
+ * Neblokující (synchronní díky better-sqlite3).
+ */
+function getMonthlyScansForEmail(email) {
+  if (!email) return 0;
+  const row = db.prepare(`
+    SELECT COUNT(*) AS cnt FROM scan_history
+    WHERE email = ?
+      AND cached = 0
+      AND created_at >= strftime('%Y-%m-01T00:00:00', 'now')
+  `).get(email);
+  return row?.cnt ?? 0;
+}
+
+/**
+ * Vrátí počet adversarial simulací pro daný email v aktuálním kalendářním měsíci.
+ */
+function getMonthlyAdversarialForEmail(email) {
+  if (!email) return 0;
+  const row = db.prepare(`
+    SELECT COUNT(*) AS cnt FROM scan_history
+    WHERE email = ?
+      AND scan_type = 'adversarial'
+      AND cached = 0
+      AND created_at >= strftime('%Y-%m-01T00:00:00', 'now')
+  `).get(email);
+  return row?.cnt ?? 0;
+}
+
 function getAdvisorStats(days = 30) {
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
   return db.prepare(`
@@ -857,7 +920,7 @@ class SqliteStore extends session.Store {
 
 module.exports = {
   db, pool, initSchema, initUsersSchema, initAdsSchema,
-  logPayment, isAlreadyUsed, logEvent,
+  logPayment, isAlreadyUsed, markSignatureUsed, logEvent,
   getFunnelStats, getPaymentStats, getPageviewStats,
   countFreeScansToday,
   addWatchlistEntry, removeWatchlistEntry, getActiveWatchlist,
@@ -878,6 +941,8 @@ module.exports = {
   getLiveStats,
   // Advisor usage
   logAdvisorUsage, getAdvisorStats,
+  MONTHLY_SCAN_LIMITS, MONTHLY_ADVERSARIAL_LIMITS,
+  getMonthlyScansForEmail, getMonthlyAdversarialForEmail,
   // Session store
   SqliteStore
 };
