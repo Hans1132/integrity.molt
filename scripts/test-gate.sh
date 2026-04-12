@@ -59,14 +59,14 @@ echo -n "🌐 E2E smoke... "
 if command -v curl &>/dev/null && systemctl is-active --quiet integrity-x402.service 2>/dev/null; then
   # Homepage
   HTTP_HOME=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://127.0.0.1:3402/ 2>/dev/null || echo "000")
-  # Health
-  HTTP_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://127.0.0.1:3402/api/v1/health 2>/dev/null || echo "000")
+  # Health (endpoint je /health, ne /api/v1/health)
+  HTTP_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://127.0.0.1:3402/health 2>/dev/null || echo "000")
   # Stats
   HTTP_STATS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://127.0.0.1:3402/api/v1/stats 2>/dev/null || echo "000")
   # x402 discovery
   HTTP_X402=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://127.0.0.1:3402/.well-known/x402.json 2>/dev/null || echo "000")
-  # Quick scan without payment → expect 402
-  HTTP_SCAN=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 -X POST http://127.0.0.1:3402/api/v1/scan/quick -H "Content-Type: application/json" -d '{"address":"So11111111111111111111111111111111111111112"}' 2>/dev/null || echo "000")
+  # Quick scan without payment → expect 402 (endpoint je /scan/quick)
+  HTTP_SCAN=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 -X POST http://127.0.0.1:3402/scan/quick -H "Content-Type: application/json" -d '{"address":"So11111111111111111111111111111111111111112"}' 2>/dev/null || echo "000")
 
   SMOKE_OK=true
   [ "$HTTP_HOME" = "200" ] || { SMOKE_OK=false; ERRORS="$ERRORS\n- Homepage returned $HTTP_HOME"; }

@@ -13,9 +13,9 @@ validuješ že nic není rozbité.
 
 ## E2E smoke test MUSÍ pokrýt (minimálně)
 1. GET / → 200 + title obsahuje "integrity" nebo "molt"
-2. GET /api/v1/health → 200
+2. GET /health → 200
 3. GET /api/v1/stats → 200 + valid JSON s číselnými hodnotami
-4. POST /api/v1/scan/quick (bez platby) → 402 + response obsahuje payment info
+4. POST /scan/quick (bez platby) → 402 + response obsahuje payment info
 5. GET /.well-known/x402.json → 200 + valid JSON
 6. HTTPS cert není expirovaný
 
