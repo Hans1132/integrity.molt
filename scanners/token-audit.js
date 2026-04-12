@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const crypto = require('crypto');
+const { validateLLMScore } = require('../src/llm/scan-validator');
 // bs58 v6+ exports via .default in CommonJS interop
 const _bs58raw = require('bs58');
 const bs58 = _bs58raw.default || _bs58raw;
@@ -285,7 +286,20 @@ async function summarizeWithLLM(auditData) {
     };
   }
 
+  const deterministicScore = auditData.raw_score;
+  const dangerFindings = (auditData.findings || []).filter(f => f.severity === 'critical' || f.severity === 'high');
+
   const prompt = `You are integrity.molt, an AI-native Solana security scanner. Analyze this token security audit and produce a structured risk assessment.
+
+DETERMINISTIC SCORE (computed by rule-based engine): ${deterministicScore}/100
+${dangerFindings.length > 0 ? `CRITICAL/HIGH FINDINGS (${dangerFindings.length}): ${dangerFindings.map(f => f.label).join(', ')}` : 'NO CRITICAL/HIGH FINDINGS'}
+
+IMPORTANT SCORING CONSTRAINTS:
+- Your risk_score MUST NOT differ from the deterministic score by more than 20 points downward.
+- If deterministic score is ${deterministicScore}, your risk_score must be >= ${Math.max(0, deterministicScore - 20)}.
+- If there are critical or high findings, risk_score MUST be >= 31.
+- If deterministic score > 65, category MUST be "DANGER".
+- Only justify a lower score if you have specific on-chain evidence that the deterministic engine over-counted.
 
 TOKEN AUDIT DATA:
 ${JSON.stringify(auditData, null, 2)}
@@ -324,7 +338,8 @@ Output ONLY valid JSON, no markdown.`;
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2
+        temperature: 0.2,
+        response_format: { type: 'json_object' }
       }),
       signal: AbortSignal.timeout(30000)
     });
@@ -652,10 +667,11 @@ async function auditToken(mintAddress, tokenName, options = {}) {
     treasury:        treasuryAnalysis
   };
 
-  // LLM summarization
-  const llm = await summarizeWithLLM(auditData);
+  // LLM summarization + validation
+  const llmRaw = await summarizeWithLLM(auditData);
+  const { corrected: llm, flags: validationFlags } = validateLLMScore(rawScore, llmRaw, auditData);
 
-  return buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData, llm });
+  return buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData, llm, validationFlags });
 }
 
 // ── Treasury / Beggars Allocation pattern detection ───────────────────────────
@@ -779,7 +795,7 @@ async function analyzeTreasuryPatterns(mintAddress, holders, mintInfo, findings,
 
 // ── Build final result object ─────────────────────────────────────────────────
 
-function buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData, llm }) {
+function buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData, llm, validationFlags }) {
   const category = llm?.category || scoreToCategory(rawScore);
   return {
     mint_address: mintAddress,
@@ -793,7 +809,8 @@ function buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData
     detail:       auditData || null,
     scan_ms:      Date.now() - t0,
     scan_type:    'token-security-audit',
-    scan_version: '1.0'
+    scan_version: '1.0',
+    llm_validation_flags: validationFlags || []
   };
 }
 

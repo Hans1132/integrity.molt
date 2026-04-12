@@ -26,6 +26,7 @@ if (!OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY) OPENROUTER_API_KEY = 
 const { runWithAdvisor }          = require('../llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('../llm/prompts/security-analyst');
 const { logAdvisorUsage }         = require('../../db');
+const { validateAdversarialResult } = require('../llm/scan-validator');
 
 // OpenRouter fallback (gemini-2.5-flash)
 async function analyzeWithOpenRouter(prompt, maxTokens = 800) {
@@ -52,8 +53,10 @@ async function analyzeWithOpenRouter(prompt, maxTokens = 800) {
 }
 
 // Anthropic Sonnet + Opus advisor pro komplexní bezpečnostní analýzu
-async function analyzeWithAdvisor(scanData, scanType) {
-  const userMessage = `Analyzuj následující ${scanType} scan data a vytvoř bezpečnostní report:\n\n${JSON.stringify(scanData, null, 2)}`;
+// prebuiltPrompt: pokud je zadán, použije se přímo místo generického šablonového promptu
+async function analyzeWithAdvisor(scanData, scanType, prebuiltPrompt = null) {
+  const userMessage = prebuiltPrompt ||
+    `Analyzuj následující ${scanType} scan data a vytvoř bezpečnostní report:\n\n${JSON.stringify(scanData, null, 2)}`;
 
   const result = await runWithAdvisor({
     systemPrompt:    SECURITY_ANALYST_SYSTEM,
@@ -78,26 +81,6 @@ async function analyzeWithAdvisor(scanData, scanType) {
     advisorUsed: result.advisorUsed,
     usage:       result.usage,
   };
-}
-
-// Unified LLM helper — Anthropic advisor s fallbackem na OpenRouter
-async function llm(prompt, maxTokens = 800, scanType = 'adversarial') {
-  let text = '';
-  try {
-    if (process.env.ANTHROPIC_API_KEY) {
-      const r = await analyzeWithAdvisor({ prompt }, scanType);
-      text = r.rawText || '';
-      if (r.advisorUsed) console.log('[adversarial] advisor consulted');
-    } else {
-      const r = await analyzeWithOpenRouter(prompt, maxTokens);
-      text = r.text || '';
-    }
-  } catch (err) {
-    console.error('[adversarial] Advisor failed, falling back to OpenRouter:', err.message);
-    const r = await analyzeWithOpenRouter(prompt, maxTokens);
-    text = r.text || '';
-  }
-  return { text };
 }
 
 // Parse JSON out of LLM output even if wrapped in markdown code fences.
@@ -136,7 +119,7 @@ Based on the account types and sizes, answer in JSON:
   let analysisResult;
   try {
     if (process.env.ANTHROPIC_API_KEY) {
-      analysisResult = await analyzeWithAdvisor({ programId, accounts: accountSummary, task: 'program_analysis' }, 'deep');
+      analysisResult = await analyzeWithAdvisor(null, 'deep', prompt);
     } else {
       const { text } = await analyzeWithOpenRouter(prompt, 600);
       analysisResult = { rawText: text, advisorUsed: false };
@@ -192,10 +175,7 @@ Based on the account structure and test results, provide a security analysis in 
   let analysisResult;
   try {
     if (process.env.ANTHROPIC_API_KEY) {
-      analysisResult = await analyzeWithAdvisor(
-        { playbook: playbook.id, programId, accounts: accounts.map(a => a.pubkey), txResults },
-        'adversarial'
-      );
+      analysisResult = await analyzeWithAdvisor(null, 'adversarial', prompt);
     } else {
       const { text } = await analyzeWithOpenRouter(prompt, 500);
       analysisResult = { rawText: text, advisorUsed: false };
@@ -221,6 +201,30 @@ Based on the account structure and test results, provide a security analysis in 
 async function executePlaybook(playbook, forkInfo, programId, accounts, programAnalysis) {
   const { rpcUrl } = forkInfo;
   const txResults  = [];
+
+  // No fork available — skip all transaction-level tests and go straight to LLM-only analysis.
+  // Prevents crash from new Connection(null) when skipFork=true or fork startup failed.
+  if (!rpcUrl) {
+    txResults.push({
+      exploitId: `${playbook.id}:no_fork`,
+      outcome:   'info',
+      detail:    'Fork unavailable — transaction-level tests skipped, using LLM-only analysis.',
+      ts:        new Date().toISOString()
+    });
+    const analysisRaw = await analyzePlaybook(playbook, programId, accounts, txResults);
+    const analysis = validateAdversarialResult(analysisRaw, {
+      rawScore: null,
+      findings: txResults.map(r => ({ severity: r.outcome === 'fail' ? 'critical' : 'info', label: r.exploitId }))
+    });
+    return {
+      playbook_id:   playbook.id,
+      playbook_name: playbook.name,
+      cwe:           playbook.cwe,
+      tx_results:    txResults,
+      analysis,
+      severity:      analysis.severity || playbook.severity_if_success
+    };
+  }
 
   try {
     switch (playbook.id) {
@@ -317,7 +321,11 @@ async function executePlaybook(playbook, forkInfo, programId, accounts, programA
   }
 
   // LLM analysis for this playbook
-  const analysis = await analyzePlaybook(playbook, programId, accounts, txResults);
+  const analysisRaw = await analyzePlaybook(playbook, programId, accounts, txResults);
+  const analysis = validateAdversarialResult(analysisRaw, {
+    rawScore: null,
+    findings: txResults.map(r => ({ severity: r.outcome === 'fail' ? 'critical' : 'info', label: r.exploitId }))
+  });
 
   return {
     playbook_id:   playbook.id,
@@ -383,12 +391,23 @@ function buildUnsignedReport(programId, accounts, programAnalysis, playbookResul
  * @returns {Promise<object>}  signed adversarial report
  */
 async function runAdversarialSim(programId, options = {}) {
+  const timeoutMs = options.timeoutMs || 5 * 60 * 1000; // 5 min default
+
+  // Wrap simulation in a top-level timeout so a stuck validator never blocks the request
+  const simPromise = _runAdversarialSimInner(programId, options);
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Adversarial simulation timed out after ${timeoutMs}ms`)), timeoutMs)
+  );
+  return Promise.race([simPromise, timeoutPromise]);
+}
+
+async function _runAdversarialSimInner(programId, options = {}) {
   const t0   = Date.now();
   const meta = { programId, options, started_at: new Date().toISOString() };
 
   console.log(`[adversarial] starting simulation for ${programId}`);
 
-  // Step 1: Discover accounts on mainnet
+  // Step 1: Discover accounts on mainnet (once — reused by forkState to avoid double RPC call)
   let accounts = [];
   try {
     accounts = await discoverAccounts(programId);
@@ -412,7 +431,8 @@ async function runAdversarialSim(programId, options = {}) {
     try {
       forkInfo = await forkState(programId, {
         rpcPort:   options.rpcPort || 8899,
-        timeoutMs: options.timeoutMs || 5 * 60 * 1000
+        timeoutMs: options.timeoutMs || 5 * 60 * 1000,
+        accounts,  // pass pre-discovered accounts to avoid double discoverAccounts call
       });
 
       // Sanity probe
@@ -424,7 +444,15 @@ async function runAdversarialSim(programId, options = {}) {
     }
   }
 
-  // Step 5: Execute playbooks
+  // Step 5: Snapshot balances before attacks (detects unexpected fund movements)
+  let balancesBefore = {};
+  if (forkInfo?.rpcUrl) {
+    try {
+      balancesBefore = await snapshotBalances(forkInfo.rpcUrl, accounts.map(a => a.pubkey));
+    } catch {}
+  }
+
+  // Step 6: Execute playbooks
   const playbookResults = [];
   for (const playbook of playbooks) {
     console.log(`[adversarial] executing playbook: ${playbook.id}`);
@@ -438,7 +466,23 @@ async function runAdversarialSim(programId, options = {}) {
     playbookResults.push(pbResult);
   }
 
-  // Step 6: Cleanup fork
+  // Step 7: Snapshot balances after attacks
+  if (forkInfo?.rpcUrl) {
+    try {
+      const balancesAfter = await snapshotBalances(forkInfo.rpcUrl, accounts.map(a => a.pubkey));
+      const delta = Object.fromEntries(
+        Object.keys(balancesBefore)
+          .filter(k => balancesBefore[k] !== (balancesAfter[k] ?? 0))
+          .map(k => [k, { before: balancesBefore[k], after: balancesAfter[k] ?? 0 }])
+      );
+      if (Object.keys(delta).length > 0) {
+        console.log(`[adversarial] balance delta detected for ${Object.keys(delta).length} accounts`);
+        meta.balance_delta = delta;
+      }
+    } catch {}
+  }
+
+  // Step 8: Cleanup fork
   if (forkInfo) {
     forkInfo.cleanup();
     console.log('[adversarial] validator cleanup done');
@@ -447,7 +491,7 @@ async function runAdversarialSim(programId, options = {}) {
   meta.duration_ms = Date.now() - t0;
   meta.fork_used   = !!forkInfo;
 
-  // Step 7: Build and sign report
+  // Step 9: Build and sign report
   const unsigned = buildUnsignedReport(programId, accounts, programAnalysis, playbookResults, meta);
   const signed   = signDeltaReport(unsigned);  // reuses same Ed25519 pipeline
 
@@ -455,4 +499,4 @@ async function runAdversarialSim(programId, options = {}) {
   return signed;
 }
 
-module.exports = { runAdversarialSim };
+module.exports = { runAdversarialSim, parseLLMJson, buildUnsignedReport, executePlaybook };

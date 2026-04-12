@@ -81,6 +81,24 @@ else
   echo "⚠️  SKIP (service not running)"
 fi
 
+# 7. Scan validator unit tests
+echo "🛡️  Scan validator..."
+if node tests/scan-validator.test.js 2>/dev/null; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- Scan validator unit tests failed"
+fi
+
+# 8. Adversarial tests
+echo "⚔️  Adversarial tests..."
+if node tests/adversarial.test.js 2>/dev/null; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- Adversarial tests failed"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
