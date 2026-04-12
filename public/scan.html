@@ -25,7 +25,6 @@
   <meta name="twitter:title" content="Free Solana Security Scan — integrity.molt">
   <meta name="twitter:description" content="AI-powered rug pull and honeypot detection for any Solana address. First 3 scans free.">
   <meta name="twitter:image" content="https://intmolt.org/og-image.png">
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -751,8 +750,42 @@
     .modal-btn:disabled { opacity: .4; cursor: not-allowed; }
     .modal-fine { font-size: 11px; color: var(--text-faint); margin-top: 10px; text-align: center; }
 
-    /* ── Turnstile wrapper (skrytý pokud klíč není nastaven) ── */
-    .cf-turnstile { margin-top: 16px; min-height: 65px; }
+    /* ── Math CAPTCHA ── */
+    .captcha-wrap {
+      margin: 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .captcha-question {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      white-space: nowrap;
+    }
+    .captcha-eq { color: var(--text-faint); font-size: 15px; }
+    .captcha-input {
+      width: 70px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--input-bg, var(--card-bg));
+      color: var(--text);
+      font-size: 15px;
+      text-align: center;
+    }
+    .captcha-input:focus { outline: 2px solid var(--green); border-color: transparent; }
+    .captcha-refresh {
+      background: none; border: none; color: var(--text-faint);
+      cursor: pointer; font-size: 18px; padding: 4px;
+      transition: color 0.2s;
+    }
+    .captcha-refresh:hover { color: var(--green); }
   </style>
   <!-- HypeLab ad SDK -->
   <script defer src="https://api.hypelab.com/v1/scripts/hp-sdk.js?v=0"></script>
@@ -890,7 +923,7 @@
               <span class="type-card-icon">🔬</span>
               <span class="type-card-name">Deep Audit</span>
               <span class="type-card-desc">8 AI agents, full vulnerability report</span>
-              <span class="type-card-badge" id="deepBadge">$2.00</span>
+              <span class="type-card-badge" id="deepBadge">$5.00</span>
             </label>
           </div>
           <div class="scan-type-meta" style="margin-top:10px">
@@ -909,9 +942,13 @@
           </select>
         </div>
 
-        <!-- Cloudflare Turnstile — zobrazí se pouze pokud TURNSTILE_SITE_KEY je nastaven -->
-        <div id="turnstileWrap" style="display:none;margin-bottom:16px">
-          <div class="cf-turnstile" id="cfTurnstile" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired"></div>
+        <!-- Math CAPTCHA -->
+        <div class="captcha-wrap" id="captchaWrap">
+          <span class="captcha-question" id="captchaQuestion">…</span>
+          <span class="captcha-eq">= ?</span>
+          <input class="captcha-input" id="captchaInput" type="number" min="0" max="30"
+                 placeholder="?" autocomplete="off">
+          <button class="captcha-refresh" id="captchaRefresh" title="New question" onclick="loadCaptcha()">&#x21BB;</button>
         </div>
 
         <button class="btn-submit" id="scanBtn" onclick="startScan()">Run Scan</button>
@@ -966,12 +1003,12 @@
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────────
 const SCAN_TYPES = {
-  quick:       { desc: 'Multi-agent swarm scan, results in ~10s',                   priceUSD: 1.00, free: true,  addrType: 'solana' },
+  quick:       { desc: 'Multi-agent swarm scan, results in ~10s',                   priceUSD: 0.50, free: true,  addrType: 'solana' },
   token:       { desc: 'Token rug risk analysis, ~15s',                             priceUSD: 1.00, free: true,  addrType: 'solana' },
   wallet:      { desc: 'Wallet history & risk profile, ~15s',                       priceUSD: 1.00, free: true,  addrType: 'solana' },
-  pool:        { desc: 'DEX pool safety check, ~15s',                               priceUSD: 1.00, free: true,  addrType: 'solana' },
-  'evm-token': { desc: 'Honeypot + bytecode analysis on Base/ETH/Arbitrum, ~10s',   priceUSD: 1.00, free: true,  addrType: 'evm'    },
-  deep:        { desc: 'Full swarm audit, multi-agent AI analysis, ~30s',           priceUSD: 2.00, free: false, addrType: 'solana' }
+  pool:        { desc: 'DEX pool safety check, ~15s',                               priceUSD: 0.50, free: true,  addrType: 'solana' },
+  'evm-token': { desc: 'Honeypot + bytecode analysis on Base/ETH/Arbitrum, ~10s',   priceUSD: 0.75, free: true,  addrType: 'evm'    },
+  deep:        { desc: 'Full swarm audit, multi-agent AI analysis, ~30s',           priceUSD: 5.00, free: false, addrType: 'solana' }
 };
 
 // Steps: [label, cumulative seconds from start]
@@ -989,7 +1026,7 @@ let quotaData = { scans_used: 0, scans_limit: 3, scans_remaining: 3 };
 let spinnerInterval = null;
 let elapsedInterval = null;
 let progressInterval = null;
-let turnstileToken = null;
+let captchaToken = null;
 let _modalTier = null;
 
 // ── Example addresses ─────────────────────────────────────────────────────────
@@ -1043,14 +1080,21 @@ function getSelectedType() {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
-// Turnstile callbacks (globální — volá je CF SDK)
-function onTurnstileSuccess(token) { turnstileToken = token; }
-function onTurnstileExpired()      { turnstileToken = null; }
+async function loadCaptcha() {
+  try {
+    document.getElementById('captchaInput').value = '';
+    const r = await fetch('/scan/captcha-challenge');
+    if (!r.ok) return;
+    const { question, token } = await r.json();
+    document.getElementById('captchaQuestion').textContent = question;
+    captchaToken = token;
+  } catch {}
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   loadQuota();
   loadStats();
-  initTurnstile();
+  loadCaptcha();
 
   const params      = new URLSearchParams(location.search);
   const addrParam   = params.get('address') || '';
@@ -1119,22 +1163,6 @@ async function loadStats() {
     if (total > 0) {
       document.getElementById('statScans').textContent = total.toLocaleString();
     }
-  } catch {}
-}
-
-async function initTurnstile() {
-  try {
-    // Načti site key ze serveru
-    const r = await fetch('/scan/captcha-config');
-    if (!r.ok) return;
-    const { site_key } = await r.json();
-    if (!site_key || site_key === 'REPLACE_ME') return;
-    // Nastav data-sitekey a zobraz widget
-    const widget = document.getElementById('cfTurnstile');
-    widget.setAttribute('data-sitekey', site_key);
-    document.getElementById('turnstileWrap').style.display = 'block';
-    // Re-render turnstile (SDK mohl načíst dřív než jsme nastavili sitekey)
-    if (window.turnstile) window.turnstile.render(widget);
   } catch {}
 }
 
@@ -1240,6 +1268,13 @@ async function startScan() {
     return;
   }
 
+  // Validace CAPTCHA
+  const captchaAnswer = (document.getElementById('captchaInput')?.value || '').trim();
+  if (!captchaAnswer) {
+    showError('Please solve the math problem first.');
+    return;
+  }
+
   // Deep scan je vždy placený — rovnou na paywall
   if (type === 'deep') {
     showPaywall(null, 'deep');
@@ -1311,7 +1346,7 @@ async function startScan() {
   }
 
   try {
-    const body = { address, type, cf_token: turnstileToken || '' };
+    const body = { address, type, captcha_token: captchaToken || '', captcha_answer: captchaAnswer };
     if (isEvm) body.chain = chain;
 
     const res = await fetch('/scan/free', {
@@ -1342,6 +1377,11 @@ async function startScan() {
       }
       renderResult(json, address, type);
     } else {
+      if (json.captcha_required) {
+        loadCaptcha();
+        showError('CAPTCHA expired or incorrect — please try again.');
+        return;
+      }
       showError(json.error || 'Scan failed', json.detail || '');
     }
   } catch (err) {
@@ -2015,7 +2055,7 @@ function renderUpsellBanner(type, riskLevel, riskScore) {
   const isQuotaLast = quotaData.scans_remaining === 0;
 
   if (isHighRisk) {
-    // Vysoké riziko → tlač Deep Audit ($2)
+    // Vysoké riziko → tlač Deep Audit ($5)
     return `
     <div class="upsell-inline urgent reveal reveal-5">
       <div class="upsell-inline-header">
@@ -2026,8 +2066,8 @@ function renderUpsellBanner(type, riskLevel, riskScore) {
         </div>
       </div>
       <div class="upsell-inline-body">
-        <button class="upsell-btn-primary red" onclick="triggerDeepAudit()">Run Deep Audit — $2.00 →</button>
-        <button class="upsell-btn-secondary" onclick="openEmailModal('builder')">Unlimited plan ($79/mo)</button>
+        <button class="upsell-btn-primary red" onclick="triggerDeepAudit()">Run Deep Audit — $5.00 →</button>
+        <button class="upsell-btn-secondary" onclick="openEmailModal('builder')">Unlimited plan ($49/mo)</button>
       </div>
     </div>`;
   }
@@ -2044,7 +2084,7 @@ function renderUpsellBanner(type, riskLevel, riskScore) {
         </div>
       </div>
       <div class="upsell-inline-body">
-        <button class="upsell-btn-primary" onclick="openEmailModal('builder')">Subscribe Builder — $79/mo →</button>
+        <button class="upsell-btn-primary" onclick="openEmailModal('builder')">Subscribe Builder — $49/mo →</button>
         <button class="upsell-btn-secondary" onclick="payWithStripe('${type}', window._lastScanAddress || '')">Pay per scan ($${(SCAN_TYPES[type]?.priceUSD || 0.10).toFixed(2)})</button>
       </div>
     </div>`;
@@ -2061,8 +2101,8 @@ function renderUpsellBanner(type, riskLevel, riskScore) {
         </div>
       </div>
       <div class="upsell-inline-body">
-        <button class="upsell-btn-primary" onclick="triggerDeepAudit()">Deep Audit — $2.00 →</button>
-        <button class="upsell-btn-secondary" onclick="openEmailModal('builder')">Unlimited ($79/mo)</button>
+        <button class="upsell-btn-primary" onclick="triggerDeepAudit()">Deep Audit — $5.00 →</button>
+        <button class="upsell-btn-secondary" onclick="openEmailModal('builder')">Unlimited ($49/mo)</button>
       </div>
     </div>`;
 }
@@ -2082,7 +2122,7 @@ function showPaywall(json, type) {
   section.style.display = 'block';
   document.getElementById('spinnerWrap').style.display = 'none';
 
-  const PRICES = { quick: 0.10, token: 0.25, wallet: 0.15, pool: 0.25, 'evm-token': 0.10, deep: 2.00 };
+  const PRICES = { quick: 0.50, token: 1.00, wallet: 1.00, pool: 0.50, 'evm-token': 0.75, deep: 5.00 };
   const price   = PRICES[type] || 0.10;
   const isDeep  = type === 'deep';
 
@@ -2130,7 +2170,7 @@ function showPaywall(json, type) {
           <div style="border:1px solid var(--accent-dim);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px;background:#0d1520">
             <div>
               <div style="font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:4px">BEST VALUE ✦</div>
-              <div style="font-size:22px;font-weight:700;color:#fff">$79<span style="font-size:14px;color:var(--text-dim)">/mo</span></div>
+              <div style="font-size:22px;font-weight:700;color:#fff">$49<span style="font-size:14px;color:var(--text-dim)">/mo</span></div>
               <div style="font-size:12px;color:var(--text-dim);margin-top:2px">Unlimited scans · API key · CI/CD</div>
             </div>
             <button class="btn-stripe" style="background:var(--accent)" onclick="openEmailModal('builder')">
@@ -2210,7 +2250,7 @@ async function payWithStripe(type, address) {
 // ── Email modal ────────────────────────────────────────────────────────────────
 function openEmailModal(tier) {
   _modalTier = tier;
-  const titles = { builder: 'Subscribe to Builder — $79/mo', team: 'Subscribe to Team — $299/mo' };
+  const titles = { builder: 'Subscribe to Builder — $49/mo', team: 'Subscribe to Team — $299/mo' };
   const subs   = {
     builder: 'Unlimited scans, API key, 20 Deep Audits/mo, CI/CD integration. Cancel anytime.',
     team:    'Unlimited everything, Slack/Telegram alerts, watchlist 100 addresses. Cancel anytime.'

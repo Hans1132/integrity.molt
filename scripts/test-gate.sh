@@ -3,6 +3,7 @@
 # Exit code 0 = PASS (safe to commit), 1 = FAIL (do not commit)
 
 set -e
+cd "$(dirname "$0")/.."
 PASS=0
 FAIL=0
 ERRORS=""
@@ -62,6 +63,19 @@ if systemctl is-active --quiet integrity-x402.service 2>/dev/null; then
   else
     FAIL=$((FAIL+1))
     ERRORS="$ERRORS\n- E2E smoke tests failed"
+  fi
+else
+  echo "⚠️  SKIP (service not running)"
+fi
+
+# 6. CAPTCHA E2E (pokud service běží)
+echo "🔑 CAPTCHA E2E..."
+if systemctl is-active --quiet integrity-x402.service 2>/dev/null; then
+  if node tests/e2e/captcha.test.js; then
+    PASS=$((PASS+1))
+  else
+    FAIL=$((FAIL+1))
+    ERRORS="$ERRORS\n- CAPTCHA E2E tests failed"
   fi
 else
   echo "⚠️  SKIP (service not running)"

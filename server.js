@@ -2800,9 +2800,20 @@ app.get('/scan/cached', async (req, res) => {
   }
 });
 
-// GET /scan/captcha-config — vrátí Turnstile site key pro frontend
-app.get('/scan/captcha-config', (req, res) => {
-  res.json({ site_key: process.env.TURNSTILE_SITE_KEY || null });
+// GET /scan/captcha-challenge — generuje HMAC-signed matematickou CAPTCHA otázku
+const { createHmac, timingSafeEqual } = require('node:crypto');
+const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET || 'changeme-local-dev';
+const CAPTCHA_TTL_MS = 15 * 60 * 1000; // 15 minut
+
+app.get('/scan/captcha-challenge', (req, res) => {
+  const a = Math.floor(Math.random() * 10) + 1;  // 1–10
+  const b = Math.floor(Math.random() * 10) + 1;  // 1–10
+  const answer = String(a + b);
+  const ts = Date.now();
+  const token = createHmac('sha256', CAPTCHA_SECRET)
+    .update(`${answer}:${ts}`)
+    .digest('hex') + ':' + ts;
+  res.json({ question: `${a} + ${b}`, token });
 });
 
 // GET /scan/quota?ip=auto — vrátí zbývající free scany pro aktuální IP
@@ -2818,22 +2829,20 @@ app.get('/scan/quota', async (req, res) => {
 });
 
 // POST /scan/free — bezplatný scan (first 3 per IP/day), pak 402
-// Turnstile token verifikace (pokud je nakonfigurováno)
-async function verifyTurnstile(token, ip) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret || secret === 'REPLACE_ME') return true; // graceful fallback — skip if not configured
-  if (!token) return false;
+// Matematická CAPTCHA verifikace (HMAC-signed, TTL 15 minut)
+function verifyCaptcha(token, answer) {
+  if (!token || !answer) return false;
+  const parts = token.split(':');
+  if (parts.length !== 2) return false;
+  const [hmac, ts] = parts;
+  if (Date.now() - Number(ts) > CAPTCHA_TTL_MS) return false;
+  const expected = createHmac('sha256', CAPTCHA_SECRET)
+    .update(`${answer.trim()}:${ts}`)
+    .digest('hex');
   try {
-    const body = new URLSearchParams({ secret, response: token, remoteip: ip || '' });
-    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString()
-    });
-    const j = await r.json();
-    return j.success === true;
-  } catch (e) {
-    console.error('[turnstile] verification error:', e.message);
-    return true; // fail open — lepší než blokovat legitimní uživatele při výpadku CF
+    return timingSafeEqual(Buffer.from(hmac, 'hex'), Buffer.from(expected, 'hex'));
+  } catch {
+    return false; // malformed hex / length mismatch
   }
 }
 
@@ -2841,14 +2850,15 @@ app.post('/scan/free', express.json(), async (req, res) => {
   const address = (req.body?.address || '').trim();
   const type    = (req.body?.type    || 'quick').trim();
   const chain   = (req.body?.chain   || 'base').trim().toLowerCase();
-  const cfToken = (req.body?.cf_token || '').trim();
+  const captchaToken  = (req.body?.captcha_token  || '').trim();
+  const captchaAnswer = (req.body?.captcha_answer || '').trim();
 
   if (!address) return res.status(400).json({ error: 'Missing address' });
 
-  // Turnstile CAPTCHA verifikace (přeskočí se pro interní A2A volání ze stejného serveru)
+  // Matematická CAPTCHA verifikace (přeskočí se pro interní A2A volání ze stejného serveru)
   const isInternalA2A = req.headers['x-a2a-caller'] === '1' && req.ip === '127.0.0.1';
-  const turnstileOk = isInternalA2A || await verifyTurnstile(cfToken, req.ip);
-  if (!turnstileOk) {
+  const captchaOk = isInternalA2A || verifyCaptcha(captchaToken, captchaAnswer);
+  if (!captchaOk) {
     return res.status(403).json({ error: 'CAPTCHA verification failed', captcha_required: true });
   }
   if (!['quick', 'deep', 'token', 'wallet', 'pool', 'evm-token', 'contract'].includes(type)) {
