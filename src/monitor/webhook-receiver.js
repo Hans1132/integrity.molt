@@ -146,24 +146,33 @@ function extractPrograms(tx) {
 /**
  * Append transakce do JSONL logu (append-only, jeden JSON per řádek).
  */
-const EVENTS_MAX_BYTES = 50 * 1024 * 1024; // 50 MB cap — zabrání disk flood při extrémně aktivních adresách
+const EVENTS_MAX_BYTES  = 50 * 1024 * 1024; // 50 MB — rotace při překročení
+const EVENTS_KEEP_LINES = 20_000;            // po rotaci zachovat posledních N řádků
+
+function rotateEventsFile() {
+  try {
+    const content = fs.readFileSync(EVENTS_FILE, 'utf-8');
+    const lines   = content.split('\n').filter(Boolean);
+    const kept    = lines.slice(-EVENTS_KEEP_LINES).join('\n') + '\n';
+    fs.writeFileSync(EVENTS_FILE, kept, 'utf-8');
+    console.log(`[monitor] events.jsonl rotován: ${lines.length} → ${Math.min(lines.length, EVENTS_KEEP_LINES)} řádků`);
+  } catch (e) {
+    console.warn('[monitor] rotace events.jsonl selhala:', e.message);
+  }
+}
 
 function logEvent(parsed) {
   try {
-    // Přeskoč logování pokud soubor přesáhl cap (kontrola max každých 100 volání)
+    // Kontrola velikosti každých 100 volání — rotace při překročení capu
     if (logEvent._callCount === undefined) logEvent._callCount = 0;
     if (++logEvent._callCount % 100 === 0) {
       try {
         const size = fs.statSync(EVENTS_FILE).size;
         if (size > EVENTS_MAX_BYTES) {
-          console.warn(`[monitor] events.jsonl přesáhl ${EVENTS_MAX_BYTES / 1024 / 1024}MB — logování pozastaveno`);
-          logEvent._paused = true;
-        } else {
-          logEvent._paused = false;
+          rotateEventsFile();
         }
-      } catch { logEvent._paused = false; }
+      } catch { /* soubor neexistuje — OK */ }
     }
-    if (logEvent._paused) return;
 
     const line = JSON.stringify({
       sig:       parsed.signature,

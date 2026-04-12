@@ -212,6 +212,12 @@ function initSchema() {
 // auth.js volá initUsersSchema() samostatně — mapujeme na initSchema
 function initUsersSchema() { return initSchema(); }
 
+// ── Periodic WAL checkpoint (každých 6h) ─────────────────────────────────────
+// Zabrání neomezenému růstu WAL souboru při dlouhém běhu service.
+setInterval(() => {
+  try { db.pragma('wal_checkpoint(PASSIVE)'); } catch {}
+}, 6 * 3_600_000).unref();
+
 // ── Pool compatibility shim ────────────────────────────────────────────────────
 // server.js a mailer.js používají db.pool.query(...) přímo pro ad-hoc dotazy.
 // Tento shim konvertuje PostgreSQL parametrové značky ($1, $2, ...) na SQLite (?)
