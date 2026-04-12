@@ -892,6 +892,31 @@ app.get('/api/v1/stats/advisor', (req, res) => {
   }
 });
 
+// Accuracy monitoring — internal, no auth (add auth if exposed externally)
+app.get('/api/v1/admin/accuracy', (req, res) => {
+  try {
+    const hours = Math.min(parseInt(req.query.hours) || 24, 720);
+    res.json({ ok: true, ...db.getAccuracyStats(hours) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// User feedback on scan result accuracy
+app.post('/api/v1/feedback', express.json(), (req, res) => {
+  const { mint, feedback, note } = req.body || {};
+  const allowed = ['correct', 'false_positive', 'false_negative'];
+  if (!mint || !allowed.includes(feedback)) {
+    return res.status(400).json({ error: 'mint and feedback (correct|false_positive|false_negative) required' });
+  }
+  try {
+    db.logUserFeedback(mint, feedback, note || null);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Quick Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
 app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quickPaymentAccepts, PRICING.quick), express.json(), async (req, res) => {
   const address = req.body.address || req.body.target;
@@ -3024,6 +3049,16 @@ app.post('/scan/free', express.json(), async (req, res) => {
         risk_score: scanData.risk_score, risk_level: scanData.risk_level,
         summary: scanData.summary, cached: false, result_json: scanData
       }).catch(() => {});
+      if (scanData?.llm_validation_flags !== undefined) {
+        db.logAccuracySignal({
+          mint: safeAddress, scanType: 'quick',
+          rawScore:      scanData.detail?.raw_score ?? null,
+          llmScore:      scanData.detail?.raw_score ?? null,
+          finalScore:    scanData.risk_score,
+          finalCategory: scanData.category,
+          validationFlags: scanData.llm_validation_flags || []
+        });
+      }
       return res.json({
         ...result,
         scans_used:      newUsed,
@@ -3097,6 +3132,16 @@ app.post('/scan/free', express.json(), async (req, res) => {
       risk_score: data?.risk_score ?? null, risk_level: data?.risk_level || null,
       summary: freeAdv?.text?.slice(0, 500) || data?.summary || null, cached: false, result_json: data || null
     }).catch(() => {});
+    if (data?.llm_validation_flags !== undefined) {
+      db.logAccuracySignal({
+        mint: safeAddress, scanType: type,
+        rawScore:      data.detail?.raw_score ?? null,
+        llmScore:      data.detail?.raw_score ?? null,
+        finalScore:    data.risk_score,
+        finalCategory: data.category,
+        validationFlags: data.llm_validation_flags || []
+      });
+    }
     res.json({
       ...result,
       scans_used:      newUsed,

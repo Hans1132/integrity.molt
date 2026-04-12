@@ -186,6 +186,25 @@ function initSchema() {
       created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
     );
     CREATE INDEX IF NOT EXISTS used_signatures_created ON used_signatures (created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS scan_accuracy_signals (
+      id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+      scan_id              INTEGER REFERENCES scan_history(id),
+      mint                 TEXT,
+      scan_type            TEXT,
+      raw_score            INTEGER,
+      llm_score            INTEGER,
+      final_score          INTEGER,
+      final_category       TEXT,
+      validation_flags     TEXT,   -- JSON array of llm_validation_flags
+      corrections_count    INTEGER NOT NULL DEFAULT 0,
+      user_feedback        TEXT,   -- 'correct' | 'false_positive' | 'false_negative' | null
+      feedback_note        TEXT,
+      created_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS accuracy_mint       ON scan_accuracy_signals (mint, created_at DESC);
+    CREATE INDEX IF NOT EXISTS accuracy_created    ON scan_accuracy_signals (created_at DESC);
+    CREATE INDEX IF NOT EXISTS accuracy_flags      ON scan_accuracy_signals (corrections_count DESC);
   `);
   return Promise.resolve();
 }
@@ -914,6 +933,77 @@ class SqliteStore extends session.Store {
   touch(sid, sess, cb) { this.set(sid, sess, cb); }
 }
 
+// ── Scan accuracy signals ────────────────────────────────────────────────────
+
+function logAccuracySignal({ scanId, mint, scanType, rawScore, llmScore, finalScore, finalCategory, validationFlags }) {
+  const flags = Array.isArray(validationFlags) ? validationFlags : [];
+  db.prepare(`
+    INSERT INTO scan_accuracy_signals
+      (scan_id, mint, scan_type, raw_score, llm_score, final_score, final_category, validation_flags, corrections_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    scanId    || null,
+    mint      || null,
+    scanType  || null,
+    rawScore  ?? null,
+    llmScore  ?? null,
+    finalScore ?? null,
+    finalCategory || null,
+    JSON.stringify(flags),
+    flags.length
+  );
+}
+
+function logUserFeedback(mint, feedback, note) {
+  // Update the most recent signal for this mint
+  db.prepare(`
+    UPDATE scan_accuracy_signals
+    SET user_feedback = ?, feedback_note = ?
+    WHERE mint = ?
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).run(feedback, note || null, mint);
+}
+
+function getAccuracyStats(hours = 24) {
+  const since = new Date(Date.now() - hours * 3_600_000)
+    .toISOString().replace('T', ' ').slice(0, 19);
+
+  const totals = db.prepare(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(corrections_count)                                             AS total_corrections,
+      SUM(CASE WHEN corrections_count > 0 THEN 1 ELSE 0 END)           AS corrected_count,
+      ROUND(100.0 * SUM(CASE WHEN corrections_count > 0 THEN 1 ELSE 0 END)
+            / NULLIF(COUNT(*), 0), 1)                                   AS corrected_pct,
+      SUM(CASE WHEN user_feedback = 'false_positive' THEN 1 ELSE 0 END) AS false_positives,
+      SUM(CASE WHEN user_feedback = 'false_negative' THEN 1 ELSE 0 END) AS false_negatives,
+      SUM(CASE WHEN user_feedback = 'correct'        THEN 1 ELSE 0 END) AS confirmed_correct
+    FROM scan_accuracy_signals
+    WHERE created_at >= ?
+  `).get(since);
+
+  const topFlags = db.prepare(`
+    SELECT f.value AS flag, COUNT(*) AS count
+    FROM scan_accuracy_signals s,
+         json_each(s.validation_flags) f
+    WHERE s.created_at >= ? AND s.corrections_count > 0
+    GROUP BY f.value
+    ORDER BY count DESC
+    LIMIT 10
+  `).all(since);
+
+  const byCategory = db.prepare(`
+    SELECT final_category, COUNT(*) AS count,
+           ROUND(AVG(CASE WHEN corrections_count > 0 THEN 1.0 ELSE 0 END) * 100, 1) AS corrected_pct
+    FROM scan_accuracy_signals
+    WHERE created_at >= ?
+    GROUP BY final_category
+  `).all(since);
+
+  return { hours, since, totals, topFlags, byCategory };
+}
+
 module.exports = {
   db, pool, initSchema, initUsersSchema, initAdsSchema,
   logPayment, isAlreadyUsed, markSignatureUsed, logEvent,
@@ -935,6 +1025,8 @@ module.exports = {
   getDigestAd, getRecentHighRiskScans,
   // Live stats
   getLiveStats,
+  // Accuracy monitoring
+  logAccuracySignal, logUserFeedback, getAccuracyStats,
   // Advisor usage
   logAdvisorUsage, getAdvisorStats,
   MONTHLY_SCAN_LIMITS, MONTHLY_ADVERSARIAL_LIMITS,
