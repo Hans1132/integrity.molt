@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>integrity.molt v0.5.0: Scam Database, Pro Trader Tier, EVM Detection | intmolt.org</title>
+  <meta name="description" content="integrity.molt v0.5.0 ships 17,000+ scam token detection, EVM chain support, LLM validation, and a $15/mo Pro Trader tier for Solana security.">
+  <meta name="keywords" content="Solana security scanner, integrity.molt, scam token detection, EVM token audit, rug pull detection, DeFi security, LLM scan validator, crypto wallet scanner, Solana rug check, token audit tool">
+  <link rel="canonical" href="https://intmolt.org/blog/v050-release">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="integrity.molt v0.5.0 — Scam DB, EVM Detection & Pro Tier">
+  <meta property="og:description" content="integrity.molt v0.5.0 ships 17,000+ scam token detection, EVM chain support, LLM validation, and a $15/mo Pro Trader tier for Solana security.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://intmolt.org/blog/v050-release">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta property="article:published_time" content="2026-04-13T00:00:00.000Z">
+  <meta property="article:author" content="integrity.molt">
+  <meta property="article:section" content="Release Notes">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="integrity.molt v0.5.0 — Scam DB, EVM Detection & Pro Tier">
+  <meta name="twitter:description" content="integrity.molt v0.5.0 ships 17,000+ scam token detection, EVM chain support, LLM validation, and a $15/mo Pro Trader tier for Solana security.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "integrity.molt v0.5.0: Scam Database, Pro Trader Tier, EVM Detection",
+    "description": "integrity.molt v0.5.0 ships 17,000+ scam token detection, EVM chain support, LLM validation, and a $15/mo Pro Trader tier for Solana security.",
+    "url": "https://intmolt.org/blog/v050-release",
+    "datePublished": "2026-04-13",
+    "author": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
+    "publisher": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
+    "image": "https://intmolt.org/og-image.png",
+    "keywords": "Solana security scanner, integrity.molt, scam token detection, EVM token audit, rug pull detection, DeFi security, LLM scan validator, crypto wallet scanner, Solana rug check, token audit tool"
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --surface: #111820;
+      --surface2: #1a2332;
+      --border: #1e3050;
+      --accent: #00ff88;
+      --accent2: #4da6ff;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; font-size: 16px; }
+    nav { border-bottom: 1px solid var(--border); padding: 14px 0; background: var(--bg); position: sticky; top: 0; z-index: 100; }
+    nav .inner { max-width: 900px; margin: 0 auto; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
+    nav .logo { font-family: monospace; font-size: 18px; color: var(--accent); text-decoration: none; font-weight: 700; }
+    nav .links { display: flex; gap: 24px; }
+    nav .links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+    nav .links a:hover { color: var(--text); }
+    article { max-width: 820px; margin: 0 auto; padding: 60px 24px 80px; }
+    .tag { display: inline-block; font-size: 11px; font-family: monospace; background: rgba(0,255,136,.1); color: var(--accent); border: 1px solid rgba(0,255,136,.2); padding: 3px 10px; border-radius: 4px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 18px; }
+    h1 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; line-height: 1.2; margin-bottom: 16px; letter-spacing: -.01em; }
+    .meta { color: var(--muted); font-size: 14px; margin-bottom: 40px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+    .version-badge { display: inline-block; font-family: monospace; font-size: 13px; background: rgba(0,255,136,.1); color: var(--accent); border: 1px solid rgba(0,255,136,.3); padding: 4px 14px; border-radius: 20px; margin-left: 10px; vertical-align: middle; }
+    .tldr { background: var(--surface2); border-left: 3px solid var(--accent); padding: 20px 24px; border-radius: 0 8px 8px 0; margin-bottom: 48px; font-size: 15px; }
+    .tldr strong { color: var(--accent); display: block; margin-bottom: 8px; font-family: monospace; font-size: 12px; letter-spacing: .1em; }
+    h2 { font-size: 22px; font-weight: 700; margin-top: 56px; margin-bottom: 20px; color: var(--accent); font-family: monospace; }
+    h2::before { content: "## "; opacity: .4; }
+    h3 { font-size: 17px; font-weight: 600; margin-top: 32px; margin-bottom: 12px; color: var(--text); }
+    p { margin-bottom: 18px; color: #c8d8e8; }
+    ul, ol { padding-left: 24px; margin-bottom: 18px; }
+    li { margin-bottom: 8px; color: #c8d8e8; }
+    li strong { color: var(--text); }
+    pre { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; overflow-x: auto; font-family: monospace; font-size: 13px; line-height: 1.7; margin: 24px 0; color: #a0b8d0; }
+    code { font-family: monospace; font-size: 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; color: var(--accent); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .callout { background: rgba(0,255,136,.05); border: 1px solid rgba(0,255,136,.15); border-radius: 8px; padding: 18px 22px; margin: 28px 0; font-size: 14px; }
+    .callout strong { color: var(--accent); }
+    .change-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 28px 0; }
+    .change-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; }
+    .change-card .label { font-family: monospace; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+    .change-card .label.ux { color: #4da6ff; }
+    .change-card .label.security { color: #f59e0b; }
+    .change-card .label.infra { color: #a78bfa; }
+    .change-card ul { padding-left: 16px; margin: 0; }
+    .change-card li { font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+    footer { text-align: center; padding: 40px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+    footer a { color: var(--muted); margin: 0 8px; }
+    footer a:hover { color: var(--text); }
+    @media (max-width: 600px) { article { padding: 40px 16px 60px; } .change-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a href="/" class="logo">integrity.molt</a>
+    <div class="links">
+      <a href="/scan">Scanner</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/docs.html">API</a>
+      <a href="/blog">Blog</a>
+      <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram</a>
+    </div>
+  </div>
+</nav>
+
+<article>
+  <div class="tag">Release Notes</div>
+  <h1>integrity.molt v0.5.0 <span class="version-badge">2026-04-13</span></h1>
+
+  <div class="meta">
+    <span>📅 April 13, 2026</span>
+    <span>⏱ 8 min read</span>
+  </div>
+
+  <div class="tldr">
+    <strong>TL;DR</strong>
+    v0.5.0 introduces a 17,000-token scam database (SolRPDS + RugCheck), multi-chain EVM detection across Ethereum, BSC, Polygon, Arbitrum, and Base, and a new $15/mo Pro Trader subscription with unlimited scans and Telegram alerts. Under the hood, an LLM scan validator with 6 enforcement rules and a golden dataset regression suite bring measurable accuracy guarantees to every scan.
+  </div>
+
+  <h2>What changed</h2>
+
+<div class="change-grid">
+  <div class="change-card security">
+    <h3>Scam Token Database</h3>
+    <p>17,000+ known scam tokens from SolRPDS &amp; RugCheck checked before any LLM call is made.</p>
+  </div>
+  <div class="change-card security">
+    <h3>EVM Scam Detection</h3>
+    <p>Fee asymmetry, holder concentration, and mint/burn risk patterns across Ethereum, BSC, Polygon, Arbitrum, and Base.</p>
+  </div>
+  <div class="change-card ux">
+    <h3>Pro Trader Tier</h3>
+    <p>$15/mo — 20 watchlist addresses, unlimited scans, Telegram + email alerts, weekly delta report, signed reports.</p>
+  </div>
+  <div class="change-card infra">
+    <h3>LLM Scan Validator</h3>
+    <p>6 validation rules, prompt anchoring, and JSON schema enforcement to eliminate false negatives and hallucinations.</p>
+  </div>
+  <div class="change-card infra">
+    <h3>Golden Dataset Regression Suite</h3>
+    <p>17 tokens, 29 accuracy tests, CI gate in <code>test-gate.sh</code> — accuracy is now a first-class deployment blocker.</p>
+  </div>
+  <div class="change-card security">
+    <h3>Payment &amp; Auth Hardening</h3>
+    <p>ATA verification, anti-replay protection, HMAC CAPTCHA, correct SOL/USDC thresholds, and Google OAuth fix.</p>
+  </div>
+</div>
+
+<h2>Scam Token Database: catch known bad actors before the LLM even wakes up</h2>
+
+<p>The most expensive part of a scan — both in latency and cost — is the large language model inference step. In v0.5.0, integrity.molt now pre-filters every token address against a merged archive of <strong>17,000+ confirmed scam tokens</strong> sourced from SolRPDS and RugCheck before any LLM invocation occurs. If a token is already known-bad, you get an instant, high-confidence verdict with zero AI inference overhead.</p>
+
+<p>This matters for three reasons:</p>
+<ul>
+  <li><strong>Speed:</strong> Known scam tokens return results in milliseconds rather than seconds.</li>
+  <li><strong>Cost efficiency:</strong> Skipping LLM calls for already-catalogued rugs reduces infrastructure cost, which is why we can keep <a href="https://intmolt.org/scan">standard scans</a> at $0.75.</li>
+  <li><strong>Coverage:</strong> Many scam tokens share deployer wallets, bytecode patterns, or metadata strings. The database captures historical signal that on-chain heuristics alone might miss for a freshly relaunched variant.</li>
+</ul>
+
+<div class="callout">
+  The scam database is consulted at scan time, not just at index time. Every <a href="https://intmolt.org/scan">scan you run</a> against a Solana token address now benefits from this lookup automatically — no configuration required.
+</div>
+
+<h2>EVM Scam Detection: the same rigor, now across five chains</h2>
+
+<p>Solana's speed makes it a preferred playground for rug pulls, but EVM chains have their own vocabulary of scam patterns. v0.5.0 extends integrity.molt's detection engine to <strong>Ethereum, BSC, Polygon, Arbitrum, and Base</strong> with three dedicated analysis modules:</p>
+
+<h3>Fee asymmetry analysis</h3>
+<p>Many EVM honeypot contracts implement asymmetric transfer taxes — a low buy fee to attract liquidity and an arbitrarily high (sometimes 100%) sell fee to trap holders. The scanner now reads the token contract's fee logic and flags any buy/sell fee disparity above configurable thresholds.</p>
+
+<h3>Holder concentration check</h3>
+<p>A token where the top 5 wallets hold more than 60% of supply (excluding locked liquidity) is a significant rug risk. The checker fetches on-chain holder distribution and surfaces concentration scores directly in the scan report.</p>
+
+<h3>Mint and burn risk patterns</h3>
+<p>Uncapped mint authority and unrestricted burn functions on the owner address are classic pre-rug indicators. The EVM module inspects contract bytecode and ABI for these patterns, even when source code is not verified on the target block explorer.</p>
+
+<pre><code>// Example flag in scan report JSON
+{
+  "chain": "base",
+  "risks": [
+    { "id": "EVM_FEE_ASYMMETRY", "severity": "HIGH", "detail": "Buy fee 1%, sell fee 49%" },
+    { "id": "EVM_MINT_AUTHORITY", "severity": "CRITICAL", "detail": "Owner retains uncapped mint" }
+  ]
+}</code></pre>
+
+<h2>Pro Trader subscription tier: built for active on-chain participants</h2>
+
+<p>Until now, integrity.molt operated on a pure pay-per-scan model. That works well for occasional due diligence, but active traders and DeFi researchers need something different: continuous monitoring, proactive alerts, and audit-grade documentation. The new <strong>Pro Trader tier at $15/month</strong> is designed exactly for that use case.</p>
+
+<h3>What's included</h3>
+<ul>
+  <li><strong>20 watchlist addresses</strong> — wallets, pools, or token mints monitored continuously for risk changes</li>
+  <li><strong>Unlimited scans</strong> — no per-scan charges while subscribed</li>
+  <li><strong>Telegram + email alerts</strong> — push notifications the moment a watchlisted address crosses a risk threshold</li>
+  <li><strong>Weekly delta report</strong> — a structured diff of how the risk profile of your watchlist changed over the past 7 days</li>
+  <li><strong>Signed reports</strong> — cryptographically signed scan outputs suitable for sharing with counterparties or compliance teams</li>
+</ul>
+
+<p>Pricing for one-off scans has also been unified in this release: wallet scans, pool scans, and token audits are all <strong>$0.75</strong>, and deep audits are <strong>$5.00</strong>. See the <a href="https://intmolt.org/#plans">full plans page</a> for a comparison.</p>
+
+<div class="callout">
+  Pro Trader subscriptions are billed via Stripe (price ID <code>price_1TLgkyHPCh953ukRC7Uw6rqr</code>). SOL and USDC on-chain payments are also accepted for individual scans, with correctly separated threshold logic as of this release.
+</div>
+
+<h2>LLM scan validator: making AI output trustworthy by construction</h2>
+
+<p>LLM-powered security analysis introduces a class of failure that traditional rule-based scanners don't have: the model can hallucinate a detail, omit a critical risk, or produce output that doesn't conform to the expected schema. Previous versions of integrity.molt relied on prompt engineering alone to prevent this. v0.5.0 introduces a dedicated <strong>LLM scan validator</strong> as a post-inference enforcement layer.</p>
+
+<h3>Six validation rules</h3>
+<ul>
+  <li><strong>Schema conformance:</strong> Output is validated against a strict JSON schema before being stored or returned.</li>
+  <li><strong>Risk field completeness:</strong> Every identified risk must carry an <code>id</code>, <code>severity</code>, and <code>detail</code> — partial objects are rejected.</li>
+  <li><strong>Severity range enforcement:</strong> Severity values must be one of <code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>, <code>CRITICAL</code> — free-text severities are rejected.</li>
+  <li><strong>Prompt anchoring:</strong> The validator checks that the model's output references the actual token address from the prompt, not a hallucinated address.</li>
+  <li><strong>False negative suppression:</strong> If the database pre-filter flagged the token as a known scam but the LLM returned a clean verdict, the validator overrides the LLM and surfaces the database finding.</li>
+  <li><strong>Confidence floor:</strong> Scan results below a minimum confidence threshold are marked as <code>INCONCLUSIVE</code> rather than silently passed through as clean.</li>
+</ul>
+
+<p>When a scan output fails validation, the system retries the inference with a refined prompt rather than returning a potentially misleading result. This increases average scan latency by a small margin in edge cases, but eliminates a category of silent failure that could lead traders to trust a compromised token.</p>
+
+<h2>Golden dataset regression suite: accuracy as a deployment gate</h2>
+
+<p>Shipping a new LLM prompt, updating detection heuristics, or integrating a new data source all carry the risk of regressing scan accuracy in subtle ways. The new <strong>golden dataset regression suite</strong> makes accuracy a hard gate in the deployment pipeline.</p>
+
+<ul>
+  <li><strong>17 reference tokens</strong> drawn from SolRPDS and Jupiter with known ground-truth verdicts (confirmed scam, confirmed safe, or confirmed high-risk)</li>
+  <li><strong>29 accuracy tests</strong> covering risk identification, severity assignment, and report field completeness</li>
+  <li><strong><code>test-gate.sh</code></strong> — a CI script that runs the full suite and blocks deployment if the pass rate drops below threshold</li>
+</ul>
+
+<pre><code># test-gate.sh excerpt
+PASS_THRESHOLD=27  # out of 29 tests
+RESULT=$(node run-accuracy-suite.js | tail -1)
+if [ "$RESULT" -lt "$PASS_THRESHOLD" ]; then
+  echo "Accuracy gate failed: $RESULT/29 — deployment blocked"
+  exit 1
+fi</code></pre>
+
+<p>This is a meaningful shift in how integrity.molt is developed: accuracy is no longer validated manually on an ad-hoc basis before releases. Every merge that touches the scan pipeline must pass the golden dataset gate.</p>
+
+<h2>Security and infrastructure fixes</h2>
+
+<h3>Payment middleware hardening</h3>
+<p>Two significant payment bugs were resolved in this release. First, SOL and USDC payment thresholds were previously stored in the same comparison path, meaning a USDC payment could be incorrectly validated against a SOL price threshold (and vice versa). These are now separated with explicit currency guards. Second, Associated Token Account (ATA) verification and anti-replay protection were added to the payment middleware — preventing edge cases where a transaction signature could be submitted more than once.</p>
+
+<h3>CAPTCHA: removing the external dependency</h3>
+<p>Cloudflare Turnstile has been replaced with an <strong>HMAC-signed math CAPTCHA</strong>. The challenge is generated server-side, signed with a secret key, and verified on submission — no third-party JavaScript, no external network call, no privacy tradeoff. For a security-focused tool, eliminating an opaque external dependency from the authentication flow is the right call.</p>
+
+<h3>Helius RPC deduplication</h3>
+<p>A bug in <code>fork.js</code> caused redundant on-chain calls to be made to the Helius RPC endpoint during certain scan paths. Beyond the unnecessary cost, duplicate calls introduced a small race condition window where two in-flight requests could return slightly inconsistent account state. Deduplication logic now consolidates identical requests within a scan cycle.</p>
+
+<h3>WAL and event log caps</h3>
+<p>Two infrastructure hygiene fixes prevent unbounded disk growth in long-running deployments:</p>
+<ul>
+  <li><code>events.jsonl</code> is now capped at <strong>50 MB</strong> with automatic log rotation.</li>
+  <li>SQLite WAL checkpoints now run on a <strong>6-hour schedule</strong>, preventing the write-ahead log from growing indefinitely between restarts.</li>
+</ul>
+
+<h3>scans_today fix</h3>
+<p>A date format mismatch in the SQL query for <code>scans_today</code> caused the counter to always return zero. The column was stored as <code>YYYY-MM-DD</code> but the query was comparing against an ISO timestamp string. This affected dashboard display and rate-limit enforcement logic — both now use consistent date formatting.</p>
+
+<h2>Upgrade notes</h2>
+
+<div class="callout">
+  If you are running a self-hosted instance, apply the database migration for <code>scan_accuracy_signals</code> before starting the v0.5.0 server. The <code>/api/v1/feedback</code> and <code>/api/v1/admin/accuracy</code> endpoints will return 500 if the table does not exist. The WAL checkpoint job starts automatically on process boot — no cron configuration is required.
+</div>
+
+<p>Ready to try the updated scanner? Run a scan at <a href="https://intmolt.org/scan">intmolt.org/scan</a> or review subscription options at <a href="https://intmolt.org/#plans">intmolt.org/#plans</a>.</p>
+
+</article>
+
+<footer>
+  <p>
+    <a href="/">integrity.molt</a>
+    <a href="/blog">Blog</a>
+    <a href="/scan">Scanner</a>
+    <a href="/docs.html">API</a>
+    <a href="https://t.me/intmolt_bot">Telegram</a>
+  </p>
+  <p style="margin-top:12px">© 2026 integrity.molt — AI-native Solana Security Scanner</p>
+</footer>
+
+</body>
+</html>

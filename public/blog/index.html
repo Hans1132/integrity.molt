@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog — integrity.molt | Solana Security Scanner</title>
+  <meta name="description" content="Release notes, security research, and methodology articles from integrity.molt — the AI-native Solana token and wallet security scanner.">
+  <meta name="keywords" content="Solana security scanner blog, integrity.molt updates, token audit methodology, DeFi security research, rug pull detection">
+  <link rel="canonical" href="https://intmolt.org/blog">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Blog — integrity.molt">
+  <meta property="og:description" content="Release notes, security research, and methodology from the AI-native Solana security scanner.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://intmolt.org/blog">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Blog — integrity.molt">
+  <meta name="twitter:description" content="Release notes, security research, and methodology from the AI-native Solana security scanner.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+
+  <!-- JSON-LD BreadcrumbList -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "name": "integrity.molt Blog",
+    "url": "https://intmolt.org/blog",
+    "description": "Release notes, security research, and methodology from integrity.molt",
+    "publisher": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" }
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --surface: #111820;
+      --surface2: #1a2332;
+      --border: #1e3050;
+      --accent: #00ff88;
+      --accent2: #4da6ff;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+
+    nav { border-bottom: 1px solid var(--border); padding: 14px 0; background: var(--bg); position: sticky; top: 0; z-index: 100; }
+    nav .inner { max-width: 900px; margin: 0 auto; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
+    nav .logo { font-family: monospace; font-size: 18px; color: var(--accent); text-decoration: none; font-weight: 700; }
+    nav .links { display: flex; gap: 24px; }
+    nav .links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+    nav .links a:hover, nav .links a.active { color: var(--text); }
+
+    .hero { max-width: 900px; margin: 0 auto; padding: 60px 24px 48px; }
+    .hero h1 { font-size: clamp(28px, 4vw, 42px); font-weight: 800; margin-bottom: 12px; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { color: var(--muted); font-size: 16px; max-width: 560px; }
+
+    .posts { max-width: 900px; margin: 0 auto; padding: 0 24px 80px; display: flex; flex-direction: column; gap: 24px; }
+
+    .post-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: border-color .2s, transform .15s;
+    }
+    .post-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+    .post-card .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-family: monospace;
+      background: rgba(0,255,136,.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,255,136,.2);
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .post-card .tag.research {
+      background: rgba(77,166,255,.1);
+      color: var(--accent2);
+      border-color: rgba(77,166,255,.2);
+    }
+
+    .post-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 10px; line-height: 1.3; }
+    .post-card p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+    .post-card .meta { display: flex; gap: 20px; font-size: 13px; color: var(--muted); }
+    .post-card .meta span { display: flex; align-items: center; gap: 5px; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+    footer { text-align: center; padding: 40px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+    footer a { color: var(--muted); margin: 0 8px; }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      .hero { padding: 40px 16px 32px; }
+      .posts { padding: 0 16px 60px; }
+      .post-card { padding: 20px; }
+      .post-card h2 { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a href="/" class="logo">integrity.molt</a>
+    <div class="links">
+      <a href="/scan">Scanner</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/docs.html">API</a>
+      <a href="/blog" class="active">Blog</a>
+      <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>integrity.molt <span>Blog</span></h1>
+  <p>Release notes, security research, and methodology from the AI-native Solana security scanner.</p>
+</div>
+
+<div class="posts">
+
+  <!-- v0.5.0 -->
+  <a class="post-card" href="/blog/v050-release">
+    <div class="tag">Release Notes</div>
+    <h2>integrity.molt v0.5.0: Scam Database, Pro Trader Tier &amp; EVM Detection</h2>
+    <p>Integrated 17 000+ known scam tokens from SolRPDS + RugCheck, launched the $15/mo Pro Trader tier, added fee asymmetry and holder concentration checks to the EVM scanner, and wired up LLM scan validation to eliminate false negatives.</p>
+    <div class="meta">
+      <span>📅 April 13, 2026</span>
+      <span>⏱ 5 min read</span>
+    </div>
+  </a>
+
+  <!-- v0.4.0 -->
+  <a class="post-card" href="/blog/v040-release">
+    <div class="tag">Release Notes</div>
+    <h2>integrity.molt v0.4.0: UX Overhaul, Watchlist Limits, Webhook Hardening</h2>
+    <p>v0.4.0 ships a complete UX overhaul of the scanner and landing page, server-side enforcement of watchlist tier limits, and Helius webhook hardening that eliminates the risk of API credit burning on active DeFi addresses. 38 new unit tests.</p>
+    <div class="meta">
+      <span>📅 April 11, 2026</span>
+      <span>⏱ 5 min read</span>
+    </div>
+  </a>
+
+  <!-- Benchmark -->
+  <a class="post-card" href="/blog/benchmark">
+    <div class="tag research">Research</div>
+    <h2>Benchmark: integrity.molt vs RugCheck vs GoPlus</h2>
+    <p>We scanned 50 tokens — 25 confirmed scams, 25 legitimate — across all three scanners and measured false positive rates, false negative rates, and time-to-verdict. The results show meaningful differences in how each tool handles honeypots and supply concentration.</p>
+    <div class="meta">
+      <span>📅 April 2026</span>
+      <span>⏱ 8 min read</span>
+    </div>
+  </a>
+
+  <!-- Methodology -->
+  <a class="post-card" href="/blog/rugcheck-methodology">
+    <div class="tag research">Methodology</div>
+    <h2>How integrity.molt Detects Rug Pulls: A Technical Deep Dive</h2>
+    <p>A walkthrough of the 6 detection layers in the integrity.molt pipeline — from on-chain mint/freeze authority checks through holder concentration analysis, liquidity lock verification, and finally LLM-powered pattern recognition that catches edge cases deterministic rules miss.</p>
+    <div class="meta">
+      <span>📅 April 2026</span>
+      <span>⏱ 10 min read</span>
+    </div>
+  </a>
+
+</div>
+
+<footer>
+  <p>
+    <a href="/">integrity.molt</a>
+    <a href="/scan">Scanner</a>
+    <a href="/docs.html">API</a>
+    <a href="https://t.me/intmolt_bot">Telegram</a>
+  </p>
+  <p style="margin-top:12px">© 2026 integrity.molt — AI-native Solana Security Scanner</p>
+</footer>
+
+</body>
+</html>

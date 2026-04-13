@@ -1,51 +1,92 @@
-# Changelog
+# Changelog — integrity.molt
 
 All notable changes to integrity.molt are documented here.
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Format: `## [vX.Y.Z] — YYYY-MM-DD`
 
-## [0.1.0] - 2026-04-07
+---
 
-### Initial public release
+## [v0.5.0] — 2026-04-13
 
-#### Core scanner pipeline
-- Solana address quick scan (RPC-only, ~1-2s)
-- Deep security audit via multi-agent swarm orchestrator
-- Token security audit — mint/freeze authority, supply concentration, Metaplex metadata, Token-2022 extensions, Beggars Allocation risk
-- Wallet profiling — age estimate, DeFi exposure, risk classification
-- DeFi pool safety scan — Raydium/Orca/Meteora liquidity analysis
-- EVM token scanner — honeypot detection, source code analysis (Base/Ethereum/Arbitrum)
+### Added
+- **Pro Trader subscription tier** ($15/mo) — 20 watchlist addresses, unlimited scans, Telegram + email alerts, weekly delta report, signed reports
+- **Scam token database** — integrated SolRPDS + RugCheck archives; 17 000+ known scam tokens checked at scan time before LLM invocation
+- **EVM scam detection** — fee asymmetry analysis, holder concentration check, mint/burn risk patterns across Ethereum, BSC, Polygon, Arbitrum, Base
+- **Scan accuracy monitoring** — `scan_accuracy_signals` table, `/api/v1/admin/accuracy` endpoint, user feedback via `/api/v1/feedback`
+- **LLM scan validator** — prevents false negatives and hallucinations; 6 validation rules, prompt anchoring, JSON schema enforcement
+- **Golden dataset regression suite** — 17 tokens (SolRPDS + Jupiter), 29 accuracy tests, gate in `test-gate.sh`
 
-#### Report signing & verification
-- Ed25519 cryptographic signatures on every report (PyNaCl / libsodium)
-- Public verify key published at `/services` and `/.well-known/x402.json`
-- Browser-native verification at `/verify` (WebCrypto Ed25519, no dependencies)
-- Python CLI verifier: `verify-report.py`
+### Changed
+- Pricing unified: wallet / pool / token-audit all $0.75; deep audit $5.00
+- 3-column paywall layout with Pro Trader $15 tier prominently featured
+- Scan type cards now have full click targets (entire card clickable)
 
-#### Verified Delta Reports
-- Snapshot storage for every paid scan (`data/snapshots/`)
-- SHA-256 content hashing per snapshot
-- Structured diff engine — 6 change categories with LLM-generated security explanations
-- Signed delta reports (Ed25519) comparing two snapshots
-- API: `GET /api/v1/delta/:address`, `GET /api/v1/history/:address`
+### Fixed
+- Helius RPC deduplication in fork.js — eliminates redundant on-chain calls
+- `scans_today` always returning zero (date format mismatch in SQL)
+- SOL/USDC payment thresholds separated (previously mixed up)
+- ATA verification and anti-replay protection added to payment middleware
+- CAPTCHA: replaced Cloudflare Turnstile with HMAC-signed math CAPTCHA (no external dependency)
+- Google OAuth strategy now correctly registered on startup
+- Stripe Pro Trader price ID configured (`price_1TLgkyHPCh953ukRC7Uw6rqr`)
 
-#### Adversarial Simulation
-- Local validator fork via `solana-test-validator --clone`
-- 7 attack playbooks: authority takeover, oracle manipulation, missing signer check, account confusion, drain vault, CPI reentrancy, integer overflow
-- CWE-mapped findings with VULNERABLE/LIKELY_VULNERABLE/PROTECTED verdicts
-- LLM-powered exploit path analysis (Gemini 2.5 Flash via OpenRouter)
-- API: `POST /api/v1/adversarial/simulate`
+### Security
+- `events.jsonl` 50 MB cap with automatic rotation
+- WAL checkpoint every 6 hours — prevents unbounded SQLite WAL growth
 
-#### Payment & access
-- x402 micropayment paywall (USDC on Solana mainnet)
-- Per-scan pricing: 0.15–2.00 USDC
-- Bearer API key support for subscribers (unlimited scans)
-- Stripe subscription checkout (Builder $79/mo, Team $299/mo)
+---
 
-#### Infrastructure
-- Express server with NGINX reverse proxy
-- PostgreSQL — users, API keys, payments, funnel events, watchlist
-- Passport.js — Google, GitHub, Twitter OAuth + local email/password
-- Telegram bot integration with watchlist alerts
-- OpenAPI 3.0 specification at `/openapi.json`
-- x402 discovery at `/.well-known/x402.json`
+## [v0.4.0] — 2026-04-11
+
+### Added
+- Visual scan type card picker (replaces HTML select dropdown)
+- Live activity ticker on landing page (scans today, total, success rate)
+- FAQ section (8 questions, accordion, linked from nav)
+- Feature comparison table across all 4 tiers (15 features)
+- Soft paywall email capture (one-shot per session, before hard paywall)
+- Cached results badge ("⚡ Instant result")
+- X/Twitter share button on scan results
+- 38 unit tests for scanner logic (no network required)
+- LLM advisor module for grey-zone scores (40–70)
+- Known-safe token whitelist
+
+### Changed
+- Watchlist tier limits now enforced server-side (was UI-only before)
+- Helius webhook filter: `ANY` → targeted security tx types only (eliminates AMM noise)
+
+### Fixed
+- Friendly error messages (quota, invalid address, RPC timeout, unknown)
+- Stats auto-refresh every 60s on landing page
+
+### Security
+- Helius webhook rate limit: 300 req/min
+- Server-side watchlist enforcement prevents limit bypass via direct API calls
+
+---
+
+## [v0.3.0] — 2026-04-08
+
+### Added
+- Multi-chain EVM scanner — Ethereum, BSC, Polygon, Arbitrum, Base
+- Etherscan v2 API (one key for all chains via `?chainid=N`)
+- EVM rate limiter: max 5 req/s per explorer hostname, 429 retry with exponential backoff
+- Subscription tiers: Builder ($49/mo), Team ($299/mo) via Stripe
+
+### Changed
+- Landing page rewrite — pricing section, hero, trust signals
+
+---
+
+## [v0.1.0] — 2026-04-07
+
+### Added
+- Core Solana security scanner (quick, token, wallet, pool, deep scan types)
+- Ed25519 signed reports via `sign-report.py`
+- x402 micropayment paywall (USDC on Solana)
+- Multi-agent swarm: Scanner → Analyst → Reputation → Meta-scorecard
+- Telegram watchlist alerts (critical = immediate, warning = batched 5 min)
+- Delta reports with LLM diffs (OpenRouter / gemini-2.5-flash)
+- Helius webhooks for live address monitoring
+- SQLite database with `subscriptions`, `watchlist`, `events` tables
+- Ed25519 report verification endpoint (`/verify`)
+- Adversarial simulation: 7 attack playbooks (authority takeover, oracle manipulation, drain vault, CPI reentrancy…)
 - Puppeteer PDF/PNG report generation
