@@ -46,31 +46,43 @@ function parseCsv(content) {
 // ── Importery pro konkrétní formáty ──────────────────────────────────────────
 
 function importSolRPDS(filePath) {
+  // SolRPDS CSV formát: LIQUIDITY_POOL_ADDRESS, MINT, ..., INACTIVITY_STATUS
+  // Importujeme pouze tokeny s INACTIVITY_STATUS = "Inactive" (rug pull pattern)
   const content = fs.readFileSync(filePath, 'utf-8');
-  let rows;
+  const lines   = content.split('\n').filter(l => l.trim());
+  if (!lines.length) return { imported: 0, skipped: 0 };
 
-  // Zkus JSON formát
-  if (filePath.endsWith('.json')) {
-    const data = JSON.parse(content);
-    rows = Array.isArray(data) ? data : data.tokens || data.pools || [];
-  } else {
-    rows = parseCsv(content);
+  const headers   = lines[0].split(',');
+  const mintIdx   = headers.indexOf('MINT');
+  const statusIdx = headers.indexOf('INACTIVITY_STATUS');
+
+  // Fallback: pokud CSV nemá tyto sloupce, zkus generický parser
+  if (mintIdx === -1) {
+    const rows = parseCsv(content);
+    let imported = 0, skipped = 0;
+    for (const row of rows) {
+      const mint = row.mint || row.MINT || row.token_address || row.address;
+      if (!mint || mint.length < 32 || mint.length > 44) { skipped++; continue; }
+      db.upsertKnownScam({ mint, source: 'solrpds', scam_type: 'rug_pull', confidence: 0.85,
+        label: 'SolRPDS dataset', raw_data: null });
+      imported++;
+    }
+    return { imported, skipped };
   }
 
-  let imported = 0;
-  let skipped  = 0;
-  for (const row of rows) {
-    // SolRPDS možná používá různé názvy polí — zkus obě varianty
-    const mint = row.mint || row.token_address || row.address || row.pool_address;
+  let imported = 0, skipped = 0;
+  const seen = new Set();
+  for (let i = 1; i < lines.length; i++) {
+    const cols   = lines[i].split(',');
+    const mint   = (cols[mintIdx]   || '').trim();
+    const status = (cols[statusIdx] || '').trim();
     if (!mint || mint.length < 32 || mint.length > 44) { skipped++; continue; }
-
+    if (statusIdx !== -1 && status !== 'Inactive') { skipped++; continue; }
+    if (seen.has(mint)) { skipped++; continue; }
+    seen.add(mint);
     db.upsertKnownScam({
-      mint,
-      source:     'solrpds',
-      scam_type:  row.type || row.scam_type || row.label || 'rug_pull',
-      confidence: parseFloat(row.confidence || row.score || '1.0') || 1.0,
-      label:      row.name || row.description || row.label || null,
-      raw_data:   row,
+      mint, source: 'solrpds', scam_type: 'rug_pull', confidence: 0.85,
+      label: 'SolRPDS: inactive liquidity pool (rug pull pattern)', raw_data: null,
     });
     imported++;
   }
@@ -153,26 +165,46 @@ db.initSchema().then(() => {
   let result;
   try {
     if (source === 'solrpds') {
-      const defaultFile = path.join(DATA_DIR, 'solrpds.csv');
-      const file = args[2] || defaultFile;
-      if (!fs.existsSync(file)) {
-        console.error(`Soubor nenalezen: ${file}`);
-        console.error('Stáhněte dataset z: https://github.com/mitosis-project/solrpds');
+      // Podporujeme multi-file formát (solrpds_2021.csv...solrpds_2024.csv)
+      // nebo jednoduchý solrpds.csv
+      const specificFile = args[2];
+      const multiFiles = ['2021','2022','2023','2024']
+        .map(y => path.join(DATA_DIR, `solrpds_${y}.csv`))
+        .filter(f => fs.existsSync(f));
+      const singleFile = path.join(DATA_DIR, 'solrpds.csv');
+
+      const filesToImport = specificFile ? [specificFile]
+        : multiFiles.length ? multiFiles
+        : fs.existsSync(singleFile) ? [singleFile] : [];
+
+      if (!filesToImport.length) {
+        console.error('Žádný SolRPDS soubor nenalezen v data/scam-datasets/');
+        console.error('Stáhněte dataset z: https://github.com/DeFiLabX/SolRPDS');
         process.exit(1);
       }
-      console.log(`Importuji SolRPDS z: ${file}`);
-      result = importSolRPDS(file);
+
+      let totalImported = 0, totalSkipped = 0;
+      for (const file of filesToImport) {
+        console.log(`Importuji: ${path.basename(file)}`);
+        const r = importSolRPDS(file);
+        totalImported += r.imported;
+        totalSkipped  += r.skipped;
+      }
+      result = { imported: totalImported, skipped: totalSkipped };
 
     } else if (source === 'solrugdet') {
-      const defaultFile = path.join(DATA_DIR, 'solrugdetector.csv');
-      const file = args[2] || defaultFile;
-      if (!fs.existsSync(file)) {
-        console.error(`Soubor nenalezen: ${file}`);
-        console.error('Stáhněte dataset z: https://github.com/Mik-TF/solrugdetector');
+      // SolRugDetector dataset (2603.24625) - zatím není veřejně k dispozici
+      // Paper: Jiaxin Chen et al., arxiv.org/abs/2603.24625 (Mar 2026)
+      // Jakmile bude dataset publikován, stáhněte ho a spusťte tento příkaz
+      const defaultFile = args[2] || path.join(DATA_DIR, 'solrugdetector.csv');
+      if (!fs.existsSync(defaultFile)) {
+        console.error(`Soubor nenalezen: ${defaultFile}`);
+        console.error('SolRugDetector dataset není zatím veřejně dostupný (paper: arxiv.org/abs/2603.24625)');
+        console.error('Sledujte: https://github.com/DeFiLabX/ nebo autoři: ziguijiang, jiaxin-chen (GitHub)');
         process.exit(1);
       }
-      console.log(`Importuji SolRugDetector z: ${file}`);
-      result = importSolRugDetector(file);
+      console.log(`Importuji SolRugDetector z: ${defaultFile}`);
+      result = importSolRugDetector(defaultFile);
 
     } else if (source === 'csv') {
       const file = args[2];
