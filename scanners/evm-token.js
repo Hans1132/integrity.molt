@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { lookupScamCreator } = require('../src/scam-db/lookup');
 
 // ── Known-safe token whitelist ────────────────────────────────────────────────
 function loadEvmWhitelist() {
@@ -520,6 +521,29 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
         createTxHash   = creation.txHash          || null;
       }
     } catch { /* non-fatal */ }
+  }
+
+  // ── (g2) Guilt-by-association: known scam creator / owner check ──────────
+  // Žádné RPC volání — pouze SQLite lookup v scam_creators tabulce.
+  {
+    const walletsToCheck = [
+      { address: meta.deployer, role: 'Contract deployer' },
+      { address: meta.owner && meta.owner !== 'renounced' ? meta.owner : null, role: 'Contract owner' },
+    ];
+    for (const { address, role } of walletsToCheck) {
+      if (!address) continue;
+      try {
+        const creatorInfo = lookupScamCreator(address);
+        if (creatorInfo && creatorInfo.isKnownScammer) {
+          findings.push({
+            label:    `${role} wallet has ${creatorInfo.scamCount} prior rug(s) on record`,
+            severity: 'high',
+            category: 'known-scam-creator',
+            detail:   `Wallet: ${address}. Patterns: ${creatorInfo.patterns.join(', ') || 'n/a'}. Last scam: ${creatorInfo.lastScamAt || 'unknown'}`,
+          });
+        }
+      } catch { /* non-fatal */ }
+    }
   }
 
   // ── (h) Block timestamp → contract age ───────────────────────────────────

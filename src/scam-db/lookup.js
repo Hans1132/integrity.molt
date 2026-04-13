@@ -109,4 +109,15 @@ async function lookupScamDb(mint) {
   return { known_scam: known, rugcheck, db_match };
 }
 
-module.exports = { lookupScamDb, calcRiskLevel };
+/**
+ * Vyhledá wallet address v tabulce scam_creators (guilt-by-association).
+ *
+ * @param {string} walletAddress  — Solana mint authority / update authority / EVM deployer / owner
+ * @returns {{ isKnownScammer: boolean, scamCount: number, lastScamAt: string|null, patterns: string[] }|null}
+ */
+function lookupScamCreator(walletAddress) {
+  if (!walletAddress || typeof walletAddress !== 'string') return null;
+  return db.lookupScamCreator(walletAddress);
+}
+
+module.exports = { lookupScamDb, calcRiskLevel, lookupScamCreator };

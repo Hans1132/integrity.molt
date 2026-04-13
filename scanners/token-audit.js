@@ -6,7 +6,7 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const { validateLLMScore } = require('../src/llm/scan-validator');
-const { lookupScamDb }    = require('../src/scam-db/lookup');
+const { lookupScamDb, lookupScamCreator } = require('../src/scam-db/lookup');
 // bs58 v6+ exports via .default in CommonJS interop
 const _bs58raw = require('bs58');
 const bs58 = _bs58raw.default || _bs58raw;
@@ -641,6 +641,28 @@ async function auditToken(mintAddress, tokenName, options = {}) {
     // Metadata fetch failure is non-critical
     findings.push({ severity: 'info', category: 'metadata',
       label: `Metadata lookup failed: ${e.message}`, detail: null });
+  }
+
+  // ── 6b. Guilt-by-association: known scam creator check ───────────────────
+  // Zkontroluje mintAuthority a updateAuthority vůči tabulce scam_creators.
+  // Žádné RPC volání — pouze SQLite lookup.
+  {
+    const authoritiesToCheck = [
+      { address: mintInfo?.mintAuthority,         role: 'Mint authority' },
+      { address: metadata?.updateAuthority,        role: 'Update authority' },
+    ];
+    for (const { address, role } of authoritiesToCheck) {
+      if (!address || address === 'null') continue;
+      try {
+        const creatorInfo = lookupScamCreator(address);
+        if (creatorInfo && creatorInfo.isKnownScammer) {
+          finding('high', 'known-scam-creator',
+            `${role} wallet has ${creatorInfo.scamCount} prior rug(s) on record`,
+            `Creator wallet: ${address}. Patterns: ${creatorInfo.patterns.join(', ') || 'n/a'}. Last scam: ${creatorInfo.lastScamAt || 'unknown'}`
+          );
+        }
+      } catch { /* non-fatal */ }
+    }
   }
 
   // ── 7. Beggars Allocation / treasury analysis ──────────────────────────────

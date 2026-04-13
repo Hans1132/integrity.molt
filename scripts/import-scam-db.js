@@ -46,25 +46,39 @@ function parseCsv(content) {
 // ── Importery pro konkrétní formáty ──────────────────────────────────────────
 
 function importSolRPDS(filePath) {
-  // SolRPDS CSV formát: LIQUIDITY_POOL_ADDRESS, MINT, ..., INACTIVITY_STATUS
-  // Importujeme pouze tokeny s INACTIVITY_STATUS = "Inactive" (rug pull pattern)
+  // SolRPDS CSV formát: LIQUIDITY_POOL_ADDRESS, MINT, TOTAL_ADDED_LIQUIDITY,
+  // TOTAL_REMOVED_LIQUIDITY, NUM_LIQUIDITY_ADDS, NUM_LIQUIDITY_REMOVES,
+  // ADD_TO_REMOVE_RATIO, LAST_POOL_ACTIVITY_TIMESTAMP, FIRST_POOL_ACTIVITY_TIMESTAMP,
+  // LAST_SWAP_TIMESTAMP, LAST_SWAP_TX_ID, INACTIVITY_STATUS
+  //
+  // Importujeme VŠECHNY řádky (aktivní i neaktivní):
+  //   Inactive → confidence 0.90, rug_pattern 'inactive_pool' (potvrzený rug pull)
+  //   Active   → confidence 0.50, rug_pattern dle poměru removed/added
+  //
+  // Tvůrce (creator) v SolRPDS není — pole creator zůstane NULL.
+
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines   = content.split('\n').filter(l => l.trim());
   if (!lines.length) return { imported: 0, skipped: 0 };
 
-  const headers   = lines[0].split(',');
-  const mintIdx   = headers.indexOf('MINT');
-  const statusIdx = headers.indexOf('INACTIVITY_STATUS');
+  const headers      = lines[0].split(',');
+  const mintIdx      = headers.indexOf('MINT');
+  const statusIdx    = headers.indexOf('INACTIVITY_STATUS');
+  const addedIdx     = headers.indexOf('TOTAL_ADDED_LIQUIDITY');
+  const removedIdx   = headers.indexOf('TOTAL_REMOVED_LIQUIDITY');
+  const firstTsIdx   = headers.indexOf('FIRST_POOL_ACTIVITY_TIMESTAMP');
 
-  // Fallback: pokud CSV nemá tyto sloupce, zkus generický parser
+  // Fallback: pokud CSV nemá MINT sloupec, zkus generický parser
   if (mintIdx === -1) {
     const rows = parseCsv(content);
     let imported = 0, skipped = 0;
     for (const row of rows) {
       const mint = row.mint || row.MINT || row.token_address || row.address;
       if (!mint || mint.length < 32 || mint.length > 44) { skipped++; continue; }
-      db.upsertKnownScam({ mint, source: 'solrpds', scam_type: 'rug_pull', confidence: 0.85,
-        label: 'SolRPDS dataset', raw_data: null });
+      db.upsertKnownScam({
+        mint, source: 'solrpds', scam_type: 'rug_pull', confidence: 0.75,
+        label: 'SolRPDS dataset', raw_data: null,
+      });
       imported++;
     }
     return { imported, skipped };
@@ -72,17 +86,50 @@ function importSolRPDS(filePath) {
 
   let imported = 0, skipped = 0;
   const seen = new Set();
+
   for (let i = 1; i < lines.length; i++) {
     const cols   = lines[i].split(',');
     const mint   = (cols[mintIdx]   || '').trim();
-    const status = (cols[statusIdx] || '').trim();
     if (!mint || mint.length < 32 || mint.length > 44) { skipped++; continue; }
-    if (statusIdx !== -1 && status !== 'Inactive') { skipped++; continue; }
     if (seen.has(mint)) { skipped++; continue; }
     seen.add(mint);
+
+    const status     = statusIdx    !== -1 ? (cols[statusIdx]    || '').trim() : '';
+    const added      = addedIdx     !== -1 ? parseFloat(cols[addedIdx]    || '0') : 0;
+    const removed    = removedIdx   !== -1 ? parseFloat(cols[removedIdx]  || '0') : 0;
+    const firstTsRaw = firstTsIdx   !== -1 ? (cols[firstTsIdx]   || '').trim() : '';
+
+    // Normalize timestamp (CSV má formát "2023-12-30 22:24:29.000")
+    const first_seen_at = firstTsRaw ? firstTsRaw.replace(' ', 'T').replace(/\.000$/, 'Z') : null;
+
+    // Odvodit rug_pattern z dostupných dat
+    let rug_pattern;
+    if (status === 'Inactive') {
+      rug_pattern = 'inactive_pool';
+    } else if (removed > added * 1.2) {
+      rug_pattern = 'liquidity_drain';
+    } else {
+      rug_pattern = 'active_suspicious';
+    }
+
+    // Confidence: vyšší pro potvrzené Inactive rugy
+    const confidence = status === 'Inactive' ? 0.90 : 0.50;
+    const label = status === 'Inactive'
+      ? 'SolRPDS: inactive liquidity pool (rug pull pattern)'
+      : `SolRPDS: active pool (suspicious — rug_pattern: ${rug_pattern})`;
+
     db.upsertKnownScam({
-      mint, source: 'solrpds', scam_type: 'rug_pull', confidence: 0.85,
-      label: 'SolRPDS: inactive liquidity pool (rug pull pattern)', raw_data: null,
+      mint,
+      source:     'solrpds',
+      scam_type:  'rug_pull',
+      confidence,
+      label,
+      raw_data:   null,
+      creator:    null,
+      first_seen_at,
+      first_seen_slot: null,
+      rug_pattern,
+      confidence_score: confidence,
     });
     imported++;
   }
@@ -222,6 +269,12 @@ db.initSchema().then(() => {
 
     console.log(`Import dokončen: ${result.imported} přidáno, ${result.skipped} přeskočeno`);
     console.log(`Celkem v databázi: ${db.getKnownScamsCount()} tokenů`);
+
+    // Přepočítej scam_creators tabulku po každém importu
+    console.log('Přepočítávám scam_creators...');
+    const creatorCount = db.rebuildScamCreators();
+    console.log(`scam_creators: ${creatorCount} unikátních tvůrců`);
+
     process.exit(0);
   } catch (e) {
     console.error('Import selhal:', e.message);

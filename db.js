@@ -208,16 +208,30 @@ function initSchema() {
 
     -- Statická scam databáze (SolRPDS, SolRugDetector a další importy)
     CREATE TABLE IF NOT EXISTS known_scams (
-      mint        TEXT    PRIMARY KEY,
-      source      TEXT    NOT NULL,  -- 'solrpds' | 'solrugdetector' | 'manual'
-      scam_type   TEXT,              -- 'rug_pull' | 'honeypot' | 'pump_dump' | 'fake' | 'phishing'
-      confidence  REAL    NOT NULL DEFAULT 1.0, -- 0.0–1.0
-      label       TEXT,              -- human-readable popis
-      raw_data    TEXT,              -- JSON z originálu
-      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-      updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+      mint              TEXT    PRIMARY KEY,
+      source            TEXT    NOT NULL,  -- 'solrpds' | 'solrugdetector' | 'manual'
+      scam_type         TEXT,              -- 'rug_pull' | 'honeypot' | 'pump_dump' | 'fake' | 'phishing'
+      confidence        REAL    NOT NULL DEFAULT 1.0, -- 0.0–1.0
+      label             TEXT,              -- human-readable popis
+      raw_data          TEXT,              -- JSON z originálu
+      creator           TEXT,              -- creator/deployer wallet address (NULL pro SolRPDS)
+      first_seen_slot   INTEGER,           -- první slot aktivity (NULL pokud nemáme slot)
+      first_seen_at     TEXT,              -- první časové razítko aktivity (ISO 8601)
+      rug_pattern       TEXT,              -- 'liquidity_drain' | 'inactive_pool' | 'active_suspicious'
+      confidence_score  REAL,              -- alias pro confidence (pro zpětnou kompatibilitu nových zdrojů)
+      created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at        TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS known_scams_source ON known_scams (source, scam_type);
+
+    -- Agregace scam tvůrců — guilt-by-association
+    CREATE TABLE IF NOT EXISTS scam_creators (
+      creator_wallet  TEXT    PRIMARY KEY,
+      scam_count      INTEGER NOT NULL DEFAULT 1,
+      last_scam_at    TEXT,
+      patterns        TEXT    -- JSON array of distinct rug_pattern values
+    );
+    CREATE INDEX IF NOT EXISTS scam_creators_count ON scam_creators (scam_count DESC);
 
     -- Ephemerní cache RugCheck API výsledků (TTL 24h)
     CREATE TABLE IF NOT EXISTS rugcheck_cache (
@@ -232,7 +246,29 @@ function initSchema() {
     );
     CREATE INDEX IF NOT EXISTS rugcheck_cache_fetched ON rugcheck_cache (fetched_at DESC);
   `);
+  // Migruj sloupce pro existující DB (bezpečné i při opakovaném volání)
+  migrateKnownScamsSchema();
   return Promise.resolve();
+}
+
+// migrateKnownScamsSchema musí být definovaná před initSchema, ale volá se z ní.
+// Funkce je deklarovaná jako function (hoisted) níže.
+function migrateKnownScamsSchema() {
+  const alterCols = [
+    "ALTER TABLE known_scams ADD COLUMN creator          TEXT",
+    "ALTER TABLE known_scams ADD COLUMN first_seen_slot  INTEGER",
+    "ALTER TABLE known_scams ADD COLUMN first_seen_at    TEXT",
+    "ALTER TABLE known_scams ADD COLUMN rug_pattern      TEXT",
+    "ALTER TABLE known_scams ADD COLUMN confidence_score REAL",
+  ];
+  for (const sql of alterCols) {
+    try { db.exec(sql); } catch (e) {
+      if (!e.message.includes('duplicate column name')) throw e;
+    }
+  }
+  try {
+    db.exec("CREATE INDEX IF NOT EXISTS known_scams_creator ON known_scams (creator) WHERE creator IS NOT NULL");
+  } catch {}
 }
 
 // auth.js volá initUsersSchema() samostatně — mapujeme na initSchema
@@ -1045,29 +1081,87 @@ function lookupKnownScam(mint) {
   return row;
 }
 
-function upsertKnownScam({ mint, source, scam_type, confidence, label, raw_data }) {
+function upsertKnownScam({
+  mint, source, scam_type, confidence, label, raw_data,
+  creator, first_seen_at, first_seen_slot, rug_pattern, confidence_score
+}) {
   db.prepare(`
-    INSERT INTO known_scams (mint, source, scam_type, confidence, label, raw_data, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO known_scams
+      (mint, source, scam_type, confidence, label, raw_data,
+       creator, first_seen_at, first_seen_slot, rug_pattern, confidence_score,
+       updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(mint) DO UPDATE SET
-      source      = excluded.source,
-      scam_type   = excluded.scam_type,
-      confidence  = excluded.confidence,
-      label       = excluded.label,
-      raw_data    = excluded.raw_data,
-      updated_at  = datetime('now')
+      source           = excluded.source,
+      scam_type        = excluded.scam_type,
+      confidence       = excluded.confidence,
+      label            = excluded.label,
+      raw_data         = excluded.raw_data,
+      creator          = COALESCE(excluded.creator, known_scams.creator),
+      first_seen_at    = COALESCE(excluded.first_seen_at, known_scams.first_seen_at),
+      first_seen_slot  = COALESCE(excluded.first_seen_slot, known_scams.first_seen_slot),
+      rug_pattern      = COALESCE(excluded.rug_pattern, known_scams.rug_pattern),
+      confidence_score = COALESCE(excluded.confidence_score, known_scams.confidence_score),
+      updated_at       = datetime('now')
   `).run(
     mint,
     source,
-    scam_type || null,
-    confidence != null ? confidence : 1.0,
-    label || null,
-    raw_data ? JSON.stringify(raw_data) : null
+    scam_type      || null,
+    confidence     != null ? confidence : 1.0,
+    label          || null,
+    raw_data       ? JSON.stringify(raw_data) : null,
+    creator        || null,
+    first_seen_at  || null,
+    first_seen_slot != null ? first_seen_slot : null,
+    rug_pattern    || null,
+    confidence_score != null ? confidence_score : null
   );
 }
 
 function getKnownScamsCount() {
   return db.prepare('SELECT COUNT(*) AS cnt FROM known_scams').get().cnt;
+}
+
+// ── Scam creators (guilt-by-association) ─────────────────────────────────────
+
+/**
+ * Vyhledá wallet address v tabulce scam_creators.
+ * @param {string} walletAddress
+ * @returns {{ isKnownScammer: boolean, scamCount: number, lastScamAt: string|null, patterns: string[] }|null}
+ */
+function lookupScamCreator(walletAddress) {
+  if (!walletAddress || typeof walletAddress !== 'string') return null;
+  const row = db.prepare('SELECT * FROM scam_creators WHERE creator_wallet = ?').get(walletAddress);
+  if (!row) return null;
+  let patterns = [];
+  try { patterns = row.patterns ? JSON.parse(row.patterns) : []; } catch {}
+  return {
+    isKnownScammer: true,
+    scamCount:      row.scam_count,
+    lastScamAt:     row.last_scam_at,
+    patterns,
+  };
+}
+
+/**
+ * Přepočítá / naplní tabulku scam_creators z known_scams.
+ * Spouštěno po importu — není třeba volat za běhu.
+ */
+function rebuildScamCreators() {
+  db.exec("DELETE FROM scam_creators");
+  db.prepare(`
+    INSERT INTO scam_creators (creator_wallet, scam_count, last_scam_at, patterns)
+    SELECT
+      creator,
+      COUNT(*)                                                              AS scam_count,
+      MAX(COALESCE(first_seen_at, created_at))                             AS last_scam_at,
+      json_group_array(DISTINCT rug_pattern) FILTER (WHERE rug_pattern IS NOT NULL) AS patterns
+    FROM known_scams
+    WHERE creator IS NOT NULL AND creator != ''
+    GROUP BY creator
+    HAVING COUNT(*) >= 1
+  `).run();
+  return db.prepare('SELECT COUNT(*) AS cnt FROM scam_creators').get().cnt;
 }
 
 // ── RugCheck API cache ────────────────────────────────────────────────────────
@@ -1131,6 +1225,7 @@ module.exports = {
   logAccuracySignal, logUserFeedback, getAccuracyStats,
   // Scam database
   lookupKnownScam, upsertKnownScam, getKnownScamsCount,
+  lookupScamCreator, rebuildScamCreators,
   // RugCheck cache
   getRugcheckCache, setRugcheckCache,
   // Advisor usage
