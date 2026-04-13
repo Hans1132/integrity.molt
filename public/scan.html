@@ -1004,9 +1004,9 @@
 // ── Constants ──────────────────────────────────────────────────────────────────
 const SCAN_TYPES = {
   quick:       { desc: 'Multi-agent swarm scan, results in ~10s',                   priceUSD: 0.50, free: true,  addrType: 'solana' },
-  token:       { desc: 'Token rug risk analysis, ~15s',                             priceUSD: 1.00, free: true,  addrType: 'solana' },
-  wallet:      { desc: 'Wallet history & risk profile, ~15s',                       priceUSD: 1.00, free: true,  addrType: 'solana' },
-  pool:        { desc: 'DEX pool safety check, ~15s',                               priceUSD: 0.50, free: true,  addrType: 'solana' },
+  token:       { desc: 'Token rug risk analysis, ~15s',                             priceUSD: 0.75, free: true,  addrType: 'solana' },
+  wallet:      { desc: 'Wallet history & risk profile, ~15s',                       priceUSD: 0.75, free: true,  addrType: 'solana' },
+  pool:        { desc: 'DEX pool safety check, ~15s',                               priceUSD: 0.75, free: true,  addrType: 'solana' },
   'evm-token': { desc: 'Honeypot + bytecode analysis on Base/ETH/Arbitrum, ~10s',   priceUSD: 0.75, free: true,  addrType: 'evm'    },
   deep:        { desc: 'Full swarm audit, multi-agent AI analysis, ~30s',           priceUSD: 5.00, free: false, addrType: 'solana' }
 };
@@ -2122,7 +2122,7 @@ function showPaywall(json, type) {
   section.style.display = 'block';
   document.getElementById('spinnerWrap').style.display = 'none';
 
-  const PRICES = { quick: 0.50, token: 1.00, wallet: 1.00, pool: 0.50, 'evm-token': 0.75, deep: 5.00 };
+  const PRICES = { quick: 0.50, token: 0.75, wallet: 0.75, pool: 0.75, 'evm-token': 0.75, deep: 5.00 };
   const price   = PRICES[type] || 0.10;
   const isDeep  = type === 'deep';
 

@@ -1092,7 +1092,7 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
   }
 });
 
-// Wallet Deep Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
+// Wallet Deep Scan - paid endpoint (0.75 USDC = 750000 micro-USDC)
 app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(walletProfilePaymentAccepts, PRICING.wallet), express.json(), async (req, res) => {
   const address = req.body.address || req.body.wallet || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
@@ -1131,7 +1131,7 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(wa
   }
 });
 
-// Pool Deep Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
+// Pool Deep Scan - paid endpoint (0.75 USDC = 750000 micro-USDC)
 app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolScanPaymentAccepts, PRICING.pool), express.json(), async (req, res) => {
   const address = req.body.address || req.body.pool || req.body.target;
   if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
@@ -1401,7 +1401,7 @@ app.post('/scan/contract', trackFunnel('contract'), requireApiKey, requirePaymen
   }
 });
 
-// ── Token Security Audit — paid endpoint (0.50 USDC = 500000 micro-USDC) ──────
+// ── Token Security Audit — paid endpoint (0.75 USDC = 750000 micro-USDC) ──────
 // POST /api/v1/scan/token-audit
 // Body: { token_mint, token_name?, callback_url? }
 app.post(
@@ -1577,9 +1577,9 @@ app.get('/api/v1/token-audit/showcase', (req, res) => {
   const showcase = getShowcaseReport();
   res.json({
     status:  'showcase',
-    message: 'This is a pre-computed example Token Security Audit report. Run a live audit for any Molt.id token via POST /api/v1/scan/token-audit (0.50 USDC via x402).',
+    message: 'This is a pre-computed example Token Security Audit report. Run a live audit for any Molt.id token via POST /api/v1/scan/token-audit (0.75 USDC via x402).',
     pricing: {
-      price:    '0.50 USDC',
+      price:    '0.75 USDC',
       method:   'x402 micropayment or Bearer API key',
       endpoint: 'POST /api/v1/scan/token-audit',
       body:     '{ "token_mint": "<mint_address>", "token_name": "<optional>" }'
@@ -1968,9 +1968,9 @@ app.get('/watchlist', async (req, res) => {
 const SCAN_PRICES_USD = {
   quick:       0.50,
   deep:        5.00,
-  token:       1.00,
-  wallet:      1.00,
-  pool:        0.50,
+  token:       0.75,
+  wallet:      0.75,
+  pool:        0.75,
   'evm-token': 0.75,
   contract:    5.00
 };

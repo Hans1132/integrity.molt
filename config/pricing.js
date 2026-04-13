@@ -13,12 +13,12 @@ const PRICING = {
   quick:               500_000,   // 0.50 USDC
   deep:              5_000_000,   // 5.00 USDC
   token:               750_000,   // 0.75 USDC
-  wallet:              500_000,   // 0.50 USDC
-  pool:                500_000,   // 0.50 USDC
+  wallet:              750_000,   // 0.75 USDC
+  pool:                750_000,   // 0.75 USDC
   'evm-token':         750_000,   // 0.75 USDC
   'evm-scan':          750_000,   // 0.75 USDC
   contract:          5_000_000,   // 5.00 USDC
-  'token-audit':       500_000,   // 0.50 USDC
+  'token-audit':       750_000,   // 0.75 USDC
   delta:             1_000_000,   // 1.00 USDC
   adversarial:      10_000_000,   // 10.00 USDC
 };
@@ -28,12 +28,12 @@ const PRICING_DISPLAY = {
   quick:           '0.50 USDC',
   deep:            '5.00 USDC',
   token:           '0.75 USDC',
-  wallet:          '0.50 USDC',
-  pool:            '0.50 USDC',
+  wallet:          '0.75 USDC',
+  pool:            '0.75 USDC',
   'evm-token':     '0.75 USDC',
   'evm-scan':      '0.75 USDC',
   contract:        '5.00 USDC',
-  'token-audit':   '0.50 USDC',
+  'token-audit':   '0.75 USDC',
   delta:           '1.00 USDC',
   adversarial:    '10.00 USDC',
 };
