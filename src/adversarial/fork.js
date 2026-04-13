@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const SOLANA_BIN    = '/root/.local/share/solana/install/active_release/bin';
 const VALIDATOR_BIN = path.join(SOLANA_BIN, 'solana-test-validator');
 const KEYGEN_BIN    = path.join(SOLANA_BIN, 'solana-keygen');
-const MAINNET_RPC   = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const { SOLANA_RPC_URL: MAINNET_RPC } = require('../rpc');
 
 const DEFAULT_RPC_PORT  = 8899;
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;   // 5 minutes

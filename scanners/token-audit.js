@@ -13,13 +13,7 @@ const bs58 = _bs58raw.default || _bs58raw;
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const SOLANA_RPC = process.env.SOLANA_RPC_URL
-  || (() => {
-    let k = '';
-    try { k = fs.readFileSync('/root/.secrets/alchemy_api_key', 'utf-8').trim(); } catch {}
-    if (!k && process.env.ALCHEMY_API_KEY) k = process.env.ALCHEMY_API_KEY;
-    return k ? `https://solana-mainnet.g.alchemy.com/v2/${k}` : 'https://api.mainnet-beta.solana.com';
-  })();
+const { SOLANA_RPC_URL: SOLANA_RPC } = require('../src/rpc');
 
 let OPENROUTER_API_KEY = '';
 try { OPENROUTER_API_KEY = fs.readFileSync('/root/.secrets/openrouter_api_key', 'utf-8').trim(); } catch {}

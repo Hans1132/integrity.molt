@@ -19,6 +19,7 @@ const PRICING = {
   'evm-scan':          750_000,   // 0.75 USDC
   contract:          5_000_000,   // 5.00 USDC
   'token-audit':       750_000,   // 0.75 USDC
+  'agent-token':       150_000,   // 0.15 USDC
   delta:             1_000_000,   // 1.00 USDC
   adversarial:      10_000_000,   // 10.00 USDC
 };
@@ -34,6 +35,7 @@ const PRICING_DISPLAY = {
   'evm-scan':      '0.75 USDC',
   contract:        '5.00 USDC',
   'token-audit':   '0.75 USDC',
+  'agent-token':   '0.15 USDC',
   delta:           '1.00 USDC',
   adversarial:    '10.00 USDC',
 };

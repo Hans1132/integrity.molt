@@ -11,6 +11,7 @@ const { PublicKey } = require('@solana/web3.js');
 const Stripe = require('stripe');
 const { scanEVMToken, SUPPORTED_CHAINS: EVM_CHAINS, getExplorerKey: evmGetKey, hasExplorerKey: evmHasKey } = require('./scanners/evm-token');
 const { auditToken, getShowcaseReport } = require('./scanners/token-audit');
+const { scanAgentToken }               = require('./scanners/agent-token-scanner');
 const { generateReport, generatePDFBuffer, generatePNGBuffer } = require('./report-generator');
 const authModule = require('./auth');
 const { configureSession, setupStrategies, registerAuthRoutes } = authModule;
@@ -25,6 +26,7 @@ const { verifyWebhookAuth, handleHeliusWebhook, registerRescanCallback } = requi
 const { initMonitor }        = require('./src/monitor/init');
 const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
+const { lookupScamDb }       = require('./src/scam-db/lookup');
 
 const https = require('https');
 const nodemailer = require('nodemailer');
@@ -128,34 +130,33 @@ function loadLatestReport(reportsDir, slug, prefix) {
 }
 
 const VERIFY_KEY_PATH = '/root/.secrets/verify_key.bin';
-const _ALCHEMY_KEY    = process.env.ALCHEMY_API_KEY || '';
-const _ALCHEMY_SOL    = _ALCHEMY_KEY ? `https://solana-mainnet.g.alchemy.com/v2/${_ALCHEMY_KEY}` : null;
-const SOLANA_RPC      = process.env.SOLANA_RPC_URL
-                     || _ALCHEMY_SOL
-                     || 'https://api.mainnet-beta.solana.com';
+const { SOLANA_RPC_URL: SOLANA_RPC } = require('./src/rpc');
 
 // ── Quick RPC-only scan (no LLM, returns in ~1-2s) ────────────────────────────
 async function quickScanRpcOnly(address) {
   const t0 = Date.now();
 
-  // Two parallel RPC calls
-  const [accountRes, sigRes] = await Promise.allSettled([
+  // Three parallel calls: two RPC + scam-db lookup
+  const [accountRes, sigRes, scamDbRes] = await Promise.allSettled([
     rpcPost({ jsonrpc: '2.0', id: 1, method: 'getAccountInfo',
       params: [address, { encoding: 'base64', commitment: 'confirmed' }] }),
     rpcPost({ jsonrpc: '2.0', id: 2, method: 'getSignaturesForAddress',
-      params: [address, { limit: 10, commitment: 'confirmed' }] })
+      params: [address, { limit: 10, commitment: 'confirmed' }] }),
+    lookupScamDb(address)
   ]);
   console.log(`[TIMING quick-rpc] parallel RPC: ${Date.now()-t0}ms`);
 
   const accountData = accountRes.status === 'fulfilled' ? accountRes.value?.result?.value : null;
   const signatures  = sigRes.status   === 'fulfilled' ? (sigRes.value?.result || []) : [];
+  const scamDb      = scamDbRes.status === 'fulfilled' ? scamDbRes.value : { known_scam: null, rugcheck: null, db_match: false };
 
   if (!accountData) {
     return {
       risk_score: 80, risk_level: 'high',
       summary: 'Address not found on-chain — possibly invalid, unfunded, or closed.',
       checks: { account_status: { status: 'Not found on-chain', risk: 'high' } },
-      evidence: [], scan_type: 'quick-rpc', scan_ms: Date.now()-t0
+      evidence: [], scan_type: 'quick-rpc', scan_ms: Date.now()-t0,
+      scam_db: scamDb
     };
   }
 
@@ -202,6 +203,24 @@ async function quickScanRpcOnly(address) {
     score += 10;
   }
 
+  // Scam-db score boost
+  if (scamDb.known_scam) {
+    const conf = scamDb.known_scam.confidence_score || scamDb.known_scam.confidence || 0.5;
+    score += Math.round(conf * 40);  // max +40 pro confidence=1.0
+    riskFactors.push(`Known scam database match (source: ${scamDb.known_scam.source}, confidence: ${conf})`);
+  }
+  if (scamDb.rugcheck?.rugged) {
+    score += 35;
+    riskFactors.push('RugCheck: token confirmed rugged');
+  } else if (scamDb.rugcheck?.risk_level === 'danger') {
+    score += 20;
+    riskFactors.push('RugCheck: danger level');
+  } else if (scamDb.rugcheck?.risk_level === 'warn') {
+    score += 10;
+    riskFactors.push('RugCheck: warn level');
+  }
+  score = Math.min(score, 100);
+
   // Owner label
   const OWNER_NAMES = {
     [TOKEN_PROG]:      'Token Program',
@@ -220,6 +239,12 @@ async function quickScanRpcOnly(address) {
     recent_activity: {
       status: recentTxCount >= 10 ? '10+ recent txs' : `${recentTxCount} recent txs`,
       risk:   recentTxCount === 0 && lamports < 1_000_000 ? 'medium' : 'safe'
+    },
+    scam_db: {
+      status: scamDb.known_scam
+        ? `MATCH: ${scamDb.known_scam.source} (${scamDb.known_scam.scam_type || 'rug_pull'})`
+        : scamDb.rugcheck ? `RugCheck: ${scamDb.rugcheck.risk_level}` : 'No match',
+      risk: scamDb.db_match ? 'critical' : scamDb.rugcheck?.risk_level === 'warn' ? 'medium' : 'safe'
     }
   };
 
@@ -253,6 +278,7 @@ async function quickScanRpcOnly(address) {
     recent_tx_count: recentTxCount,
     checks,
     evidence,
+    scam_db:         scamDb,
     scan_type: 'quick-rpc',
     scan_ms:   Date.now()-t0
   };
@@ -733,6 +759,53 @@ const tokenSecurityAuditPaymentAccepts = [{
   }
 }];
 
+// ── Agent Token Scan payment accepts (0.15 USDC = 150000 micro-USDC) ─────────
+const agentTokenPaymentAccepts = [{
+  scheme: 'exact',
+  network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+  maxAmountRequired: String(PRICING['agent-token']),
+  resource: 'https://intmolt.org/api/v1/scan/agent-token',
+  asset: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  payTo: USDC_ATA,
+  description: 'Agent Token Security Scan — Metaplex Core NFT backing, treasury PDA, update authority, creator fees, DAO governance, activity analysis',
+  mimeType: 'application/json',
+  maxTimeoutSeconds: 60,
+  outputSchema: {
+    input: {
+      type: 'http',
+      method: 'POST',
+      url: 'https://intmolt.org/api/v1/scan/agent-token',
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        type: 'object',
+        required: ['mint'],
+        properties: {
+          mint: { type: 'string', description: 'Metaplex Core asset address (base58)' }
+        }
+      }
+    },
+    output: {
+      type: 'http',
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        type: 'object',
+        properties: {
+          scan_type:      { type: 'string' },
+          target:         { type: 'string' },
+          score:          { type: 'number' },
+          risk_level:     { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
+          findings:       { type: 'array' },
+          agent_metadata: { type: 'object' },
+          token_metrics:  { type: 'object' },
+          signed:         { type: 'object' },
+          timestamp:      { type: 'string' }
+        }
+      }
+    }
+  }
+}];
+
 // Logo - free
 app.get('/logo.svg', (req, res) => { res.sendFile('/root/x402-ecosystem-submission/logo.svg'); });
 
@@ -798,6 +871,11 @@ app.get('/services', (req, res) => {
         endpoint: 'POST /scan/contract',
         price: PRICING_DISPLAY.contract,
         description: 'Contract Audit — static analysis (cargo-audit CVEs, clippy, semgrep) + LLM-verified findings with Immunefi impact mapping. Input: GitHub URL of a Solana/Rust project.'
+      },
+      {
+        endpoint: 'POST /scan/agent-token',
+        price: PRICING_DISPLAY['agent-token'],
+        description: 'Agent Token Security Scan — Metaplex Core NFT backing, treasury PDA, update authority, creator fees, DAO governance, activity (0.15 USDC)'
       },
       {
         endpoint: 'GET /api/v1/delta/:address',
@@ -973,12 +1051,33 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
   try {
     const _t0 = Date.now();
 
-    // 1. Shell skript — on-chain data
-    const { stdout } = await runScript('/root/scanner/quick-scan.sh', [safeAddress], 60000);
+    // 1. Shell skript + scam-db lookup (paralelně)
+    const [{ stdout }, scamDb] = await Promise.all([
+      runScript('/root/scanner/quick-scan.sh', [safeAddress], 60000),
+      lookupScamDb(safeAddress).catch(e => {
+        console.warn('[scan/quick] scam-db lookup failed (non-fatal):', e.message);
+        return { known_scam: null, rugcheck: null, db_match: false };
+      })
+    ]);
     const scriptMs = Date.now() - _t0;
     const slug = safeAddress.substring(0, 10).toLowerCase();
     const { reportText: shellReport, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, '');
     const rawReport = shellReport || stdout;
+
+    // Příprava scam-db sekce pro LLM
+    let scamDbSection = '';
+    if (scamDb.known_scam) {
+      const ks = scamDb.known_scam;
+      scamDbSection += `\n⚠️ SCAM DATABASE MATCH:\n  Source: ${ks.source}\n  Type: ${ks.scam_type || 'rug_pull'}\n  Confidence: ${ks.confidence_score || ks.confidence}\n  Label: ${ks.label || 'n/a'}\n  Pattern: ${ks.rug_pattern || 'n/a'}\n`;
+    }
+    if (scamDb.rugcheck) {
+      const rc = scamDb.rugcheck;
+      scamDbSection += `\nRugCheck API:\n  Risk level: ${rc.risk_level}\n  Score: ${rc.score ?? 'n/a'}\n  Rugged: ${rc.rugged ? 'YES' : 'no'}\n`;
+      if (rc.risks_json?.length) {
+        scamDbSection += `  Risks: ${rc.risks_json.map(r => r.name || r).join(', ')}\n`;
+      }
+    }
+    if (!scamDbSection) scamDbSection = '\nScam databases: No match found.\n';
 
     // 2. Sonnet executor + Opus advisor — LLM analýza
     let advisorResult = null;
@@ -987,7 +1086,7 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
     try {
       advisorResult = await runWithAdvisor({
         systemPrompt: SECURITY_ANALYST_SYSTEM,
-        userMessage:  `Adresa: ${safeAddress}\n\nOn-chain data:\n${rawReport}`,
+        userMessage:  `Adresa: ${safeAddress}\n\nOn-chain data:\n${rawReport}${scamDbSection}`,
       });
       finalReport = advisorResult.text || rawReport;
       console.log(`[scan/quick] advisor=${advisorResult.provider} used=${advisorResult.advisorUsed} llmMs=${Date.now()-_t0-scriptMs}ms`);
@@ -1020,6 +1119,7 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
       advisor_used:  advisorResult?.advisorUsed ?? false,
       provider:      advisorResult?.provider    ?? 'shell-only',
       signed:        signedEnvelope,
+      scam_db:       scamDb,
       timestamp:     new Date().toISOString(),
     });
   } catch (err) {
@@ -1641,6 +1741,100 @@ app.get('/api/v1/token-audit/showcase', (req, res) => {
     ]
   });
 });
+
+// ── Agent Token Scan — paid endpoint (0.15 USDC = 150000 micro-USDC) ──────────
+// POST /api/v1/scan/agent-token
+// Body: { mint }
+app.post(
+  '/api/v1/scan/agent-token',
+  trackFunnel('agent-token'),
+  requireApiKey,
+  requirePayment(agentTokenPaymentAccepts, PRICING['agent-token']),
+  express.json(),
+  async (req, res) => {
+    const { mint } = req.body || {};
+
+    if (!mint) return res.status(400).json({ error: 'Missing mint field in request body' });
+
+    const safeMint = mint.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
+    if (!safeMint || safeMint.length < 32 || safeMint.length > 44) {
+      return res.status(400).json({ error: 'Invalid Solana address format for mint' });
+    }
+
+    try {
+      const _t0   = Date.now();
+      const result = await scanAgentToken(safeMint);
+      console.log(`[scan/agent-token] mint=${safeMint} scan=${Date.now()-_t0}ms score=${result.score} risk=${result.risk_level}`);
+
+      // Build text report for signing
+      const reportLines = [
+        '=== integrity.molt Agent Token Security Scan ===',
+        `Date:       ${new Date().toISOString()}`,
+        `Asset:      ${safeMint}`,
+        `Domain:     ${result.domain || 'n/a'}`,
+        '',
+        `Risk Score: ${result.score} / 100`,
+        `Risk Level: ${result.risk_level}`,
+        '',
+        `Summary:    ${result.summary}`,
+        '',
+        '--- Agent Metadata ---',
+        `Metaplex Core:      ${result.agent_metadata?.is_metaplex_core ?? 'n/a'}`,
+        `Update Authority:   ${result.agent_metadata?.update_authority || 'none'}`,
+        `Authority Risk:     ${result.agent_metadata?.update_authority_risk || 'n/a'}`,
+        `Creator Fees (bps): ${result.agent_metadata?.creator_fees_bps ?? 0}`,
+        `Treasury PDA:       ${result.agent_metadata?.treasury_address || 'n/a'}`,
+        `Treasury Lamports:  ${result.agent_metadata?.treasury_lamports ?? 0}`,
+        `Mutable:            ${result.agent_metadata?.is_mutable ?? 'n/a'}`,
+        `Frozen:             ${result.agent_metadata?.is_frozen ?? 'n/a'}`,
+        '',
+        '--- Findings ---',
+        ...result.findings.map(f => `[${f.severity.toUpperCase()}] (${f.category}) ${f.title}: ${f.detail}`),
+        '',
+        '---',
+        'Report signed with Ed25519. Verify: python3 /root/scanner/verify-report.py <signed.json>',
+        'This is an automated static analysis. Not a substitute for a full manual security audit.'
+      ];
+      const reportText = reportLines.join('\n');
+
+      // Sign report with Ed25519
+      let signedEnvelope = null;
+      try {
+        signedEnvelope = await asyncSign(reportText);
+      } catch (e) {
+        console.error('[scan/agent-token] signing failed:', e.message);
+      }
+
+      res.json({
+        status:          'complete',
+        type:            'agent-token-scan',
+        scan_version:    '1.0',
+        scan_type:       result.scan_type,
+        target:          result.target,
+        domain:          result.domain,
+        score:           result.score,
+        risk_level:      result.risk_level,
+        summary:         result.summary,
+        findings:        result.findings,
+        agent_metadata:  result.agent_metadata,
+        token_metrics:   result.token_metrics,
+        report:          reportText,
+        signed:          signedEnvelope,
+        verify_instructions: signedEnvelope ? {
+          method:  'Ed25519',
+          command: 'python3 /root/scanner/verify-report.py <path-to-signed.json>',
+          key_id:  signedEnvelope.key_id,
+          note:    'verify_key field in the signed envelope is the base64-encoded Ed25519 public key'
+        } : null,
+        scan_ms:   result.scan_ms,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('[scan/agent-token] error:', err.message);
+      res.status(500).json({ error: 'Agent token scan failed', detail: err.message });
+    }
+  }
+);
 
 // ── Adversarial Simulation ─────────────────────────────────────────────────────
 // GET  /api/v1/adversarial/playbooks          — list all playbooks (free)

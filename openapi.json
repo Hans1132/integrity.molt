@@ -59,6 +59,17 @@
         }
       }
     },
+    "/scan/agent-token": {
+      "post": {
+        "summary": "Agent Token Security Scan (0.15 USDC) — NEW",
+        "description": "Scans a Metaplex Core Agent Token. Checks: Core NFT program ownership, treasury PDA, update authority risk (single key vs DAO/multisig), creator royalties, collection governance, and activity age. Returns risk score 0-100 with Ed25519 signed report. Metaplex Agent Tokens launched 2026-04-13.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"mint": {"type": "string", "description": "Metaplex Core asset address (base58)"}}, "required": ["mint"]}}}},
+        "responses": {
+          "200": {"description": "Agent token scan report", "content": {"application/json": {"schema": {"type": "object", "properties": {"status": {"type": "string"}, "scan_type": {"type": "string"}, "target": {"type": "string"}, "score": {"type": "integer", "minimum": 0, "maximum": 100}, "risk_level": {"type": "string", "enum": ["LOW","MEDIUM","HIGH","CRITICAL"]}, "summary": {"type": "string"}, "findings": {"type": "array"}, "agent_metadata": {"type": "object"}, "token_metrics": {"type": "object"}, "signed": {"type": "object"}, "timestamp": {"type": "string"}}}}}},
+          "402": {"description": "Payment required (0.15 USDC via x402)"}
+        }
+      }
+    },
     "/services": {
       "get": {
         "summary": "Service discovery (free)",

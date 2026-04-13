@@ -16,13 +16,14 @@ const { randomUUID } = require('crypto');
 
 // ── Skill → scan type mapping ─────────────────────────────────────────────────
 
+// Prices must stay in sync with config/pricing.js (single source of truth).
 const SKILLS = {
   'quick_scan': {
     name:        'Quick Scan',
     description: 'Fast on-chain scan of a Solana address — account info, balance, basic risk assessment. Free tier, rate-limited.',
     inputModes:  ['text/plain'],
     outputModes: ['application/json'],
-    priceUSDC:   0,
+    priceUSDC:   0,        // free — config/pricing.js: quick = 500_000 (paid REST), A2A uses /scan/free
     tags:        ['solana', 'security', 'free'],
   },
   'token_audit': {
@@ -30,15 +31,23 @@ const SKILLS = {
     description: 'SPL token launch audit — mint authority, freeze authority, holder distribution, rug risk.',
     inputModes:  ['text/plain'],
     outputModes: ['application/json'],
-    priceUSDC:   0.75,
+    priceUSDC:   0.75,     // config/pricing.js: token = 750_000
     tags:        ['solana', 'token', 'security'],
+  },
+  'agent_token_scan': {
+    name:        'Agent Token Scan',
+    description: 'Metaplex Agent Token security scan — Core NFT backing, treasury PDA, update authority risk, creator royalties, DAO governance, activity analysis. Launched 2026-04-13.',
+    inputModes:  ['text/plain'],
+    outputModes: ['application/json'],
+    priceUSDC:   0.15,     // config/pricing.js: agent-token = 150_000
+    tags:        ['solana', 'metaplex', 'agent-token', 'nft', 'security'],
   },
   'wallet_profile': {
     name:        'Wallet Profile',
     description: 'Wallet profiling — age, activity, DeFi exposure, risk classification.',
     inputModes:  ['text/plain'],
     outputModes: ['application/json'],
-    priceUSDC:   0.50,
+    priceUSDC:   0.75,     // config/pricing.js: wallet = 750_000 (was incorrectly 0.50)
     tags:        ['solana', 'wallet', 'security'],
   },
   'deep_audit': {
@@ -46,7 +55,7 @@ const SKILLS = {
     description: 'Comprehensive Solana program security audit — static analysis, LLM-verified findings, Ed25519-signed report.',
     inputModes:  ['text/plain'],
     outputModes: ['application/json'],
-    priceUSDC:   5.00,
+    priceUSDC:   5.00,     // config/pricing.js: deep = 5_000_000
     tags:        ['solana', 'program', 'security', 'audit'],
   },
   'adversarial_sim': {
@@ -54,7 +63,7 @@ const SKILLS = {
     description: 'Full adversarial simulation — forks on-chain state, probes 7 attack playbooks, returns signed risk report.',
     inputModes:  ['text/plain'],
     outputModes: ['application/json'],
-    priceUSDC:   10.00,
+    priceUSDC:   10.00,    // config/pricing.js: adversarial = 10_000_000
     tags:        ['solana', 'program', 'security', 'simulation'],
   },
 };
@@ -125,11 +134,17 @@ async function internalPost(path, body, paymentHeader, timeoutMs = 60_000) {
 async function executeSkill(skillId, address, options = {}, paymentHeader = null) {
   switch (skillId) {
     case 'quick_scan':
-      // Free scan — no payment required (uses /scan/free endpoint)
+      // Free tier — /scan/free (CAPTCHA-gated, rate-limited by IP).
+      // /scan/quick is the paid REST variant (0.50 USDC); A2A exposes the free tier.
       return internalPost('/scan/free', { address, chain: 'solana' }, null, 30_000);
 
     case 'token_audit':
       return internalPost('/scan/token', { address }, paymentHeader, 60_000);
+
+    case 'agent_token_scan':
+      // Metaplex Agent Token scan — 0.15 USDC, POST /api/v1/scan/agent-token
+      // Body field is "mint" (not "address") per agent-token-scanner.js API.
+      return internalPost('/api/v1/scan/agent-token', { mint: address }, paymentHeader, 60_000);
 
     case 'wallet_profile':
       return internalPost('/scan/wallet', { address }, paymentHeader, 60_000);
