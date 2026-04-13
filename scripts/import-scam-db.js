@@ -137,6 +137,15 @@ function importSolRPDS(filePath) {
 }
 
 function importSolRugDetector(filePath) {
+  // SolRugDetector (arxiv 2603.24625) — dataset nebyl veřejně publikován k 2026-04-13.
+  // Tento importer podporuje očekávaný formát datasetu (CSV nebo JSON) se sloupci:
+  //   mint / address / token   — mint adresa tokenu (povinné)
+  //   creator / deployer       — wallet adresa tvůrce (klíčové pro guilt-by-association)
+  //   type / scam_type         — typ podvodu (rug_pull, honeypot, atd.)
+  //   confidence               — míra jistoty (0.0 – 1.0)
+  //   name / symbol            — název / symbol tokenu
+  //   first_seen_at / date     — datum první detekce
+  //   rug_pattern              — vzor podvodu
   const content = fs.readFileSync(filePath, 'utf-8');
   let rows;
 
@@ -147,23 +156,47 @@ function importSolRugDetector(filePath) {
     rows = parseCsv(content);
   }
 
-  let imported = 0;
-  let skipped  = 0;
+  // Validace Solana adresy (base58, 32–44 znaků)
+  function isValidSolanaAddr(addr) {
+    return addr && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
+  }
+
+  let imported  = 0;
+  let skipped   = 0;
+  let withCreator = 0;
+
   for (const row of rows) {
     const mint = row.mint || row.address || row.token;
-    if (!mint || mint.length < 32 || mint.length > 44) { skipped++; continue; }
+    if (!isValidSolanaAddr(mint)) { skipped++; continue; }
+
+    // Creator/deployer wallet — klíčové pole pro guilt-by-association
+    const creator = row.creator || row.deployer || row.deploy_wallet || null;
+
+    // Normalizuj timestamp
+    const firstSeenRaw = row.first_seen_at || row.date || row.created_at || null;
+    const first_seen_at = firstSeenRaw
+      ? firstSeenRaw.replace(' ', 'T').replace(/\.000$/, 'Z')
+      : null;
 
     db.upsertKnownScam({
       mint,
-      source:     'solrugdetector',
-      scam_type:  row.type || row.scam_type || 'rug_pull',
-      confidence: parseFloat(row.confidence || '1.0') || 1.0,
-      label:      row.name || row.symbol || null,
-      raw_data:   row,
+      source:           'solrugdetector',
+      scam_type:        row.type || row.scam_type || 'rug_pull',
+      confidence:       parseFloat(row.confidence || '1.0') || 1.0,
+      label:            row.name || row.symbol || null,
+      raw_data:         row,
+      creator:          isValidSolanaAddr(creator) ? creator : null,
+      first_seen_at,
+      first_seen_slot:  row.slot ? parseInt(row.slot, 10) : null,
+      rug_pattern:      row.rug_pattern || row.pattern || null,
+      confidence_score: parseFloat(row.confidence || '1.0') || 1.0,
     });
     imported++;
+    if (creator && isValidSolanaAddr(creator)) withCreator++;
   }
-  return { imported, skipped };
+
+  console.log(`  SolRugDetector: ${imported} tokenů, z toho ${withCreator} má creator wallet`);
+  return { imported, skipped, withCreator };
 }
 
 function importGenericCsv(filePath) {

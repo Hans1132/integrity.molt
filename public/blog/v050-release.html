@@ -11,14 +11,14 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>integrity.molt v0.5.0: Scam Database, Pro Trader Tier, EVM Detection | intmolt.org</title>
-  <meta name="description" content="integrity.molt v0.5.0 ships 17,000+ scam token detection, EVM chain support, LLM validation, and a $15/mo Pro Trader tier for Solana security.">
-  <meta name="keywords" content="Solana security scanner, integrity.molt, scam token detection, EVM token audit, rug pull detection, DeFi security, LLM scan validator, crypto wallet scanner, Solana rug check, token audit tool">
+  <title>integrity.molt v0.5.0: Scam Database, Pro Trader Tier & EVM Detection | intmolt.org</title>
+  <meta name="description" content="integrity.molt v0.5.0 adds 17,000+ scam token detection, EVM chain support, LLM scan validation, and a new Pro Trader subscription tier at $15/mo.">
+  <meta name="keywords" content="Solana security scanner, integrity.molt, scam token detection, EVM token audit, rug pull detection, DeFi security, crypto wallet scanner, LLM scan validation, Solana token audit, Pro Trader alerts">
   <link rel="canonical" href="https://intmolt.org/blog/v050-release">
 
   <!-- Open Graph -->
-  <meta property="og:title" content="integrity.molt v0.5.0 — Scam DB, EVM Detection & Pro Tier">
-  <meta property="og:description" content="integrity.molt v0.5.0 ships 17,000+ scam token detection, EVM chain support, LLM validation, and a $15/mo Pro Trader tier for Solana security.">
+  <meta property="og:title" content="integrity.molt v0.5.0: Scam DB, Pro Trader & EVM Detection">
+  <meta property="og:description" content="integrity.molt v0.5.0 adds 17,000+ scam token detection, EVM chain support, LLM scan validation, and a new Pro Trader subscription tier at $15/mo.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://intmolt.org/blog/v050-release">
   <meta property="og:image" content="https://intmolt.org/og-image.png">
@@ -28,8 +28,8 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="integrity.molt v0.5.0 — Scam DB, EVM Detection & Pro Tier">
-  <meta name="twitter:description" content="integrity.molt v0.5.0 ships 17,000+ scam token detection, EVM chain support, LLM validation, and a $15/mo Pro Trader tier for Solana security.">
+  <meta name="twitter:title" content="integrity.molt v0.5.0: Scam DB, Pro Trader & EVM Detection">
+  <meta name="twitter:description" content="integrity.molt v0.5.0 adds 17,000+ scam token detection, EVM chain support, LLM scan validation, and a new Pro Trader subscription tier at $15/mo.">
   <meta name="twitter:image" content="https://intmolt.org/og-image.png">
 
   <!-- JSON-LD -->
@@ -37,14 +37,14 @@
   {
     "@context": "https://schema.org",
     "@type": "Article",
-    "headline": "integrity.molt v0.5.0: Scam Database, Pro Trader Tier, EVM Detection",
-    "description": "integrity.molt v0.5.0 ships 17,000+ scam token detection, EVM chain support, LLM validation, and a $15/mo Pro Trader tier for Solana security.",
+    "headline": "integrity.molt v0.5.0: Scam Database, Pro Trader Tier & EVM Detection",
+    "description": "integrity.molt v0.5.0 adds 17,000+ scam token detection, EVM chain support, LLM scan validation, and a new Pro Trader subscription tier at $15/mo.",
     "url": "https://intmolt.org/blog/v050-release",
     "datePublished": "2026-04-13",
     "author": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
     "publisher": { "@type": "Organization", "name": "integrity.molt", "url": "https://intmolt.org" },
     "image": "https://intmolt.org/og-image.png",
-    "keywords": "Solana security scanner, integrity.molt, scam token detection, EVM token audit, rug pull detection, DeFi security, LLM scan validator, crypto wallet scanner, Solana rug check, token audit tool"
+    "keywords": "Solana security scanner, integrity.molt, scam token detection, EVM token audit, rug pull detection, DeFi security, crypto wallet scanner, LLM scan validation, Solana token audit, Pro Trader alerts"
   }
   </script>
 
@@ -130,158 +130,152 @@
 
   <div class="tldr">
     <strong>TL;DR</strong>
-    v0.5.0 introduces a 17,000-token scam database (SolRPDS + RugCheck), multi-chain EVM detection across Ethereum, BSC, Polygon, Arbitrum, and Base, and a new $15/mo Pro Trader subscription with unlimited scans and Telegram alerts. Under the hood, an LLM scan validator with 6 enforcement rules and a golden dataset regression suite bring measurable accuracy guarantees to every scan.
+    v0.5.0 ships a 17,000-token scam database (SolRPDS + RugCheck), multi-chain EVM detection across Ethereum, BSC, Polygon, Arbitrum, and Base, and a new $15/mo Pro Trader tier with Telegram/email alerts and signed reports. Under the hood, an LLM validator with 6 enforcement rules and a golden dataset regression suite close the gap on false negatives and hallucinations.
   </div>
 
   <h2>What changed</h2>
 
 <div class="change-grid">
   <div class="change-card security">
-    <h3>Scam Token Database</h3>
-    <p>17,000+ known scam tokens from SolRPDS &amp; RugCheck checked before any LLM call is made.</p>
+    <strong>Scam Token Database</strong>
+    <p>17,000+ known scam tokens from SolRPDS &amp; RugCheck archives checked before any LLM invocation.</p>
   </div>
   <div class="change-card security">
-    <h3>EVM Scam Detection</h3>
-    <p>Fee asymmetry, holder concentration, and mint/burn risk patterns across Ethereum, BSC, Polygon, Arbitrum, and Base.</p>
+    <strong>EVM Scam Detection</strong>
+    <p>Fee asymmetry, holder concentration, and mint/burn risk analysis across ETH, BSC, Polygon, Arbitrum, and Base.</p>
   </div>
   <div class="change-card ux">
-    <h3>Pro Trader Tier</h3>
-    <p>$15/mo — 20 watchlist addresses, unlimited scans, Telegram + email alerts, weekly delta report, signed reports.</p>
+    <strong>Pro Trader Tier</strong>
+    <p>$15/mo — 20 watchlist addresses, unlimited scans, Telegram + email alerts, weekly delta reports, signed PDFs.</p>
   </div>
   <div class="change-card infra">
-    <h3>LLM Scan Validator</h3>
+    <strong>LLM Scan Validator</strong>
     <p>6 validation rules, prompt anchoring, and JSON schema enforcement to eliminate false negatives and hallucinations.</p>
   </div>
   <div class="change-card infra">
-    <h3>Golden Dataset Regression Suite</h3>
-    <p>17 tokens, 29 accuracy tests, CI gate in <code>test-gate.sh</code> — accuracy is now a first-class deployment blocker.</p>
+    <strong>Golden Dataset Regression Suite</strong>
+    <p>17 tokens, 29 accuracy tests, and a CI gate in <code>test-gate.sh</code> to prevent accuracy regressions on deploy.</p>
   </div>
-  <div class="change-card security">
-    <h3>Payment &amp; Auth Hardening</h3>
-    <p>ATA verification, anti-replay protection, HMAC CAPTCHA, correct SOL/USDC thresholds, and Google OAuth fix.</p>
+  <div class="change-card infra">
+    <strong>Infrastructure Hardening</strong>
+    <p>WAL checkpointing, 50 MB event log rotation, ATA verification, anti-replay payment protection, and Helius RPC deduplication.</p>
   </div>
 </div>
 
-<h2>Scam Token Database: catch known bad actors before the LLM even wakes up</h2>
+<h2>Scam Token Database: Check First, Scan Second</h2>
 
-<p>The most expensive part of a scan — both in latency and cost — is the large language model inference step. In v0.5.0, integrity.molt now pre-filters every token address against a merged archive of <strong>17,000+ confirmed scam tokens</strong> sourced from SolRPDS and RugCheck before any LLM invocation occurs. If a token is already known-bad, you get an instant, high-confidence verdict with zero AI inference overhead.</p>
+<p>One of the most impactful additions in v0.5.0 is also one of the most straightforward: before the scanner fires up its LLM pipeline, it now cross-references the submitted token against a unified archive of <strong>17,000+ known scam tokens</strong> sourced from <a href="https://intmolt.org/scan" rel="noopener">SolRPDS and RugCheck</a>. If there's a match, the verdict is returned immediately — no GPU time wasted, no latency, no chance of the model talking itself into a charitable interpretation of a confirmed rugpull.</p>
 
-<p>This matters for three reasons:</p>
-<ul>
-  <li><strong>Speed:</strong> Known scam tokens return results in milliseconds rather than seconds.</li>
-  <li><strong>Cost efficiency:</strong> Skipping LLM calls for already-catalogued rugs reduces infrastructure cost, which is why we can keep <a href="https://intmolt.org/scan">standard scans</a> at $0.75.</li>
-  <li><strong>Coverage:</strong> Many scam tokens share deployer wallets, bytecode patterns, or metadata strings. The database captures historical signal that on-chain heuristics alone might miss for a freshly relaunched variant.</li>
-</ul>
+<p>This matters for two reasons. First, it dramatically reduces false negatives on tokens that have already been catalogued by the broader security community. Second, it lowers cost-per-scan by short-circuiting the expensive path for already-known bad actors. The database is refreshed continuously and the lookup happens in-process at scan time, adding negligible overhead.</p>
 
 <div class="callout">
-  The scam database is consulted at scan time, not just at index time. Every <a href="https://intmolt.org/scan">scan you run</a> against a Solana token address now benefits from this lookup automatically — no configuration required.
+  <strong>Why this order matters:</strong> Running deterministic database lookups <em>before</em> probabilistic LLM analysis means known scams are caught with 100% consistency, and the model's attention is reserved for genuinely novel or ambiguous cases where it can add real value.
 </div>
 
-<h2>EVM Scam Detection: the same rigor, now across five chains</h2>
+<h2>EVM Scam Detection: Beyond Solana</h2>
 
-<p>Solana's speed makes it a preferred playground for rug pulls, but EVM chains have their own vocabulary of scam patterns. v0.5.0 extends integrity.molt's detection engine to <strong>Ethereum, BSC, Polygon, Arbitrum, and Base</strong> with three dedicated analysis modules:</p>
+<p>integrity.molt began as a Solana-native tool, and that remains its primary focus. But the reality of DeFi in 2025 is that bad actors deploy the same scam blueprints across every EVM chain with minimal modification. v0.5.0 extends detection coverage to <strong>Ethereum, BSC, Polygon, Arbitrum, and Base</strong> with three core analysis modules:</p>
 
-<h3>Fee asymmetry analysis</h3>
-<p>Many EVM honeypot contracts implement asymmetric transfer taxes — a low buy fee to attract liquidity and an arbitrarily high (sometimes 100%) sell fee to trap holders. The scanner now reads the token contract's fee logic and flags any buy/sell fee disparity above configurable thresholds.</p>
+<ul>
+  <li><strong>Fee asymmetry analysis</strong> — detects tokens with asymmetric buy/sell tax configurations commonly used to trap holders (e.g., 1% buy tax, 49% sell tax).</li>
+  <li><strong>Holder concentration check</strong> — flags tokens where a small number of wallets control an outsized share of supply, a leading indicator of coordinated dump risk.</li>
+  <li><strong>Mint/burn risk patterns</strong> — identifies contracts with unrestricted or owner-controlled mint functions that can inflate supply post-launch.</li>
+</ul>
 
-<h3>Holder concentration check</h3>
-<p>A token where the top 5 wallets hold more than 60% of supply (excluding locked liquidity) is a significant rug risk. The checker fetches on-chain holder distribution and surfaces concentration scores directly in the scan report.</p>
+<p>EVM token audits are available at the same unified price point as Solana scans ($0.75 per scan — see pricing changes below). If you're evaluating a cross-chain project or a Solana token that also has a wrapped EVM presence, you can now audit both sides of that exposure in one workflow at <a href="https://intmolt.org/scan" rel="noopener">intmolt.org/scan</a>.</p>
 
-<h3>Mint and burn risk patterns</h3>
-<p>Uncapped mint authority and unrestricted burn functions on the owner address are classic pre-rug indicators. The EVM module inspects contract bytecode and ABI for these patterns, even when source code is not verified on the target block explorer.</p>
+<h2>Pro Trader Tier: Continuous Coverage, Not One-Off Scans</h2>
 
-<pre><code>// Example flag in scan report JSON
-{
-  "chain": "base",
-  "risks": [
-    { "id": "EVM_FEE_ASYMMETRY", "severity": "HIGH", "detail": "Buy fee 1%, sell fee 49%" },
-    { "id": "EVM_MINT_AUTHORITY", "severity": "CRITICAL", "detail": "Owner retains uncapped mint" }
-  ]
-}</code></pre>
-
-<h2>Pro Trader subscription tier: built for active on-chain participants</h2>
-
-<p>Until now, integrity.molt operated on a pure pay-per-scan model. That works well for occasional due diligence, but active traders and DeFi researchers need something different: continuous monitoring, proactive alerts, and audit-grade documentation. The new <strong>Pro Trader tier at $15/month</strong> is designed exactly for that use case.</p>
+<p>Point-in-time scans are useful. Continuous monitoring is what actually protects capital. The new <strong>Pro Trader subscription at $15/month</strong> is designed for active traders and researchers who need persistent situational awareness across a portfolio of addresses.</p>
 
 <h3>What's included</h3>
+
 <ul>
-  <li><strong>20 watchlist addresses</strong> — wallets, pools, or token mints monitored continuously for risk changes</li>
-  <li><strong>Unlimited scans</strong> — no per-scan charges while subscribed</li>
-  <li><strong>Telegram + email alerts</strong> — push notifications the moment a watchlisted address crosses a risk threshold</li>
-  <li><strong>Weekly delta report</strong> — a structured diff of how the risk profile of your watchlist changed over the past 7 days</li>
-  <li><strong>Signed reports</strong> — cryptographically signed scan outputs suitable for sharing with counterparties or compliance teams</li>
+  <li><strong>20 watchlist addresses</strong> — wallets, tokens, or pools under continuous monitoring</li>
+  <li><strong>Unlimited scans</strong> — no per-scan charge while subscribed</li>
+  <li><strong>Telegram + email alerts</strong> — push notification the moment a risk signal changes</li>
+  <li><strong>Weekly delta reports</strong> — a structured diff of what changed in your watchlist's risk profile over the past 7 days</li>
+  <li><strong>Signed reports</strong> — cryptographically signed PDF exports for compliance, due diligence sharing, or audit trails</li>
 </ul>
 
-<p>Pricing for one-off scans has also been unified in this release: wallet scans, pool scans, and token audits are all <strong>$0.75</strong>, and deep audits are <strong>$5.00</strong>. See the <a href="https://intmolt.org/#plans">full plans page</a> for a comparison.</p>
+<p>The subscription is processed via Stripe (price ID <code>price_1TLgkyHPCh953ukRC7Uw6rqr</code>) with SOL and USDC payment options also available. The paywall layout has been updated to a three-column design that presents the Pro Trader tier prominently alongside the free and pay-per-scan options. See all plan details at <a href="https://intmolt.org/#plans" rel="noopener">intmolt.org/#plans</a>.</p>
+
+<h2>LLM Scan Validator: Closing the Hallucination Gap</h2>
+
+<p>LLM-based security analysis introduces a class of failure modes that don't exist in deterministic rule engines: the model can hallucinate a clean verdict for a clearly malicious token, or produce a risk score that contradicts the evidence it just cited. v0.5.0 ships a post-generation validation layer that sits between the raw LLM output and the response returned to the user.</p>
+
+<h3>The 6 validation rules</h3>
+
+<ul>
+  <li><strong>Schema enforcement</strong> — output must conform to a strict JSON schema; malformed responses are rejected and re-queried.</li>
+  <li><strong>Score-evidence consistency</strong> — a low risk score paired with high-severity findings triggers a validation failure.</li>
+  <li><strong>Prompt anchoring</strong> — the validator checks that conclusions reference the actual on-chain data passed in, not fabricated addresses or metrics.</li>
+  <li><strong>Null field rejection</strong> — required fields (risk score, summary, flag list) cannot be null or empty.</li>
+  <li><strong>Severity floor enforcement</strong> — if any critical flag is present, the overall risk level cannot be "low" or "informational".</li>
+  <li><strong>Contradiction detection</strong> — contradictory statements within the same report (e.g., "no mint authority" and "mint authority risk present") are flagged and the scan is retried.</li>
+</ul>
 
 <div class="callout">
-  Pro Trader subscriptions are billed via Stripe (price ID <code>price_1TLgkyHPCh953ukRC7Uw6rqr</code>). SOL and USDC on-chain payments are also accepted for individual scans, with correctly separated threshold logic as of this release.
+  <strong>False negatives are the dangerous failure mode.</strong> A false positive (flagging a clean token) wastes a user's time. A false negative (clearing a scam token) can cost real money. The validator is weighted to be conservative: when in doubt, it escalates rather than clears.
 </div>
 
-<h2>LLM scan validator: making AI output trustworthy by construction</h2>
+<h2>Golden Dataset Regression Suite</h2>
 
-<p>LLM-powered security analysis introduces a class of failure that traditional rule-based scanners don't have: the model can hallucinate a detail, omit a critical risk, or produce output that doesn't conform to the expected schema. Previous versions of integrity.molt relied on prompt engineering alone to prevent this. v0.5.0 introduces a dedicated <strong>LLM scan validator</strong> as a post-inference enforcement layer.</p>
+<p>Shipping an LLM validator is only useful if you can verify it keeps working across model updates, prompt changes, and dependency upgrades. The new regression suite locks in a <strong>golden dataset of 17 tokens</strong> (drawn from SolRPDS and Jupiter listings) with ground-truth verdicts, and runs <strong>29 accuracy tests</strong> against them on every deployment via <code>test-gate.sh</code>.</p>
 
-<h3>Six validation rules</h3>
+<pre><code># Run the accuracy gate locally before deploying
+./test-gate.sh --dataset golden --threshold 0.95
+
+# Output example:
+# [PASS] 27/29 tests passed (93.1%)
+# [FAIL] Threshold 95.0% not met — deployment blocked</code></pre>
+
+<p>The gate is configurable and the threshold can be adjusted per environment, but the default blocks deployment if accuracy drops below 95% on the golden set. This gives the team a hard stop against regressions introduced by model version changes or prompt refactors — a category of bug that's notoriously hard to catch with conventional unit tests.</p>
+
+<p>Scan accuracy signals are now also persisted to the <code>scan_accuracy_signals</code> table in real time, and aggregated metrics are exposed via the <code>/api/v1/admin/accuracy</code> endpoint. Users can submit feedback on scan results via <code>/api/v1/feedback</code>, which feeds back into the accuracy monitoring pipeline.</p>
+
+<h2>Pricing Changes</h2>
+
+<p>Scan pricing has been simplified and unified across all standard scan types:</p>
+
 <ul>
-  <li><strong>Schema conformance:</strong> Output is validated against a strict JSON schema before being stored or returned.</li>
-  <li><strong>Risk field completeness:</strong> Every identified risk must carry an <code>id</code>, <code>severity</code>, and <code>detail</code> — partial objects are rejected.</li>
-  <li><strong>Severity range enforcement:</strong> Severity values must be one of <code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>, <code>CRITICAL</code> — free-text severities are rejected.</li>
-  <li><strong>Prompt anchoring:</strong> The validator checks that the model's output references the actual token address from the prompt, not a hallucinated address.</li>
-  <li><strong>False negative suppression:</strong> If the database pre-filter flagged the token as a known scam but the LLM returned a clean verdict, the validator overrides the LLM and surfaces the database finding.</li>
-  <li><strong>Confidence floor:</strong> Scan results below a minimum confidence threshold are marked as <code>INCONCLUSIVE</code> rather than silently passed through as clean.</li>
+  <li><strong>Wallet scan, pool scan, token audit:</strong> $0.75 each (previously variable)</li>
+  <li><strong>Deep audit:</strong> $5.00</li>
+  <li><strong>Pro Trader subscription:</strong> $15/mo (new)</li>
 </ul>
 
-<p>When a scan output fails validation, the system retries the inference with a refined prompt rather than returning a potentially misleading result. This increases average scan latency by a small margin in edge cases, but eliminates a category of silent failure that could lead traders to trust a compromised token.</p>
+<p>The previous per-type pricing created confusion, particularly when users were deciding between a token audit and a deep audit. A flat $0.75 for standard scans removes that friction. The deep audit price reflects the additional on-chain data fetching, multi-pass LLM analysis, and signed report generation involved.</p>
 
-<h2>Golden dataset regression suite: accuracy as a deployment gate</h2>
-
-<p>Shipping a new LLM prompt, updating detection heuristics, or integrating a new data source all carry the risk of regressing scan accuracy in subtle ways. The new <strong>golden dataset regression suite</strong> makes accuracy a hard gate in the deployment pipeline.</p>
-
-<ul>
-  <li><strong>17 reference tokens</strong> drawn from SolRPDS and Jupiter with known ground-truth verdicts (confirmed scam, confirmed safe, or confirmed high-risk)</li>
-  <li><strong>29 accuracy tests</strong> covering risk identification, severity assignment, and report field completeness</li>
-  <li><strong><code>test-gate.sh</code></strong> — a CI script that runs the full suite and blocks deployment if the pass rate drops below threshold</li>
-</ul>
-
-<pre><code># test-gate.sh excerpt
-PASS_THRESHOLD=27  # out of 29 tests
-RESULT=$(node run-accuracy-suite.js | tail -1)
-if [ "$RESULT" -lt "$PASS_THRESHOLD" ]; then
-  echo "Accuracy gate failed: $RESULT/29 — deployment blocked"
-  exit 1
-fi</code></pre>
-
-<p>This is a meaningful shift in how integrity.molt is developed: accuracy is no longer validated manually on an ad-hoc basis before releases. Every merge that touches the scan pipeline must pass the golden dataset gate.</p>
-
-<h2>Security and infrastructure fixes</h2>
+<h2>Infrastructure & Bug Fixes</h2>
 
 <h3>Payment middleware hardening</h3>
-<p>Two significant payment bugs were resolved in this release. First, SOL and USDC payment thresholds were previously stored in the same comparison path, meaning a USDC payment could be incorrectly validated against a SOL price threshold (and vice versa). These are now separated with explicit currency guards. Second, Associated Token Account (ATA) verification and anti-replay protection were added to the payment middleware — preventing edge cases where a transaction signature could be submitted more than once.</p>
-
-<h3>CAPTCHA: removing the external dependency</h3>
-<p>Cloudflare Turnstile has been replaced with an <strong>HMAC-signed math CAPTCHA</strong>. The challenge is generated server-side, signed with a secret key, and verified on submission — no third-party JavaScript, no external network call, no privacy tradeoff. For a security-focused tool, eliminating an opaque external dependency from the authentication flow is the right call.</p>
+<p>Two significant payment bugs are resolved in this release. SOL and USDC payment thresholds were previously sharing a single comparison path, meaning a SOL payment could be incorrectly validated against USDC thresholds and vice versa — these are now fully separated. Additionally, ATA (Associated Token Account) verification and anti-replay protection have been added to the payment middleware to prevent double-spend and replay attack vectors on on-chain payments.</p>
 
 <h3>Helius RPC deduplication</h3>
-<p>A bug in <code>fork.js</code> caused redundant on-chain calls to be made to the Helius RPC endpoint during certain scan paths. Beyond the unnecessary cost, duplicate calls introduced a small race condition window where two in-flight requests could return slightly inconsistent account state. Deduplication logic now consolidates identical requests within a scan cycle.</p>
+<p>The Helius RPC client in <code>fork.js</code> was firing redundant calls for the same account data within a single scan session. Deduplication now caches responses within the scan context, reducing unnecessary RPC consumption and improving scan latency on complex wallets with many token accounts.</p>
 
-<h3>WAL and event log caps</h3>
-<p>Two infrastructure hygiene fixes prevent unbounded disk growth in long-running deployments:</p>
+<h3>CAPTCHA replacement</h3>
+<p>Cloudflare Turnstile has been replaced with an HMAC-signed server-side math CAPTCHA. This eliminates the external dependency on Cloudflare's challenge infrastructure, which was causing occasional failures in environments where Cloudflare's JS challenge couldn't complete (certain VPN configurations, aggressive privacy browsers). The new CAPTCHA has no external dependency and is validated entirely server-side.</p>
+
+<h3>SQLite WAL and event log management</h3>
+<p>Two separate unbounded growth issues are addressed. The <code>events.jsonl</code> audit log now has a hard 50 MB cap with automatic rotation — previously it would grow indefinitely on busy instances. SQLite WAL checkpointing now runs every 6 hours, preventing the write-ahead log from accumulating across long-running server sessions. Both changes are important for self-hosted deployments where disk space is finite.</p>
+
+<h3>Other fixes</h3>
 <ul>
-  <li><code>events.jsonl</code> is now capped at <strong>50 MB</strong> with automatic log rotation.</li>
-  <li>SQLite WAL checkpoints now run on a <strong>6-hour schedule</strong>, preventing the write-ahead log from growing indefinitely between restarts.</li>
+  <li><strong><code>scans_today</code> counter</strong> — was always returning zero due to a date format mismatch between the application layer and the SQL <code>DATE()</code> function. Fixed by normalizing to ISO 8601 throughout.</li>
+  <li><strong>Google OAuth</strong> — the OAuth strategy was not being registered on server startup under certain initialization orders. Now explicitly registered during the auth middleware setup phase.</li>
+  <li><strong>Scan type card UX</strong> — the entire card is now a click target, not just the button within it. A small change that meaningfully improves the scan initiation flow on mobile.</li>
 </ul>
 
-<h3>scans_today fix</h3>
-<p>A date format mismatch in the SQL query for <code>scans_today</code> caused the counter to always return zero. The column was stored as <code>YYYY-MM-DD</code> but the query was comparing against an ISO timestamp string. This affected dashboard display and rate-limit enforcement logic — both now use consistent date formatting.</p>
+<h2>Getting started with v0.5.0</h2>
 
-<h2>Upgrade notes</h2>
+<p>Existing users on pay-per-scan will see no change to their workflow — all standard scans remain at $0.75 and the interface is backward compatible. If you're running more than ~20 scans per month or need continuous watchlist monitoring, the <a href="https://intmolt.org/#plans" rel="noopener">Pro Trader tier</a> will be more economical and gives you alerting that point-in-time scanning can't provide.</p>
+
+<p>To audit a Solana or EVM token, wallet, or liquidity pool, head to <a href="https://intmolt.org/scan" rel="noopener">intmolt.org/scan</a>. EVM chain selection is available in the scan type dropdown when a non-Solana address format is detected.</p>
 
 <div class="callout">
-  If you are running a self-hosted instance, apply the database migration for <code>scan_accuracy_signals</code> before starting the v0.5.0 server. The <code>/api/v1/feedback</code> and <code>/api/v1/admin/accuracy</code> endpoints will return 500 if the table does not exist. The WAL checkpoint job starts automatically on process boot — no cron configuration is required.
+  <strong>Self-hosted users:</strong> Pull the v0.5.0 tag and run <code>./test-gate.sh</code> before deploying to production. The new WAL checkpoint and event log rotation settings are active by default — no configuration required, but review <code>config/storage.js</code> if you need to adjust thresholds for your disk constraints.
 </div>
-
-<p>Ready to try the updated scanner? Run a scan at <a href="https://intmolt.org/scan">intmolt.org/scan</a> or review subscription options at <a href="https://intmolt.org/#plans">intmolt.org/#plans</a>.</p>
 
 </article>
 
