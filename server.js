@@ -2969,12 +2969,24 @@ app.post('/scan/free', express.json(), async (req, res) => {
   const used = await db.countFreeScansToday(ip).catch(() => FREE_SCAN_LIMIT);
 
   if (used >= FREE_SCAN_LIMIT) {
+    // Spusť levný RPC-only scan (bez LLM) pro teaser v paywall UI
+    let teaser = null;
+    if (!isEvm && safeAddress) {
+      try {
+        const t = await Promise.race([
+          quickScanRpcOnly(safeAddress),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+        ]);
+        teaser = { risk_score: t.risk_score, risk_level: t.risk_level, summary: t.summary, address: safeAddress };
+      } catch { /* non-fatal — paywall se zobrazí bez teaseru */ }
+    }
     return res.status(429).json({
       error:           'free_quota_exceeded',
       message:         `Daily free scan limit reached. Upgrade at intmolt.org/pricing`,
       scans_used:      used,
       scans_limit:     FREE_SCAN_LIMIT,
       scans_remaining: 0,
+      teaser,
       payment_options: {
         quick:     { endpoint: '/scan/quick',     price_usdc: PRICING.quick / 1_000_000,          micro_usdc: PRICING.quick,           accepts: quickPaymentAccepts },
         deep:      { endpoint: '/scan/deep',      price_usdc: PRICING.deep / 1_000_000,           micro_usdc: PRICING.deep,            accepts: deepPaymentAccepts },

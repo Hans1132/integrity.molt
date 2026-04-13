@@ -1360,7 +1360,7 @@ async function startScan() {
 
     const json = await res.json();
 
-    if (res.status === 402) {
+    if (res.status === 402 || res.status === 429) {
       quotaData = { scans_used: json.scans_used || 3, scans_limit: 3, scans_remaining: 0 };
       renderQuota(quotaData);
       showPaywall(json, type);
@@ -2146,56 +2146,103 @@ function showPaywall(json, type) {
           <div class="paywall-title">${isDeep ? 'Deep Audit — full AI analysis' : 'Free quota reached'}</div>
           <div class="paywall-sub">${isDeep
             ? '8 AI agents · insider clustering · wash trading detection · signed report'
-            : 'You\'ve used all 3 free scans today. Continue with a single scan or unlimited plan.'
+            : 'You\'ve used all 3 free scans today. Resets at midnight UTC.'
           }</div>
         </div>
       </div>
       <div class="paywall-body">
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px">
 
           <!-- Option A: Single scan -->
-          <div style="border:1px solid var(--border);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px">
             <div>
-              <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:4px">SINGLE SCAN</div>
-              <div style="font-size:22px;font-weight:700;color:#fff">$${price.toFixed(2)}</div>
-              <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${scanTypeName(type)} · one-time</div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:4px">ONE-TIME</div>
+              <div style="font-size:20px;font-weight:700;color:#fff">$${price.toFixed(2)}</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${scanTypeName(type)} · now</div>
             </div>
-            <button class="btn-stripe" id="stripePayBtn" onclick="payWithStripe('${type}', window._lastScanAddress || '')">
-              Pay $${price.toFixed(2)} with Card →
+            <button class="btn-stripe" id="stripePayBtn" style="font-size:12px;padding:8px 10px" onclick="payWithStripe('${type}', window._lastScanAddress || '')">
+              Pay with Card →
             </button>
           </div>
 
-          <!-- Option B: Builder subscription -->
-          <div style="border:1px solid var(--accent-dim);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px;background:#0d1520">
+          <!-- Option B: Pro Trader — SWEET SPOT -->
+          <div style="border:2px solid var(--accent);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px;background:#0a1a10;position:relative">
+            <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--accent);color:#000;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">MOST POPULAR</div>
             <div>
-              <div style="font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:4px">BEST VALUE ✦</div>
-              <div style="font-size:22px;font-weight:700;color:#fff">$49<span style="font-size:14px;color:var(--text-dim)">/mo</span></div>
-              <div style="font-size:12px;color:var(--text-dim);margin-top:2px">Unlimited scans · API key · CI/CD</div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:4px">PRO TRADER</div>
+              <div style="font-size:20px;font-weight:700;color:#fff">$15<span style="font-size:12px;color:var(--text-dim)">/mo</span></div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:2px">20 scans/day · Telegram alerts</div>
             </div>
-            <button class="btn-stripe" style="background:var(--accent)" onclick="openEmailModal('builder')">
-              Subscribe Builder →
+            <button class="btn-stripe" style="background:var(--accent);color:#000;font-weight:700;font-size:12px;padding:8px 10px" onclick="openEmailModal('pro_trader')">
+              Start for $15/mo →
+            </button>
+          </div>
+
+          <!-- Option C: Builder -->
+          <div style="border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px">
+            <div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:4px">BUILDER</div>
+              <div style="font-size:20px;font-weight:700;color:#fff">$49<span style="font-size:12px;color:var(--text-dim)">/mo</span></div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:2px">Unlimited · API key · CI/CD</div>
+            </div>
+            <button class="btn-stripe" style="font-size:12px;padding:8px 10px" onclick="openEmailModal('builder')">
+              Subscribe →
             </button>
           </div>
 
         </div>
 
-        <div style="font-size:12px;color:var(--text-faint);text-align:center;margin-bottom:16px">
-          Stripe · card · no crypto wallet needed
+        <div style="font-size:11px;color:var(--text-faint);text-align:center;margin-bottom:14px">
+          Stripe · card · instant access &nbsp;·&nbsp;
+          <a href="/docs.html" style="color:var(--text-faint)">x402 / crypto for bots</a>
           &nbsp;·&nbsp;
-          <a href="/docs.html" style="color:var(--text-faint)">API / x402 for bots</a>
+          <a href="#" style="color:var(--text-faint)" onclick="document.getElementById('resultSection').style.display='none';return false">Back to scan</a>
         </div>
 
-        <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <div style="font-size:12px;color:var(--text-dim)">Need team access or 100+ watchlist?</div>
-          <button class="upsell-btn-secondary" style="flex:none;padding:8px 16px;font-size:12px" onclick="openEmailModal('team')">Team plan — $299/mo</button>
+        <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="font-size:11px;color:var(--text-dim)">Team access · 100+ watchlist · SLA</div>
+          <button class="upsell-btn-secondary" style="flex:none;padding:6px 14px;font-size:11px" onclick="openEmailModal('team')">Team $299/mo</button>
         </div>
 
       </div>
     </div>
   `;
 
-  document.getElementById('paywallContent').innerHTML = html;
+  // Teaser: pokud 429 response obsahuje RPC-only scan výsledek, zobraz ho nad paywallom
+  const teaser = json?.teaser;
+  if (teaser && teaser.risk_score != null) {
+    const lvl   = teaser.risk_level || 'unknown';
+    const score = teaser.risk_score;
+    const lvlColor = { safe: '#00e676', low: '#76ff03', medium: '#ffea00', high: '#ff5722', critical: '#f44336' }[lvl] || '#aaa';
+    const teaserHtml = `
+      <div style="position:relative;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <div style="padding:16px 20px;display:flex;align-items:center;gap:16px;background:var(--bg-card)">
+          <div style="text-align:center;min-width:60px">
+            <div style="font-size:28px;font-weight:800;color:${lvlColor}">${score}</div>
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">${lvl}</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:#fff;font-weight:600;margin-bottom:3px">Risk Assessment: ${lvl.toUpperCase()}</div>
+            <div style="font-size:12px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${teaser.summary || ''}</div>
+          </div>
+        </div>
+        <!-- blur overlay na detaily -->
+        <div style="position:absolute;inset:0;top:70px;background:linear-gradient(to bottom,transparent,var(--bg) 60%);pointer-events:none"></div>
+        <div style="padding:10px 20px 14px;filter:blur(4px);user-select:none;pointer-events:none">
+          <div style="height:10px;background:var(--border);border-radius:4px;margin-bottom:8px;width:80%"></div>
+          <div style="height:10px;background:var(--border);border-radius:4px;margin-bottom:8px;width:60%"></div>
+          <div style="height:10px;background:var(--border);border-radius:4px;width:70%"></div>
+        </div>
+        <div style="position:absolute;bottom:10px;left:0;right:0;text-align:center">
+          <span style="font-size:11px;color:var(--text-dim)">Full report locked · pay to unlock</span>
+        </div>
+      </div>
+    `;
+    document.getElementById('paywallContent').innerHTML = teaserHtml + html;
+  } else {
+    document.getElementById('paywallContent').innerHTML = html;
+  }
   section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
