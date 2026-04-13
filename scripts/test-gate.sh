@@ -108,6 +108,15 @@ else
   ERRORS="$ERRORS\n- Golden dataset accuracy tests failed"
 fi
 
+# 10. Scam DB unit tests
+echo "🗄️  Scam DB tests..."
+if node tests/scam-db.test.js 2>/dev/null; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- Scam DB unit tests failed"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"

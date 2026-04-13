@@ -6,6 +6,7 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const { validateLLMScore } = require('../src/llm/scan-validator');
+const { lookupScamDb }    = require('../src/scam-db/lookup');
 // bs58 v6+ exports via .default in CommonJS interop
 const _bs58raw = require('bs58');
 const bs58 = _bs58raw.default || _bs58raw;
@@ -380,6 +381,40 @@ async function auditToken(mintAddress, tokenName, options = {}) {
     rawScore = Math.min(100, rawScore + (WEIGHTS[severity] || 0));
   }
 
+  // ── 0. Scam database lookup (non-blocking, no RPC) ───────────────────────
+  let scamDbResult = { known_scam: null, rugcheck: null, db_match: false };
+  try {
+    scamDbResult = await lookupScamDb(mintAddress);
+  } catch (e) {
+    console.warn('[token-audit] scam-db lookup failed (non-fatal):', e.message);
+  }
+
+  // Přidej finding pokud je token v known_scams databázi
+  if (scamDbResult.known_scam) {
+    const ks = scamDbResult.known_scam;
+    const detail = `Zdroj: ${ks.source}` +
+      (ks.scam_type ? `, typ: ${ks.scam_type}` : '') +
+      (ks.confidence < 1 ? `, spolehlivost: ${Math.round(ks.confidence * 100)}%` : '');
+    finding('critical', 'known-scam',
+      `Token nalezen v databázi podvodných tokenů — ${ks.label || ks.scam_type || 'scam'}`,
+      detail);
+  }
+
+  // Přidej finding pokud RugCheck hlásí rugged nebo danger risks
+  if (scamDbResult.rugcheck) {
+    const rc = scamDbResult.rugcheck;
+    if (rc.rugged) {
+      finding('critical', 'rugcheck',
+        'RugCheck: token označen jako RUGGED (exit scam detekován)',
+        `RugCheck score: ${rc.score_norm ?? rc.score ?? 'n/a'}`);
+    } else if (rc.risk_level === 'danger') {
+      const dangerRisks = (rc.risks_json || []).filter(r => r.level === 'danger');
+      for (const r of dangerRisks.slice(0, 3)) {
+        finding('high', 'rugcheck', `RugCheck danger: ${r.name}`, r.description || null);
+      }
+    }
+  }
+
   // ── 1. Fetch mint account ─────────────────────────────────────────────────
 
   let mintInfo = null;
@@ -671,7 +706,7 @@ async function auditToken(mintAddress, tokenName, options = {}) {
   const llmRaw = await summarizeWithLLM(auditData);
   const { corrected: llm, flags: validationFlags } = validateLLMScore(rawScore, llmRaw, auditData);
 
-  return buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData, llm, validationFlags });
+  return buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData, llm, validationFlags, scamDbResult });
 }
 
 // ── Treasury / Beggars Allocation pattern detection ───────────────────────────
@@ -795,8 +830,32 @@ async function analyzeTreasuryPatterns(mintAddress, holders, mintInfo, findings,
 
 // ── Build final result object ─────────────────────────────────────────────────
 
-function buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData, llm, validationFlags }) {
+function buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData, llm, validationFlags, scamDbResult }) {
   const category = llm?.category || scoreToCategory(rawScore);
+
+  // Sestavení db_matches sekce pro report
+  const db_matches = [];
+  if (scamDbResult?.known_scam) {
+    const ks = scamDbResult.known_scam;
+    db_matches.push({
+      source:     ks.source,
+      type:       ks.scam_type || 'unknown',
+      confidence: ks.confidence,
+      label:      ks.label || null,
+    });
+  }
+  if (scamDbResult?.rugcheck) {
+    const rc = scamDbResult.rugcheck;
+    db_matches.push({
+      source: 'rugcheck',
+      type:   rc.rugged ? 'rugged' : (rc.risk_level || 'unknown'),
+      label:  rc.rugged
+        ? 'Token označen jako RUGGED na RugCheck'
+        : `RugCheck risk level: ${rc.risk_level || 'n/a'} (score_norm: ${rc.score_norm ?? 'n/a'})`,
+      risks:  rc.risks_json || [],
+    });
+  }
+
   return {
     mint_address: mintAddress,
     token_name:   tokenName || auditData?.metadata?.name || 'Unknown',
@@ -807,6 +866,7 @@ function buildResult({ mintAddress, tokenName, findings, rawScore, t0, auditData
     recommendations: llm?.recommendations || [],
     findings,
     detail:       auditData || null,
+    db_matches,
     scan_ms:      Date.now() - t0,
     scan_type:    'token-security-audit',
     scan_version: '1.0',

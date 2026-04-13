@@ -205,6 +205,32 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS accuracy_mint       ON scan_accuracy_signals (mint, created_at DESC);
     CREATE INDEX IF NOT EXISTS accuracy_created    ON scan_accuracy_signals (created_at DESC);
     CREATE INDEX IF NOT EXISTS accuracy_flags      ON scan_accuracy_signals (corrections_count DESC);
+
+    -- Statická scam databáze (SolRPDS, SolRugDetector a další importy)
+    CREATE TABLE IF NOT EXISTS known_scams (
+      mint        TEXT    PRIMARY KEY,
+      source      TEXT    NOT NULL,  -- 'solrpds' | 'solrugdetector' | 'manual'
+      scam_type   TEXT,              -- 'rug_pull' | 'honeypot' | 'pump_dump' | 'fake' | 'phishing'
+      confidence  REAL    NOT NULL DEFAULT 1.0, -- 0.0–1.0
+      label       TEXT,              -- human-readable popis
+      raw_data    TEXT,              -- JSON z originálu
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS known_scams_source ON known_scams (source, scam_type);
+
+    -- Ephemerní cache RugCheck API výsledků (TTL 24h)
+    CREATE TABLE IF NOT EXISTS rugcheck_cache (
+      mint        TEXT    PRIMARY KEY,
+      risk_level  TEXT,   -- 'good' | 'warn' | 'danger'
+      score       INTEGER,
+      score_norm  INTEGER,
+      rugged      INTEGER NOT NULL DEFAULT 0,
+      risks_json  TEXT,   -- JSON array of risk objects
+      raw_json    TEXT,   -- plná odpověď
+      fetched_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS rugcheck_cache_fetched ON rugcheck_cache (fetched_at DESC);
   `);
   return Promise.resolve();
 }
@@ -1010,6 +1036,76 @@ function getAccuracyStats(hours = 24) {
   return { hours, since, totals, topFlags, byCategory };
 }
 
+// ── Known scams databáze ──────────────────────────────────────────────────────
+
+function lookupKnownScam(mint) {
+  const row = db.prepare('SELECT * FROM known_scams WHERE mint = ?').get(mint);
+  if (!row) return null;
+  try { row.raw_data = row.raw_data ? JSON.parse(row.raw_data) : null; } catch {}
+  return row;
+}
+
+function upsertKnownScam({ mint, source, scam_type, confidence, label, raw_data }) {
+  db.prepare(`
+    INSERT INTO known_scams (mint, source, scam_type, confidence, label, raw_data, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(mint) DO UPDATE SET
+      source      = excluded.source,
+      scam_type   = excluded.scam_type,
+      confidence  = excluded.confidence,
+      label       = excluded.label,
+      raw_data    = excluded.raw_data,
+      updated_at  = datetime('now')
+  `).run(
+    mint,
+    source,
+    scam_type || null,
+    confidence != null ? confidence : 1.0,
+    label || null,
+    raw_data ? JSON.stringify(raw_data) : null
+  );
+}
+
+function getKnownScamsCount() {
+  return db.prepare('SELECT COUNT(*) AS cnt FROM known_scams').get().cnt;
+}
+
+// ── RugCheck API cache ────────────────────────────────────────────────────────
+const RUGCHECK_CACHE_TTL_MS = 24 * 3_600_000; // 24 hodin
+
+function getRugcheckCache(mint) {
+  const row = db.prepare('SELECT * FROM rugcheck_cache WHERE mint = ?').get(mint);
+  if (!row) return null;
+  const age = Date.now() - new Date(row.fetched_at).getTime();
+  if (age > RUGCHECK_CACHE_TTL_MS) return null; // expirovaná cache
+  try { row.risks_json = row.risks_json ? JSON.parse(row.risks_json) : []; } catch { row.risks_json = []; }
+  try { row.raw_json   = row.raw_json   ? JSON.parse(row.raw_json)   : {}; } catch { row.raw_json   = {}; }
+  return row;
+}
+
+function setRugcheckCache({ mint, risk_level, score, score_norm, rugged, risks, raw }) {
+  db.prepare(`
+    INSERT INTO rugcheck_cache (mint, risk_level, score, score_norm, rugged, risks_json, raw_json, fetched_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(mint) DO UPDATE SET
+      risk_level = excluded.risk_level,
+      score      = excluded.score,
+      score_norm = excluded.score_norm,
+      rugged     = excluded.rugged,
+      risks_json = excluded.risks_json,
+      raw_json   = excluded.raw_json,
+      fetched_at = datetime('now')
+  `).run(
+    mint,
+    risk_level || null,
+    score ?? null,
+    score_norm ?? null,
+    rugged ? 1 : 0,
+    JSON.stringify(risks || []),
+    raw ? JSON.stringify(raw) : null
+  );
+}
+
 module.exports = {
   db, pool, initSchema, initUsersSchema, initAdsSchema,
   logPayment, isAlreadyUsed, markSignatureUsed, logEvent,
@@ -1033,6 +1129,10 @@ module.exports = {
   getLiveStats,
   // Accuracy monitoring
   logAccuracySignal, logUserFeedback, getAccuracyStats,
+  // Scam database
+  lookupKnownScam, upsertKnownScam, getKnownScamsCount,
+  // RugCheck cache
+  getRugcheckCache, setRugcheckCache,
   // Advisor usage
   logAdvisorUsage, getAdvisorStats,
   MONTHLY_SCAN_LIMITS, MONTHLY_ADVERSARIAL_LIMITS,

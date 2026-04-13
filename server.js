@@ -1463,6 +1463,21 @@ app.post(
       }
       if (!auditResult.findings.length) reportLines.push('No findings.');
       reportLines.push('');
+      reportLines.push('--- Known Database Matches ---');
+      const dbMatches = auditResult.db_matches || [];
+      if (dbMatches.length) {
+        for (const m of dbMatches) {
+          reportLines.push(`[${m.source.toUpperCase()}] ${m.label || m.type}`);
+          if (m.risks && m.risks.length) {
+            for (const r of m.risks.slice(0, 5)) {
+              reportLines.push(`  • [${r.level}] ${r.name}${r.description ? ': ' + r.description : ''}`);
+            }
+          }
+        }
+      } else {
+        reportLines.push('No matches found in scam databases.');
+      }
+      reportLines.push('');
       reportLines.push('--- Key Risks ---');
       for (const r of (auditResult.key_risks || [])) reportLines.push(`• ${r}`);
       reportLines.push('');
