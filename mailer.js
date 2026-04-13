@@ -248,11 +248,47 @@ async function runWeeklyDigests() {
 // ── Welcome email ──────────────────────────────────────────────────────────────
 
 function buildWelcomeHtml({ email, tier }) {
-  const tierLabel  = tier === 'team' ? 'Team' : 'Builder';
-  const scanUrl    = 'https://intmolt.org/scan';
-  const dashUrl    = 'https://intmolt.org/dashboard';
-  const docsUrl    = 'https://intmolt.org/docs.html';
-  const deepLimit  = tier === 'team' ? 'unlimited' : '20/měsíc';
+  const isProTrader = tier === 'pro_trader';
+  const isTeam      = tier === 'team';
+  const tierLabel   = isTeam ? 'Team' : isProTrader ? 'Pro Trader' : 'Builder';
+  const scanUrl     = 'https://intmolt.org/scan';
+  const dashUrl     = 'https://intmolt.org/dashboard';
+  const docsUrl     = 'https://intmolt.org/docs.html';
+
+  // Features per tier
+  const features = isProTrader ? [
+    ['Unlimited quick/token/wallet/pool scany', '✓'],
+    ['Deep Audit (full AI swarm)', '5/měsíc'],
+    ['Watchlist — 20 adres', '✓'],
+    ['Telegram + email alerty', '✓'],
+    ['Weekly security digest', '✓'],
+    ['Ed25519 podepsané reporty', '✓'],
+  ] : isTeam ? [
+    ['Unlimited quick/token/wallet/pool scany', '✓'],
+    ['Deep Audit (full AI swarm)', 'unlimited'],
+    ['API klíč pro CI/CD integraci', '✓'],
+    ['Ed25519 podepsané reporty', '✓'],
+    ['Weekly security digest', '✓'],
+    ['Watchlist — 500 adres, Telegram/email/webhook', '✓'],
+  ] : [
+    ['Unlimited quick/token/wallet/pool scany', '✓'],
+    ['Deep Audit (full AI swarm)', '20/měsíc'],
+    ['API klíč pro CI/CD integraci', '✓'],
+    ['Ed25519 podepsané reporty', '✓'],
+    ['Weekly security digest', '✓'],
+    ['Watchlist — 100 adres, Telegram + email alerty', '✓'],
+  ];
+
+  // Onboarding steps per tier
+  const steps = isProTrader ? [
+    ['1', 'Spusťte první scan', `Vložte libovolnou Solana nebo EVM adresu na <a href="${scanUrl}" style="color:#4da6ff">scan stránce</a>.`],
+    ['2', 'Přidejte adresy do watchlistu', `V <a href="${dashUrl}" style="color:#4da6ff">dashboardu</a> přidejte až 20 adres. Budete dostávat Telegram + email alerty při kritických událostech.`],
+    ['3', 'Napojte Telegram bota', `Přidejte @intmolt_bot do svého Telegramu. Chat ID zadejte v dashboardu pod "Watchlist" → "Telegram notify".`],
+  ] : [
+    ['1', 'Spusťte první scan', `Vložte libovolnou Solana nebo EVM adresu na <a href="${scanUrl}" style="color:#4da6ff">scan stránce</a>.`],
+    ['2', 'Přidejte adresy do watchlistu', `V <a href="${dashUrl}" style="color:#4da6ff">dashboardu</a> sledujte adresy a dostávejte weekly report.`],
+    ['3', 'Integrujte API (v2)', `Váš API klíč je v <a href="${dashUrl}" style="color:#4da6ff">dashboardu</a> pod "API Key". Base URL: <code style="background:#12121e;padding:1px 5px;border-radius:3px;font-size:11px">https://intmolt.org/api/v2/</code> — <a href="${docsUrl}" style="color:#4da6ff">dokumentace</a>`],
+  ];
 
   return `<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
@@ -274,14 +310,7 @@ function buildWelcomeHtml({ email, tier }) {
   <div style="background:#0f0f18;border:1px solid #1e1e2e;border-radius:10px;padding:20px 24px;margin-bottom:16px">
     <h2 style="margin:0 0 14px;color:#fff;font-size:15px">Co máte k dispozici</h2>
     <table style="width:100%;border-collapse:collapse">
-      ${[
-        ['Unlimited quick/token/wallet/pool scany', '✓'],
-        [`Deep Audit (full AI swarm)`, deepLimit],
-        ['API klíč pro CI/CD integraci', '✓'],
-        ['Ed25519 podepsané reporty', '✓'],
-        ['Weekly security digest', '✓'],
-        tier === 'team' ? ['Watchlist — 100 adres, Slack/Telegram alerty', '✓'] : ['Watchlist — základní monitorování', '✓'],
-      ].map(([feat, val]) => `
+      ${features.map(([feat, val]) => `
       <tr style="border-bottom:1px solid #12121e">
         <td style="padding:9px 0;color:#8b95b0;font-size:13px">${feat}</td>
         <td style="padding:9px 0;color:#3fb950;font-family:monospace;font-size:13px;font-weight:700;text-align:right;white-space:nowrap">${val}</td>
@@ -292,11 +321,7 @@ function buildWelcomeHtml({ email, tier }) {
   <!-- 3 kroky -->
   <div style="background:#0f0f18;border:1px solid #1e1e2e;border-radius:10px;padding:20px 24px;margin-bottom:20px">
     <h2 style="margin:0 0 14px;color:#fff;font-size:15px">Začněte za 3 minuty</h2>
-    ${[
-      ['1', 'Spusťte první scan', `Vložte libovolnou Solana nebo EVM adresu na <a href="${scanUrl}" style="color:#4da6ff">scan stránce</a>.`],
-      ['2', 'Přidejte adresy do watchlistu', `V <a href="${dashUrl}" style="color:#4da6ff">dashboardu</a> sledujte adresy a dostávejte weekly report.`],
-      ['3', 'Integrujte API (v2)', `Váš API klíč je v <a href="${dashUrl}" style="color:#4da6ff">dashboardu</a> pod "API Key". Base URL: <code style="background:#12121e;padding:1px 5px;border-radius:3px;font-size:11px">https://intmolt.org/api/v2/</code> — <a href="${docsUrl}" style="color:#4da6ff">dokumentace</a>`],
-    ].map(([num, title, desc]) => `
+    ${steps.map(([num, title, desc]) => `
     <div style="display:flex;gap:14px;margin-bottom:14px;align-items:flex-start">
       <div style="width:26px;height:26px;border-radius:50%;background:#0d1520;border:1px solid #1e3a5f;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:monospace;font-size:12px;color:#4da6ff;font-weight:700;margin-top:1px">${num}</div>
       <div>
@@ -331,11 +356,12 @@ async function sendWelcomeEmail({ email, tier }) {
     console.log(`[mailer] SMTP není nakonfigurováno — welcome email přeskočen pro ${email}`);
     return false;
   }
+  const tierLabel = tier === 'team' ? 'Team' : tier === 'pro_trader' ? 'Pro Trader' : 'Builder';
   try {
     await transporter.sendMail({
       from:    FROM(),
       to:      email,
-      subject: `Vítejte v integrity.molt — váš ${tier === 'team' ? 'Team' : 'Builder'} plán je aktivní`,
+      subject: `Vítejte v integrity.molt — váš ${tierLabel} plán je aktivní`,
       html:    buildWelcomeHtml({ email, tier })
     });
     console.log(`[mailer] welcome email sent to ${email} (${tier})`);

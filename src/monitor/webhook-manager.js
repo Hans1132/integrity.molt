@@ -208,15 +208,14 @@ async function syncWatchlistToWebhook() {
       console.log('[monitor] No addresses in watchlist — webhook will be created when first address is added');
       return;
     }
-    // První spuštění — vytvoř webhook
+    // První spuštění — vytvoř webhook (HeliusLimitError se re-throwuje pro circuit breaker v init.js)
     try {
       await setupWebhook(addresses);
     } catch (e) {
       if (e instanceof HeliusLimitError) {
-        console.warn(`[monitor] ${e.message}`);
-      } else {
-        console.error('[monitor] Failed to create webhook:', e.message);
+        throw e; // re-throw — init.js aktivuje circuit breaker
       }
+      console.error('[monitor] Failed to create webhook:', e.message);
     }
     return;
   }
@@ -246,10 +245,9 @@ async function syncWatchlistToWebhook() {
     }
   } catch (e) {
     if (e instanceof HeliusLimitError) {
-      console.warn(`[monitor] ${e.message}`);
-    } else {
-      console.error('[monitor] Webhook sync failed:', e.message);
+      throw e; // re-throw — init.js aktivuje circuit breaker
     }
+    console.error('[monitor] Webhook sync failed:', e.message);
   }
 }
 

@@ -902,6 +902,49 @@ app.get('/api/v1/admin/accuracy', (req, res) => {
   }
 });
 
+// Helius webhook status — internal monitoring dashboard
+app.get('/api/v1/admin/helius', (req, res) => {
+  try {
+    const fs   = require('fs');
+    const path = require('path');
+
+    const configPath  = path.join(__dirname, 'data/monitor/webhook-config.json');
+    const backoffPath = path.join(__dirname, 'data/monitor/helius-backoff.json');
+
+    let webhookConfig = {};
+    try { webhookConfig = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch {}
+
+    let backoff = null;
+    try {
+      const b = JSON.parse(fs.readFileSync(backoffPath, 'utf8'));
+      backoff = { until: new Date(b.until).toISOString(), active: Date.now() < b.until, set: b.set };
+    } catch {}
+
+    // Počet webhook eventů za posledních 24h z DB
+    let webhookEvents24h = 0;
+    try {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      webhookEvents24h = db.db.prepare(
+        `SELECT COUNT(*) as n FROM events WHERE name = 'helius_webhook' AND created_at > ?`
+      ).get(since)?.n ?? 0;
+    } catch {}
+
+    res.json({
+      ok:             true,
+      webhook:        webhookConfig.webhookId ? {
+        id:           webhookConfig.webhookId,
+        addresses:    webhookConfig.addressCount || 0,
+        updatedAt:    webhookConfig.updatedAt || webhookConfig.createdAt || null,
+      } : null,
+      circuit_breaker: backoff,
+      events_24h:     webhookEvents24h,
+      status:         backoff?.active ? 'credit_limit' : webhookConfig.webhookId ? 'active' : 'no_webhook',
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // User feedback on scan result accuracy
 app.post('/api/v1/feedback', express.json(), (req, res) => {
   const { mint, feedback, note } = req.body || {};

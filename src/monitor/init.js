@@ -1,6 +1,33 @@
 'use strict';
 
-const { syncWatchlistToWebhook, loadConfig } = require('./webhook-manager');
+const fs   = require('fs');
+const path = require('path');
+const { syncWatchlistToWebhook, loadConfig, HeliusLimitError } = require('./webhook-manager');
+
+// Circuit breaker — zabrání opakovaným pokusům při vyčerpaných kreditech.
+// Pokud init selže s HeliusLimitError, zapíše timestamp a příštích 6 hodin přeskočí.
+const BACKOFF_FILE = path.join(__dirname, '../../data/monitor/helius-backoff.json');
+const BACKOFF_MS   = 6 * 60 * 60 * 1000; // 6 hodin
+
+function isInBackoff() {
+  try {
+    const { until } = JSON.parse(fs.readFileSync(BACKOFF_FILE, 'utf8'));
+    return Date.now() < until;
+  } catch { return false; }
+}
+
+function setBackoff() {
+  const until = Date.now() + BACKOFF_MS;
+  try {
+    fs.mkdirSync(path.dirname(BACKOFF_FILE), { recursive: true });
+    fs.writeFileSync(BACKOFF_FILE, JSON.stringify({ until, set: new Date().toISOString() }));
+  } catch {}
+  console.warn(`[monitor] Circuit breaker aktivován — příští pokus ${new Date(until).toISOString()}`);
+}
+
+function clearBackoff() {
+  try { fs.unlinkSync(BACKOFF_FILE); } catch {}
+}
 
 /**
  * Bootstrap monitoring systému při startu serveru.
@@ -8,9 +35,10 @@ const { syncWatchlistToWebhook, loadConfig } = require('./webhook-manager');
  *
  * Logika:
  * 1. Zkontroluj zda je HELIUS_API_KEY nastaven
- * 2. Načti webhook-config.json
- * 3. Pokud webhook neexistuje → vytvoř ho (setupWebhook)
- * 4. Synchronizuj adresy z DB watchlistu do webhooku
+ * 2. Zkontroluj circuit breaker — pokud platí backoff, přeskoč
+ * 3. Načti webhook-config.json
+ * 4. Pokud webhook neexistuje → vytvoř ho (setupWebhook)
+ * 5. Synchronizuj adresy z DB watchlistu do webhooku
  *
  * Chyby jsou jen logovány — nevypnou server.
  */
@@ -19,7 +47,12 @@ async function initMonitor() {
 
   if (!apiKey) {
     console.log('[monitor] HELIUS_API_KEY not configured — Live Runtime Monitoring disabled');
-    console.log('[monitor] Add HELIUS_API_KEY and HELIUS_WEBHOOK_SECRET to .env to enable');
+    return;
+  }
+
+  // Circuit breaker — nekontaktovat Helius pokud jsme nedávno dostali credit limit error
+  if (isInBackoff()) {
+    console.log('[monitor] Circuit breaker aktivní — Helius sync přeskočen (kredity vyčerpány, zkusit znovu za 6h)');
     return;
   }
 
@@ -37,9 +70,14 @@ async function initMonitor() {
 
   try {
     await syncWatchlistToWebhook();
+    clearBackoff(); // Úspěch — reset circuit breaker
     console.log('[monitor] Live Runtime Monitoring initialized');
   } catch (e) {
-    console.error('[monitor] Init failed (non-fatal):', e.message);
+    if (e instanceof HeliusLimitError) {
+      setBackoff();
+    } else {
+      console.error('[monitor] Init failed (non-fatal):', e.message);
+    }
   }
 }
 
