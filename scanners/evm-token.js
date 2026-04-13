@@ -182,6 +182,24 @@ function detectFees(source) {
   return hits.length ? Math.max(...hits) : 0;
 }
 
+// ── Fee asymmetry detector (buy/sell honeypot pattern) ───────────────────────
+function detectFeeAsymmetry(source) {
+  const buyPat  = /(?:buyFee|buyTax|_buyFee|_buyTax)\s*[=:]\s*(\d+)/gi;
+  const sellPat = /(?:sellFee|sellTax|_sellFee|_sellTax)\s*[=:]\s*(\d+)/gi;
+  const buyFees  = [];
+  const sellFees = [];
+  let m;
+  while ((m = buyPat.exec(source))  !== null) { const v = parseInt(m[1], 10); if (v >= 0 && v <= 100) buyFees.push(v);  }
+  while ((m = sellPat.exec(source)) !== null) { const v = parseInt(m[1], 10); if (v >= 0 && v <= 100) sellFees.push(v); }
+  if (!buyFees.length || !sellFees.length) return null;
+  const maxBuy  = Math.max(...buyFees);
+  const maxSell = Math.max(...sellFees);
+  const diff = maxSell - maxBuy;
+  if (diff >= 10) return { severity: 'critical', category: 'honeypot', diff, maxBuy, maxSell };
+  if (diff >= 3)  return { severity: 'high',     category: 'fees',     diff, maxBuy, maxSell };
+  return null;
+}
+
 // ── Source analysis ───────────────────────────────────────────────────────────
 function analyzeSource(source) {
   const findings = [];
@@ -194,6 +212,8 @@ function analyzeSource(source) {
   const maxFee = detectFees(source);
   if (maxFee > 10)     findings.push({ label: `Fee value > 10% detected (${maxFee}%)`, severity: 'critical', category: 'fees' });
   else if (maxFee > 5) findings.push({ label: `Fee value > 5% detected (${maxFee}%)`,  severity: 'high',     category: 'fees' });
+  const asym = detectFeeAsymmetry(source);
+  if (asym) findings.push({ label: `Buy/sell fee asymmetry: buy ${asym.maxBuy}% vs sell ${asym.maxSell}% (+${asym.diff}%) — potential honeypot`, severity: asym.severity, category: asym.category });
   return findings;
 }
 
@@ -274,6 +294,48 @@ async function alchemyGetAssetTransfers(alchRpc, address, maxCount = 100) {
   } catch { return null; }
 }
 
+// ── Holder concentration analysis ────────────────────────────────────────────
+function analyzeHolderConcentration(holders, supplyBigInt, decimals) {
+  const findings = [];
+  if (!holders || !holders.length || supplyBigInt == null || decimals == null) return findings;
+  const divisor = BigInt(10) ** BigInt(decimals);
+  if (divisor === 0n) return findings;
+  const totalTokens = Number(supplyBigInt);
+  if (totalTokens === 0) return findings;
+
+  const top1Pct  = holders.length >= 1 ? Number(BigInt(holders[0].TokenHolderQuantity || '0') * 10000n / supplyBigInt) / 100 : 0;
+  const top10Pct = holders.slice(0, 10).reduce((acc, h) => acc + Number(BigInt(h.TokenHolderQuantity || '0') * 10000n / supplyBigInt) / 100, 0);
+
+  if (top1Pct >= 50)
+    findings.push({ label: `Top holder owns ${top1Pct.toFixed(1)}% of supply (rug risk)`, severity: 'critical', category: 'concentration' });
+  else if (top1Pct >= 20)
+    findings.push({ label: `Top holder owns ${top1Pct.toFixed(1)}% of supply`, severity: 'high', category: 'concentration' });
+
+  if (holders.length >= 10) {
+    if (top10Pct >= 80)
+      findings.push({ label: `Top 10 holders control ${top10Pct.toFixed(1)}% of supply (extreme concentration)`, severity: 'critical', category: 'concentration' });
+    else if (top10Pct >= 60)
+      findings.push({ label: `Top 10 holders control ${top10Pct.toFixed(1)}% of supply`, severity: 'high', category: 'concentration' });
+  }
+  return findings;
+}
+
+// ── Mint/burn event analysis ──────────────────────────────────────────────────
+function analyzeMintBurnEvents(txList) {
+  const findings = [];
+  if (!txList || !txList.length) return findings;
+  const ZERO = '0x0000000000000000000000000000000000000000';
+  const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 86400;
+  const recentMints = txList.filter(tx => tx.from === ZERO && parseInt(tx.timeStamp || '0', 10) >= sevenDaysAgo);
+  const totalMints  = txList.filter(tx => tx.from === ZERO);
+  const totalBurns  = txList.filter(tx => tx.to   === ZERO);
+  if (recentMints.length > 0)
+    findings.push({ label: `${recentMints.length} mint event(s) in last 7 days (active supply inflation)`, severity: 'critical', category: 'supply' });
+  else if (totalMints.length > 3 && totalBurns.length === 0)
+    findings.push({ label: `${totalMints.length} mint events with no burns detected (inflationary supply)`, severity: 'high', category: 'supply' });
+  return findings;
+}
+
 // ── Explorer API calls ────────────────────────────────────────────────────────
 
 function buildExplorerUrl(chainId, params) {
@@ -291,6 +353,30 @@ async function explorerGetSourceCode(cfg, address, apiKey) {
     throw new Error(`Explorer error: ${json.result}`);
   }
   return json?.result?.[0] || null;
+}
+
+async function explorerGetTopHolders(cfg, address, apiKey, limit = 10) {
+  if (!apiKey) return null;
+  try {
+    const params = { module: 'token', action: 'tokenholderlist', contractaddress: address, page: '1', offset: String(limit), apikey: apiKey };
+    const url = buildExplorerUrl(cfg.chainId, params);
+    const res  = await explorerFetch(url);
+    const json = await res.json();
+    if (json?.status !== '1' || !Array.isArray(json?.result)) return null;
+    return json.result;
+  } catch { return null; }
+}
+
+async function explorerGetTokenTx(cfg, address, apiKey, limit = 50) {
+  if (!apiKey) return null;
+  try {
+    const params = { module: 'account', action: 'tokentx', contractaddress: address, page: '1', offset: String(limit), sort: 'desc', apikey: apiKey };
+    const url = buildExplorerUrl(cfg.chainId, params);
+    const res  = await explorerFetch(url);
+    const json = await res.json();
+    if (json?.status !== '1' || !Array.isArray(json?.result)) return null;
+    return json.result;
+  } catch { return null; }
 }
 
 async function explorerGetContractCreation(cfg, address, apiKey) {
@@ -479,6 +565,28 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
     }
   }
 
+  // ── (k) Holder concentration — Etherscan tokenholderlist ────────────────
+  if (apiKey && supply !== null && meta.decimals !== null) {
+    try {
+      const holders = await explorerGetTopHolders(cfg, contractAddress, apiKey, 10);
+      if (holders && holders.length) {
+        const concFindings = analyzeHolderConcentration(holders, supply, meta.decimals);
+        findings.push(...concFindings);
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  // ── (l) Mint/burn event analysis — Etherscan tokentx ─────────────────────
+  if (apiKey) {
+    try {
+      const txList = await explorerGetTokenTx(cfg, contractAddress, apiKey, 50);
+      if (txList && txList.length) {
+        const mintBurnFindings = analyzeMintBurnEvents(txList);
+        findings.push(...mintBurnFindings);
+      }
+    } catch { /* non-fatal */ }
+  }
+
   // ── Downgrade proxy/delegatecall findings for whitelisted contracts ──────
   if (wlEntry) {
     for (let i = 0; i < findings.length; i++) {
@@ -519,4 +627,4 @@ function hasExplorerKey(chain) {
   return !!getEtherscanKey();
 }
 
-module.exports = { scanEVMToken, SUPPORTED_CHAINS, getExplorerKey, hasExplorerKey, _test: { analyzeSource, analyzeTransfers, detectFees, decodeString, decodeUint256, decodeAddress, WEIGHTS, PATTERNS } };
+module.exports = { scanEVMToken, SUPPORTED_CHAINS, getExplorerKey, hasExplorerKey, _test: { analyzeSource, analyzeTransfers, detectFees, detectFeeAsymmetry, analyzeHolderConcentration, analyzeMintBurnEvents, decodeString, decodeUint256, decodeAddress, WEIGHTS, PATTERNS } };
