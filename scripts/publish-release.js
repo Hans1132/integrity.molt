@@ -297,18 +297,30 @@ async function broadcastTelegram(version, slug, tldr) {
   const token = getTelegramToken();
   if (!token) { console.log('  telegram: žádný token, přeskakuji'); return; }
 
-  const text = `🚀 <b>integrity.molt ${version} is live</b>\n\n`
+  // Announcement kanál dostane bohatší zprávu s odkazem na kanál
+  const channelText = `🚀 <b>integrity.molt ${version} is live</b>\n\n`
     + `${tldr}\n\n`
-    + `📖 <a href="https://intmolt.org/blog/${slug}">Read the full release notes →</a>\n`
+    + `📖 <a href="https://intmolt.org/blog/${slug}">Full release notes →</a>\n`
     + `🔍 <a href="https://intmolt.org/scan">Try the scanner</a>`;
 
-  // Načti subscribers s telegram_chat_id z DB
+  // Subscribers dostanou kratší variantu odkazující na kanál
+  const subscriberText = `🚀 <b>integrity.molt ${version} released</b>\n\n`
+    + `${tldr}\n\n`
+    + `📖 <a href="https://intmolt.org/blog/${slug}">Release notes</a> · `
+    + `<a href="https://t.me/intmolt">@intmolt channel</a>`;
+
+  // 1. Announcement kanál — první a vždy
+  const channel = process.env.TELEGRAM_CHANNEL;
+  if (channel) {
+    const code = await telegramSend(channel, channelText);
+    console.log(`  telegram channel @intmolt: ${code === 200 ? 'OK' : 'CHYBA ' + code}`);
+  }
+
+  // 2. Individuální subscribers z DB
   let chatIds = [];
   try {
     const Database = require('better-sqlite3');
-    const dbPath = process.env.SQLITE_DB_PATH
-      || path.join(ROOT, 'data', 'intmolt.db');
-
+    const dbPath = process.env.SQLITE_DB_PATH || path.join(ROOT, 'data', 'intmolt.db');
     const db = new Database(dbPath, { readonly: true });
     const rows = db.prepare(`
       SELECT DISTINCT telegram_chat_id FROM subscriptions
@@ -329,16 +341,18 @@ async function broadcastTelegram(version, slug, tldr) {
   const adminChat = process.env.ADMIN_TELEGRAM_CHAT;
   if (adminChat && !chatIds.includes(adminChat)) chatIds.push(adminChat);
 
-  if (!chatIds.length) { console.log('  telegram: žádní příjemci'); return; }
-
-  console.log(`  telegram: odesílám ${chatIds.length} příjemcům...`);
-  let sent = 0;
-  for (const chatId of chatIds) {
-    const code = await telegramSend(chatId, text);
-    if (code === 200) sent++;
-    await new Promise(r => setTimeout(r, 50)); // rate limit
+  if (chatIds.length) {
+    console.log(`  telegram subscribers: odesílám ${chatIds.length} příjemcům...`);
+    let sent = 0;
+    for (const chatId of chatIds) {
+      const code = await telegramSend(chatId, subscriberText);
+      if (code === 200) sent++;
+      await new Promise(r => setTimeout(r, 50));
+    }
+    console.log(`  telegram subscribers: odesláno ${sent}/${chatIds.length}`);
+  } else {
+    console.log('  telegram subscribers: žádní příjemci');
   }
-  console.log(`  telegram: odesláno ${sent}/${chatIds.length}`);
 }
 
 // ── Hlavní funkce ─────────────────────────────────────────────────────────────
