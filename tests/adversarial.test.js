@@ -10,6 +10,7 @@ process.env.OPENROUTER_API_KEY = '';
 
 const { selectPlaybooks, getAllPlaybooks, getPlaybook } = require('../src/adversarial/playbooks');
 const { discoverAccounts, WELL_KNOWN }                  = require('../src/adversarial/fork');
+const { parseLLMJson, buildUnsignedReport, executePlaybook } = require('../src/adversarial/runner');
 
 async function main() {
   let passed = 0;
@@ -161,6 +162,120 @@ async function main() {
     assert.ok(stepText.includes('vault') || stepText.includes('treasury'), 'drain_vault should mention vault/treasury');
     assert.ok(stepText.includes('transfer') || stepText.includes('withdraw'), 'drain_vault should mention transfer/withdraw');
   });
+
+  // ── parseLLMJson tests ─────────────────────────────────────────────────────
+
+  await test('parseLLMJson parses plain JSON', async () => {
+    const r = parseLLMJson('{"verdict":"PROTECTED","confidence":90}');
+    assert.strictEqual(r.verdict, 'PROTECTED');
+    assert.strictEqual(r.confidence, 90);
+  });
+
+  await test('parseLLMJson strips markdown fences', async () => {
+    const r = parseLLMJson('```json\n{"verdict":"VULNERABLE","confidence":80}\n```');
+    assert.strictEqual(r.verdict, 'VULNERABLE');
+  });
+
+  await test('parseLLMJson strips backtick-only fences', async () => {
+    const r = parseLLMJson('```\n{"verdict":"INCONCLUSIVE"}\n```');
+    assert.strictEqual(r.verdict, 'INCONCLUSIVE');
+  });
+
+  await test('parseLLMJson returns null for invalid JSON', async () => {
+    assert.strictEqual(parseLLMJson('this is not json'), null);
+  });
+
+  await test('parseLLMJson returns null for empty string', async () => {
+    assert.strictEqual(parseLLMJson(''), null);
+  });
+
+  await test('parseLLMJson returns null for null input', async () => {
+    assert.strictEqual(parseLLMJson(null), null);
+  });
+
+  // ── buildUnsignedReport structure tests ───────────────────────────────────
+
+  const _sampleAccounts = [
+    { pubkey: 'Aa111', type: 'token_mint',   lamports: 5e9, dataSize: 82 },
+    { pubkey: 'Bb222', type: 'token_account', lamports: 1e9, dataSize: 165 },
+  ];
+  const _sampleAnalysis = {
+    program_type: 'token',
+    likely_instructions: ['transfer', 'mint'],
+    high_value_accounts: ['Aa111'],
+    authority_accounts: [],
+    oracle_accounts: [],
+    risk_profile: 'Test program.'
+  };
+  const _sampleResults = [
+    {
+      playbook_id:   'drain_vault',
+      playbook_name: 'Drain Vault',
+      cwe:           'CWE-284',
+      tx_results:    [],
+      analysis:      { verdict: 'VULNERABLE', confidence: 90, evidence: [], exploitation_path: 'N/A', remediation: [], severity: 'critical' },
+      severity:      'critical'
+    },
+    {
+      playbook_id:   'missing_signer_check',
+      playbook_name: 'Missing Signer Check',
+      cwe:           'CWE-862',
+      tx_results:    [],
+      analysis:      { verdict: 'PROTECTED', confidence: 85, evidence: [], exploitation_path: 'N/A', remediation: [], severity: 'info' },
+      severity:      'high'
+    }
+  ];
+
+  await test('buildUnsignedReport has required top-level fields', async () => {
+    const r = buildUnsignedReport('TestProgram111', _sampleAccounts, _sampleAnalysis, _sampleResults, {});
+    for (const f of ['type','version','program_id','program_type','generated_at','account_discovery','program_analysis','playbook_results','summary']) {
+      assert.ok(r[f] !== undefined, `Missing field: ${f}`);
+    }
+    assert.strictEqual(r.type, 'adversarial_simulation_report');
+    assert.strictEqual(r.version, 1);
+    assert.strictEqual(r.program_id, 'TestProgram111');
+    assert.strictEqual(r.program_type, 'token');
+  });
+
+  await test('buildUnsignedReport summary counts are correct', async () => {
+    const r = buildUnsignedReport('TestProgram111', _sampleAccounts, _sampleAnalysis, _sampleResults, {});
+    assert.strictEqual(r.summary.playbooks_run, 2);
+    assert.strictEqual(r.summary.vulnerable, 1);
+    assert.strictEqual(r.summary.protected, 1);
+    assert.strictEqual(r.summary.critical, 1);
+    assert.strictEqual(r.summary.overall_risk, 'CRITICAL');
+  });
+
+  await test('buildUnsignedReport account_discovery matches input', async () => {
+    const r = buildUnsignedReport('TestProgram111', _sampleAccounts, _sampleAnalysis, _sampleResults, {});
+    assert.strictEqual(r.account_discovery.total, 2);
+    assert.strictEqual(r.account_discovery.accounts[0].pubkey, 'Aa111');
+  });
+
+  // ── executePlaybook null rpcUrl guard tests ────────────────────────────────
+
+  const _forkInfoNull = { rpcUrl: null };
+  const _mockProgramAnalysis = {
+    high_value_accounts: [], authority_accounts: [], oracle_accounts: [],
+    program_type: 'token', risk_profile: 'test'
+  };
+
+  for (const pbId of ['drain_vault', 'authority_takeover', 'missing_signer_check', 'account_confusion', 'oracle_manipulation', 'reentrancy_cpi', 'integer_overflow']) {
+    const playbook = getPlaybook(pbId);
+    if (!playbook) continue; // skip if playbook not in list
+
+    await test(`executePlaybook ${pbId} with null rpcUrl does not crash`, async () => {
+      const r = await executePlaybook(playbook, _forkInfoNull, 'FakeProgram111', _sampleAccounts, _mockProgramAnalysis);
+      assert.strictEqual(r.playbook_id, pbId);
+      assert.ok(r.tx_results.length >= 1, 'Should have at least one tx_result entry');
+      // The no_fork result should be first
+      assert.strictEqual(r.tx_results[0].exploitId, `${pbId}:no_fork`);
+      assert.strictEqual(r.tx_results[0].outcome, 'info');
+      // analysis should be a fallback object (no LLM key in test env)
+      assert.ok(r.analysis, 'analysis should exist');
+      assert.ok(r.analysis.verdict, 'analysis.verdict should exist');
+    });
+  }
 
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);

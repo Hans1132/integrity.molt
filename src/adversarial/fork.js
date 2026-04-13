@@ -76,7 +76,6 @@ function classifyAccount(pubkey, info) {
   if (dataLen === 0) return 'wallet/signer';
 
   // SPL token mint: 82 bytes; token account: 165 bytes
-  const TOKEN_PROG = 'TokenkegQfeZyiNbGKPFXCWuBvf9Ss623VQ5DA';
   if (owner === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') {
     if (dataLen === 82)  return 'token_mint';
     if (dataLen === 165) return 'token_account';
@@ -169,13 +168,17 @@ async function forkState(programId, options = {}) {
   const ledgerDir = path.join(os.tmpdir(), `adversarial-ledger-${crypto.randomBytes(6).toString('hex')}`);
   const rpcUrl    = `http://127.0.0.1:${rpcPort}`;
 
-  // Discover accounts to clone
-  let accounts = [];
-  try {
-    accounts = await discoverAccounts(programId);
-    console.log(`[adversarial/fork] discovered ${accounts.length} accounts for ${programId.slice(0, 8)}…`);
-  } catch (e) {
-    console.error('[adversarial/fork] account discovery failed, forking with program only:', e.message);
+  // Use pre-discovered accounts if provided (avoids redundant RPC call when runner already ran discoverAccounts)
+  let accounts = options.accounts || [];
+  if (!accounts.length) {
+    try {
+      accounts = await discoverAccounts(programId);
+      console.log(`[adversarial/fork] discovered ${accounts.length} accounts for ${programId.slice(0, 8)}…`);
+    } catch (e) {
+      console.error('[adversarial/fork] account discovery failed, forking with program only:', e.message);
+    }
+  } else {
+    console.log(`[adversarial/fork] reusing ${accounts.length} pre-discovered accounts for ${programId.slice(0, 8)}…`);
   }
 
   // Build clone arguments

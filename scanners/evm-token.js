@@ -324,7 +324,7 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
   const code = await rpcCall(cfg.rpc, 'eth_getCode', [contractAddress, 'latest']);
   if (!code || code === '0x' || code === '0x0') {
     findings.push({ label: 'No bytecode at address (not a contract)', severity: 'critical', category: 'existence' });
-    return { findings, meta, score: 100, recommendation: 'AVOID — address has no contract bytecode' };
+    return { findings, meta, score: 100, risk_score: 100, risk_level: 'critical', recommendation: 'AVOID — address has no contract bytecode' };
   }
 
   // ── (b) Token metadata — Alchemy preferred, eth_call fallback ───────────
