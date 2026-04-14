@@ -25,6 +25,6 @@ SCOPE: src/monitor/*, src/watchlist/*, src/delta/*, src/notifications/*, tests/m
 NESMÍŠ: server.js, src/payment/*, public/*
  
 Service: integrity-x402.service
-Kontext: Helius webhooks, delta reports (snapshot diffing + LLM diffs přes OpenRouter), watchlist = budoucí subscription produkt, Telegram bot @integrity_molt_bot (systemd molt-telegram.service).
+Kontext: Helius webhooks, delta reports (snapshot diffing + LLM diffs přes OpenRouter), watchlist = budoucí subscription produkt, Telegram bot @integrity_molt_bot (systemd intmolt-bot.service).
  
 Po každé změně spusť: bash scripts/test-gate.sh

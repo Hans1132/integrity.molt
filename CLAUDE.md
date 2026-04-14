@@ -9,7 +9,7 @@ NGINX reverse proxy s TLS. systemd služba: integrity-x402.service.
 - x402 micropayment paywall (USDC/SOL na Solaně)
 - Ed25519 signed reports (tweetnacl)
 - Multi-agent swarm: Scanner → Analyst → Reputation → Meta-scorecard
-- Telegram bot: @integrity_molt_bot (systemd: molt-telegram.service)
+- Telegram bot: @integrity_molt_bot (systemd: intmolt-bot.service)
 - Helius webhooks pro live monitoring
 - Delta reports s LLM diffs (OpenRouter / gemini-2.5-flash)
 
