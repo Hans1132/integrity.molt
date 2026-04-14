@@ -11,6 +11,10 @@
 // Payment model: same x402 USDC micropayments as REST API; caller must include
 //   x402-payment header OR use a pre-funded subscription API key.
 //   For MVP, tasks/send with skill=quick_scan is free (matches REST /scan/quick free tier).
+//
+// AutoPilot: AI agents identified by x-agent-mint header are subject to co-signing
+//   rules (spending limits, allowed skills). canAutoSign() is checked before every
+//   paid skill execution; decisions are logged to autopilot_spending SQLite table.
 
 // ── Task store (SQLite-backed) ────────────────────────────────────────────────
 const {
@@ -19,6 +23,10 @@ const {
   updateTask,
   deleteExpiredTasks,
 } = require('./task-store');
+
+// ── AutoPilot + PDA ───────────────────────────────────────────────────────────
+const { canAutoSign, logAutoSignDecision, getAgentDailySpending } = require('./autopilot');
+const { enrichPaymentContextWithPDA } = require('../payment/verify-pda');
 
 // TTL cleanup job — every 10 minutes
 const _cleanupInterval = setInterval(deleteExpiredTasks, 10 * 60 * 1000);
@@ -274,8 +282,30 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
   // Forward x402 payment header if present (for paid skills)
   const paymentHeader = reqHeaders['x402-payment'] || reqHeaders['authorization'] || null;
 
-  // Check if paid skill has no payment header — warn but still try (internal call will return 402)
+  // Agent identity — Metaplex Agent Token mint (optional, enables AutoPilot checks)
+  const agentMint = reqHeaders['x-agent-mint'] || null;
+
   const skill = SKILLS[skillId];
+
+  // ── AutoPilot check (paid skills only, AI agents only) ───────────────────────
+  if (skill.priceUSDC > 0 && agentMint) {
+    // Log PDA context for audit
+    enrichPaymentContextWithPDA(null, agentMint);
+
+    const autopilotDecision = canAutoSign(agentMint, skillId, skill.priceUSDC);
+    if (!autopilotDecision.approved) {
+      logAutoSignDecision(agentMint, skillId, skill.priceUSDC, 'rejected', null, autopilotDecision.reason);
+      return rpcError(rpcId, -32000, 'AutoPilot rejected: ' + autopilotDecision.reason, {
+        skillId,
+        priceUSDC:   skill.priceUSDC,
+        agentMint,
+        reason:      autopilotDecision.reason,
+        dailyBudget: getAgentDailySpending(agentMint),
+      });
+    }
+  }
+
+  // Check if paid skill has no payment header — warn but still try (internal call will return 402)
   if (skill.priceUSDC > 0 && !paymentHeader) {
     console.log(`[a2a] tasks/send: skill=${skillId} requires payment but no x402-payment header provided`);
   }
@@ -296,6 +326,10 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
           parts:    [{ type: 'data', data: scanResult }]
         }]
       });
+      // Log approved AutoPilot spend
+      if (agentMint && skill.priceUSDC > 0) {
+        logAutoSignDecision(agentMint, skillId, skill.priceUSDC, 'approved', null);
+      }
       // Fire webhook callback if provided
       await postCallback(task.id, callbackUrl, {
         taskId:    task.id,
@@ -341,6 +375,7 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
     pricing:   skill.priceUSDC === 0
       ? { type: 'free' }
       : { type: 'per_call', amount: skill.priceUSDC, currency: 'USDC', protocol: 'x402' },
+    ...(agentMint   ? { agentMint }   : {}),
     ...(callbackUrl ? { callbackUrl } : {}),
   });
 }
