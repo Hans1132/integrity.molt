@@ -821,7 +821,7 @@ app.get('/.well-known/x402.json', (req, res) => {
 
 // ── A2A (Agent-to-Agent) protocol — Google A2A spec ──────────────────────────
 
-const { handleA2ARequest, buildAgentCard } = require('./src/a2a/handler');
+const { handleA2ARequest, handleA2ASubscribe, buildAgentCard } = require('./src/a2a/handler');
 
 // Agent card — machine-readable capability description for A2A discovery
 app.get('/.well-known/agent.json', (req, res) => {
@@ -831,6 +831,11 @@ app.get('/.well-known/agent.json', (req, res) => {
 
 // A2A JSON-RPC 2.0 endpoint — tasks/send, tasks/get, tasks/cancel
 app.post('/a2a', express.json({ limit: '64kb' }), handleA2ARequest);
+
+// A2A SSE streaming endpoint — POST /a2a/subscribe
+// Body: { skill, address, sessionId?, metadata? }
+// Response: text/event-stream with events: task_created, task_working, task_completed, task_failed
+app.post('/a2a/subscribe', express.json({ limit: '16kb' }), handleA2ASubscribe);
 
 // Health check - free
 app.get('/health', (req, res) => {

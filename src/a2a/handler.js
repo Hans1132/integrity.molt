@@ -12,7 +12,17 @@
 //   x402-payment header OR use a pre-funded subscription API key.
 //   For MVP, tasks/send with skill=quick_scan is free (matches REST /scan/quick free tier).
 
-const { randomUUID } = require('crypto');
+// ── Task store (SQLite-backed) ────────────────────────────────────────────────
+const {
+  createTask,
+  getTask,
+  updateTask,
+  deleteExpiredTasks,
+} = require('./task-store');
+
+// TTL cleanup job — every 10 minutes
+const _cleanupInterval = setInterval(deleteExpiredTasks, 10 * 60 * 1000);
+if (_cleanupInterval.unref) _cleanupInterval.unref();
 
 // ── Skill → scan type mapping ─────────────────────────────────────────────────
 
@@ -67,41 +77,6 @@ const SKILLS = {
     tags:        ['solana', 'program', 'security', 'simulation'],
   },
 };
-
-// ── Task store (in-memory, TTL 1 hour) ───────────────────────────────────────
-
-const _tasks = new Map(); // taskId → Task
-const TASK_TTL_MS = 3600_000;
-
-function createTask(skillId, params) {
-  const id = randomUUID();
-  const task = {
-    id,
-    skillId,
-    params,
-    status:    { state: 'submitted' },
-    createdAt: Date.now(),
-    artifacts: [],
-    history:   [{ state: 'submitted', timestamp: new Date().toISOString() }],
-  };
-  _tasks.set(id, task);
-  // TTL cleanup
-  setTimeout(() => _tasks.delete(id), TASK_TTL_MS);
-  return task;
-}
-
-function getTask(id) {
-  return _tasks.get(id) || null;
-}
-
-function updateTask(id, update) {
-  const t = _tasks.get(id);
-  if (!t) return;
-  Object.assign(t, update);
-  if (update.status) {
-    t.history.push({ ...update.status, timestamp: new Date().toISOString() });
-  }
-}
 
 // ── Skill executor — calls internal loopback REST endpoints ──────────────────
 // This avoids circular requires (scan logic lives in server.js) and ensures all
@@ -164,6 +139,53 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
   }
 }
 
+// ── Webhook callback helper ───────────────────────────────────────────────────
+
+/**
+ * postCallback — POST result to callbackUrl with timeout + one retry.
+ * Logs result into task history via updateTask.
+ */
+async function postCallback(taskId, callbackUrl, result) {
+  if (!callbackUrl) return;
+
+  const payload = JSON.stringify(result);
+  const headers = { 'Content-Type': 'application/json', 'X-A2A-Task': taskId };
+
+  let attempt = 0;
+  let lastErr  = null;
+
+  while (attempt < 2) {
+    attempt++;
+    try {
+      const res = await fetch(callbackUrl, {
+        method:  'POST',
+        headers,
+        body:    payload,
+        signal:  AbortSignal.timeout(10_000),
+      });
+      const cbStatus = res.status;
+      console.log(`[a2a] callback task=${taskId} url=${callbackUrl} status=${cbStatus} attempt=${attempt}`);
+      // Log into task history
+      updateTask(taskId, {
+        status: { state: 'callback_sent', callbackUrl, callbackStatus: cbStatus, attempt }
+      });
+      return; // success
+    } catch (e) {
+      lastErr = e;
+      console.warn(`[a2a] callback task=${taskId} attempt=${attempt} failed: ${e.message}`);
+      if (attempt < 2) {
+        // Brief delay before retry — explicit await, not sleep loop
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+  }
+
+  // Both attempts failed — log failure
+  updateTask(taskId, {
+    status: { state: 'callback_failed', callbackUrl, error: lastErr?.message }
+  });
+}
+
 // Extract address from A2A message parts (text/plain or data part with address field)
 function extractAddressFromMessage(message) {
   if (!message?.parts?.length) return null;
@@ -208,16 +230,17 @@ function rpcResult(id, result) {
  * tasks/send — Start a new scan task.
  *
  * params:
- *   id?        optional client-generated task ID (UUIDv4)
- *   sessionId? optional session grouping
- *   message    A2A Message object:
+ *   id?          optional client-generated task ID (UUIDv4) — ignored, server generates ID
+ *   sessionId?   optional session grouping
+ *   message      A2A Message object:
  *     parts: [{ type: "text", text: "<address>" }, { type: "data", data: { skill: "quick_scan" } }]
- *   metadata?  { skill: "quick_scan", address?: "...", options: {} }
+ *   metadata?    { skill: "quick_scan", address?: "...", options: {}, callbackUrl?: "..." }
+ *   callbackUrl? top-level optional webhook URL (alternative to metadata.callbackUrl)
  *
  * reqHeaders: forwarded from the original HTTP request (for x402-payment passthrough)
  */
 async function handleTasksSend(rpcId, params, reqHeaders = {}) {
-  const { message, metadata } = params || {};
+  const { message, metadata, sessionId, callbackUrl: topCallbackUrl } = params || {};
   if (!message) return rpcError(rpcId, -32602, 'Missing required param: message');
 
   // Resolve skill
@@ -235,6 +258,19 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
     return rpcError(rpcId, -32602, 'Cannot extract Solana address from message parts');
   }
 
+  // Webhook callback URL (metadata takes precedence over top-level)
+  const callbackUrl = metadata?.callbackUrl || topCallbackUrl || null;
+
+  // Validate callbackUrl is a valid HTTP(S) URL if provided
+  if (callbackUrl) {
+    try {
+      const u = new URL(callbackUrl);
+      if (!['http:', 'https:'].includes(u.protocol)) throw new Error('non-http');
+    } catch {
+      return rpcError(rpcId, -32602, 'Invalid callbackUrl — must be http(s):// URL');
+    }
+  }
+
   // Forward x402 payment header if present (for paid skills)
   const paymentHeader = reqHeaders['x402-payment'] || reqHeaders['authorization'] || null;
 
@@ -244,8 +280,8 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
     console.log(`[a2a] tasks/send: skill=${skillId} requires payment but no x402-payment header provided`);
   }
 
-  // Create task
-  const task = createTask(skillId, { address, options: metadata?.options || {} });
+  // Create task (persisted to SQLite)
+  const task = createTask(skillId, { address, options: metadata?.options || {}, callbackUrl }, sessionId || null);
 
   // Run the skill async — update task state when done
   setImmediate(async () => {
@@ -260,11 +296,23 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
           parts:    [{ type: 'data', data: scanResult }]
         }]
       });
+      // Fire webhook callback if provided
+      await postCallback(task.id, callbackUrl, {
+        taskId:    task.id,
+        skillId,
+        address,
+        status:    { state: 'completed' },
+        artifacts: [{
+          name:     `${skillId}_result`,
+          mimeType: 'application/json',
+          parts:    [{ type: 'data', data: scanResult }]
+        }]
+      });
     } catch (e) {
       console.error(`[a2a] task ${task.id} (${skillId}) failed:`, e.message);
       // Preserve payment-required error details for the caller
       const statusUpdate = { state: 'failed', message: e.message.slice(0, 300) };
-      if (e.status === 402 || e.status === 402) {
+      if (e.status === 402) {
         statusUpdate.paymentRequired = {
           priceUSDC: SKILLS[skillId]?.priceUSDC,
           currency:  'USDC',
@@ -273,6 +321,13 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
         };
       }
       updateTask(task.id, { status: statusUpdate });
+      // Fire webhook callback for failure too
+      await postCallback(task.id, callbackUrl, {
+        taskId:  task.id,
+        skillId,
+        address,
+        status:  statusUpdate,
+      });
     }
   });
 
@@ -286,6 +341,7 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
     pricing:   skill.priceUSDC === 0
       ? { type: 'free' }
       : { type: 'per_call', amount: skill.priceUSDC, currency: 'USDC', protocol: 'x402' },
+    ...(callbackUrl ? { callbackUrl } : {}),
   });
 }
 
@@ -327,6 +383,111 @@ function handleTasksCancel(rpcId, params) {
 
   updateTask(id, { status: { state: 'canceled' } });
   return rpcResult(rpcId, { id, status: { state: 'canceled' } });
+}
+
+// ── SSE streaming handler — handleA2ASubscribe ────────────────────────────────
+// Exported and mounted in server.js as: POST /a2a/subscribe
+//
+// Body: { skill, address, sessionId?, metadata? }
+// Sends SSE events: task_created → task_working (keepalive) → task_completed | task_failed
+//
+// SSE format per spec:
+//   event: <name>\n
+//   data: <json>\n
+//   \n
+
+function sseWrite(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+async function handleA2ASubscribe(req, res) {
+  const { skill, address, sessionId, metadata } = req.body || {};
+
+  // Validate inputs
+  if (!address) {
+    return res.status(400).json({ error: 'Missing required field: address' });
+  }
+
+  const skillId = skill || 'quick_scan';
+  if (!SKILLS[skillId]) {
+    return res.status(400).json({ error: `Unknown skill: ${skillId}`, available: Object.keys(SKILLS) });
+  }
+
+  // Validate address looks like base58 (32–44 chars)
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
+    return res.status(400).json({ error: 'Invalid Solana address format' });
+  }
+
+  // Payment header passthrough
+  const paymentHeader = req.headers['x402-payment'] || req.headers['authorization'] || null;
+  const skillDef      = SKILLS[skillId];
+
+  if (skillDef.priceUSDC > 0 && !paymentHeader) {
+    console.log(`[a2a/sse] subscribe: skill=${skillId} requires payment but no x402-payment header`);
+  }
+
+  // Create task
+  const task = createTask(skillId, { address, options: metadata?.options || {} }, sessionId || null);
+
+  // Set SSE headers
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // disable nginx buffering
+  res.flushHeaders();
+
+  const startMs = Date.now();
+
+  // Send initial event
+  sseWrite(res, 'task_created', { taskId: task.id, skillId, address });
+
+  // Keepalive interval — every 5 seconds
+  const keepalive = setInterval(() => {
+    sseWrite(res, 'task_working', { taskId: task.id, elapsed_ms: Date.now() - startMs });
+  }, 5000);
+
+  // Clean up on client disconnect
+  req.on('close', () => {
+    clearInterval(keepalive);
+  });
+
+  // Execute skill
+  updateTask(task.id, { status: { state: 'working' } });
+
+  try {
+    const scanResult = await executeSkill(skillId, address, metadata?.options || {}, paymentHeader);
+
+    clearInterval(keepalive);
+
+    updateTask(task.id, {
+      status:    { state: 'completed' },
+      artifacts: [{
+        name:     `${skillId}_result`,
+        mimeType: 'application/json',
+        parts:    [{ type: 'data', data: scanResult }]
+      }]
+    });
+
+    sseWrite(res, 'task_completed', { taskId: task.id, result: scanResult });
+    res.end();
+
+  } catch (e) {
+    clearInterval(keepalive);
+
+    console.error(`[a2a/sse] task ${task.id} (${skillId}) failed:`, e.message);
+    const failStatus = { state: 'failed', message: e.message.slice(0, 300) };
+    if (e.status === 402) {
+      failStatus.paymentRequired = {
+        priceUSDC: skillDef.priceUSDC,
+        currency:  'USDC',
+        protocol:  'x402',
+        hint:      'Include x402-payment header in the /a2a/subscribe request',
+      };
+    }
+    updateTask(task.id, { status: failStatus });
+    sseWrite(res, 'task_failed', { taskId: task.id, error: failStatus });
+    res.end();
+  }
 }
 
 // ── Main entry point ──────────────────────────────────────────────────────────
@@ -377,15 +538,15 @@ function buildAgentCard(baseUrl) {
     description: 'AI-powered Solana security scanner and adversarial simulator. Provides on-chain program analysis, token audits, wallet profiling, and adversarial attack simulation via the x402 payment protocol.',
     url:         baseUrl || 'https://intmolt.org',
     iconUrl:     `${baseUrl || 'https://intmolt.org'}/favicon.ico`,
-    version:     '0.4.0',
+    version:     '0.4.1',
     documentationUrl: 'https://intmolt.org',
     provider: {
       organization: 'integrity.molt',
       url:          'https://intmolt.org',
     },
     capabilities: {
-      streaming:             false,
-      pushNotifications:     false,
+      streaming:              true,
+      pushNotifications:      true,
       stateTransitionHistory: true,
     },
     authentication: {
@@ -420,4 +581,4 @@ function buildAgentCard(baseUrl) {
   };
 }
 
-module.exports = { handleA2ARequest, buildAgentCard, SKILLS, getTask, createTask };
+module.exports = { handleA2ARequest, handleA2ASubscribe, buildAgentCard, SKILLS, getTask, createTask };
