@@ -27,6 +27,7 @@ const { initMonitor }        = require('./src/monitor/init');
 const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 const { lookupScamDb }       = require('./src/scam-db/lookup');
+const { enrichScanResult, combineScores } = require('./src/enrichment');
 
 const https = require('https');
 const nodemailer = require('nodemailer');
@@ -1201,20 +1202,33 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
 
   try {
     const _t0 = Date.now();
-    const { stdout } = await runScript('/root/scanner/enhanced-token-scan.sh', [safeAddress], 150000);
+    // Run script and RugCheck enrichment in parallel
+    const [scriptResult, enrichmentResult] = await Promise.allSettled([
+      runScript('/root/scanner/enhanced-token-scan.sh', [safeAddress], 150000),
+      enrichScanResult(safeAddress)
+    ]);
     console.log(`[scan/token] address=${safeAddress} script=${Date.now()-_t0}ms`);
+    const { stdout } = scriptResult.status === 'fulfilled' ? scriptResult.value : { stdout: '' };
+    const enrichmentData = enrichmentResult.status === 'fulfilled' ? enrichmentResult.value : null;
+
     const slug = safeAddress.substring(0, 10).toLowerCase();
     let data = null;
     try { data = JSON.parse(stdout.trim()); } catch {}
     const { reportText, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, 'enhanced-token');
 
+    // Combine enrichment score with script score if both available
+    let finalScore = data?.risk_score ?? null;
+    if (enrichmentData?.aggregated_risk != null && typeof finalScore === 'number') {
+      finalScore = combineScores(finalScore, enrichmentData.aggregated_risk);
+    }
+
     // Advisor — šedá zóna 40-70
     const advisorCtx = `Token audit pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}`;
-    const adv = await runAdvisorIfGreyZone({ score: data?.risk_score, context: advisorCtx, scanType: 'token' });
+    const adv = await runAdvisorIfGreyZone({ score: finalScore, context: advisorCtx, scanType: 'token' });
 
     db.logScanToHistory({
       email: req.apiKey?.email || null, address: safeAddress, scan_type: 'token',
-      risk_score: data?.risk_score ?? null, risk_level: data?.risk_level || null,
+      risk_score: finalScore ?? null, risk_level: data?.risk_level || null,
       summary: adv?.text?.slice(0, 500) || data?.summary || null, cached: false, result_json: null
     }).catch(() => {});
 
@@ -1225,6 +1239,8 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
       scan_version:  '2.0',
       address:       safeAddress,
       data:          data || null,
+      enrichment:    enrichmentData || null,
+      risk_score:    finalScore,
       report:        (!data && (reportText || stdout)) || null,
       advisor:       adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
       signed,

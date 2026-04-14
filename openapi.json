@@ -34,7 +34,7 @@
     },
     "/scan/wallet": {
       "post": {
-        "summary": "Wallet profiling (0.50 USDC)",
+        "summary": "Wallet profiling (0.75 USDC)",
         "description": "Wallet age estimate, activity level, DeFi exposure, token holdings, risk classification.",
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string", "description": "Wallet address"}}, "required": ["address"]}}}},
         "responses": {"200": {"description": "Wallet profile report"}, "402": {"description": "Payment required"}}
@@ -42,7 +42,7 @@
     },
     "/scan/pool": {
       "post": {
-        "summary": "DeFi pool safety scan (0.50 USDC)",
+        "summary": "DeFi pool safety scan (0.75 USDC)",
         "description": "Liquidity depth, LP token distribution, Raydium/Orca/Meteora analysis, withdrawal risk.",
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"address": {"type": "string", "description": "Pool address"}}, "required": ["address"]}}}},
         "responses": {"200": {"description": "Pool safety report"}, "402": {"description": "Payment required"}}
