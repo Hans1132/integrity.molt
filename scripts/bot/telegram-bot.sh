@@ -302,7 +302,7 @@ handle_token() {
 <code>${address}</code>
 
 Checking: mint/freeze authority, holder distribution, supply, Token-2022...
-Please wait 20–40 seconds..."
+Preliminary results in a few seconds, full AI analysis follows shortly..."
 
     local safe_address
     safe_address=$(echo "$address" | tr -cd '1-9A-HJ-NP-Za-km-z' | cut -c1-44)
@@ -311,8 +311,8 @@ Please wait 20–40 seconds..."
     result=$(curl -s -X POST "${SERVER_API}/internal/bot/token" \
         -H "Content-Type: application/json" \
         -H "X-Admin-Key: ${BOT_ADMIN_KEY}" \
-        --max-time 90 \
-        -d "{\"address\":\"${safe_address}\"}" 2>/dev/null)
+        --max-time 10 \
+        -d "{\"address\":\"${safe_address}\",\"chat_id\":\"${chat_id}\"}" 2>/dev/null)
 
     if [ -z "$result" ]; then
         send_message "$chat_id" "❌ Server did not respond. Please try again in a moment."
@@ -566,7 +566,7 @@ For unlimited scans: /upgrade
 Chain: <b>${chain}</b>
 
 Checking: ownership, supply, distribution, contract verification, findings...
-Please wait 15–30 seconds..."
+Preliminary results in a few seconds, full AI analysis follows shortly..."
 
     log "EVM scan: address=$address chain=$chain chat_id=$chat_id"
 
@@ -574,8 +574,8 @@ Please wait 15–30 seconds..."
     result=$(curl -s -X POST "${SERVER_API}/internal/bot/evm" \
         -H "Content-Type: application/json" \
         -H "X-Admin-Key: ${BOT_ADMIN_KEY}" \
-        --max-time 60 \
-        -d "{\"address\":\"${address}\",\"chain\":\"${chain}\"}")
+        --max-time 10 \
+        -d "{\"address\":\"${address}\",\"chain\":\"${chain}\",\"chat_id\":\"${chat_id}\"}")
 
     if [ -z "$result" ]; then
         send_message "$chat_id" "❌ Server did not respond. Please try again in a moment."
