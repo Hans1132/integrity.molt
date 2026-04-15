@@ -556,6 +556,64 @@
       width: 36px; text-align: right; flex-shrink: 0;
     }
 
+    /* ── IRIS score badge ── */
+    .iris-badge {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
+    }
+    .iris-badge-header {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .iris-grade-circle {
+      width: 60px; height: 60px; border-radius: 50%;
+      border: 2px solid; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; flex-shrink: 0;
+      font-family: var(--mono);
+    }
+    .iris-grade-circle .iris-num  { font-size: 18px; font-weight: 700; line-height: 1; }
+    .iris-grade-circle .iris-max  { font-size: 10px; color: var(--text-faint); }
+    .iris-grade-circle.low      { background: #0d1f18; color: var(--green);  border-color: #1e3a2f; }
+    .iris-grade-circle.medium   { background: #1f180d; color: var(--yellow); border-color: #3a2e1e; }
+    .iris-grade-circle.high     { background: #1f0d0d; color: var(--red);    border-color: #3a1e1e; }
+    .iris-grade-circle.critical { background: #200a0a; color: #ff4444;       border-color: #5a1a1a; }
+    .iris-badge-meta { flex: 1; min-width: 140px; }
+    .iris-grade-label {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; margin-bottom: 3px;
+    }
+    .iris-grade-label.low      { color: var(--green);  }
+    .iris-grade-label.medium   { color: var(--yellow); }
+    .iris-grade-label.high     { color: var(--red);    }
+    .iris-grade-label.critical { color: #ff4444;       }
+    .iris-badge-sub {
+      font-family: var(--mono); font-size: 10px; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: .6px;
+    }
+    .iris-breakdown { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .iris-dim-row { display: flex; align-items: center; gap: 10px; }
+    .iris-dim-label {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      width: 120px; flex-shrink: 0;
+    }
+    .iris-dim-bar-bg {
+      flex: 1; height: 6px; background: var(--bg-alt);
+      border-radius: 3px; overflow: hidden;
+    }
+    .iris-dim-bar-fill {
+      height: 100%; border-radius: 3px; transition: width .8s ease;
+    }
+    .iris-dim-bar-fill.low      { background: var(--green); }
+    .iris-dim-bar-fill.medium   { background: var(--yellow); }
+    .iris-dim-bar-fill.high     { background: var(--red); }
+    .iris-dim-bar-fill.critical { background: #ff4444; }
+    .iris-dim-score {
+      font-family: var(--mono); font-size: 11px; color: var(--text-faint);
+      width: 40px; text-align: right; flex-shrink: 0;
+    }
+    @media (max-width: 480px) {
+      .iris-dim-label { width: 80px; font-size: 10px; }
+    }
+
     /* ── Evidence section ── */
     .evidence-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
     .evidence-tx {
@@ -1394,6 +1452,67 @@ async function startScan() {
   }
 }
 
+// ── IRIS score badge ───────────────────────────────────────────────────────────
+function renderIrisBadge(iris) {
+  if (!iris || iris.score == null) return '';
+
+  const score = iris.score;
+  const grade = (iris.grade || 'LOW').toUpperCase();
+
+  // grade → CSS class
+  const cls =
+    grade === 'CRITICAL' ? 'critical' :
+    grade === 'HIGH'     ? 'high'     :
+    grade === 'MEDIUM'   ? 'medium'   : 'low';
+
+  // human-readable label
+  const gradeLabel = grade + ' RISK';
+
+  let html = `
+    <div class="iris-badge reveal reveal-4" title="IRIS v1.0 — Inflows + Rights + Imbalance + Speed">
+      <div class="iris-badge-header">
+        <div class="iris-grade-circle ${cls}">
+          <span class="iris-num">${score}</span>
+          <span class="iris-max">/100</span>
+        </div>
+        <div class="iris-badge-meta">
+          <div class="iris-grade-label ${cls}">${gradeLabel}</div>
+          <div class="iris-badge-sub">IRIS Risk Score &middot; <a href="https://intmolt.org/iris" target="_blank" rel="noopener" style="color:var(--text-faint);text-decoration:underline">methodology</a></div>
+        </div>
+      </div>`;
+
+  // Breakdown (only if full data present)
+  const bd = iris.breakdown;
+  if (bd && bd.inflows && bd.rights && bd.imbalance && bd.speed) {
+    const dims = [
+      { key: 'inflows',   label: 'I — Inflows',   score: bd.inflows.score   },
+      { key: 'rights',    label: 'R — Rights',     score: bd.rights.score    },
+      { key: 'imbalance', label: 'I — Imbalance',  score: bd.imbalance.score },
+      { key: 'speed',     label: 'S — Speed',      score: bd.speed.score     },
+    ];
+    html += `<div class="iris-breakdown">`;
+    for (const d of dims) {
+      const pct = (d.score / 25) * 100;
+      const dimCls =
+        pct >= 75 ? 'critical' :
+        pct >= 50 ? 'high'     :
+        pct >= 25 ? 'medium'   : 'low';
+      html += `
+        <div class="iris-dim-row">
+          <span class="iris-dim-label">${esc(d.label)}</span>
+          <div class="iris-dim-bar-bg">
+            <div class="iris-dim-bar-fill ${dimCls}" style="width:${pct.toFixed(1)}%"></div>
+          </div>
+          <span class="iris-dim-score">${d.score}/25</span>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
 // ── Render result ──────────────────────────────────────────────────────────────
 function renderResult(json, address, type) {
   _lastScanJson     = json;    // for download
@@ -1426,6 +1545,11 @@ function renderResult(json, address, type) {
     html = renderTextReport(json.report, address, json.signed, json.decision, json.aggregate_score);
   } else {
     html = `<div class="report-pre">No report data returned.</div>`;
+  }
+
+  // IRIS score badge — injektovat před upsell banner
+  if (json.iris) {
+    html += renderIrisBadge(json.iris);
   }
 
   if (isFree) {
