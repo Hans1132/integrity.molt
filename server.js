@@ -28,6 +28,7 @@ const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 const { lookupScamDb }       = require('./src/scam-db/lookup');
 const { enrichScanResult, combineScores } = require('./src/enrichment');
+const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
 
 const https = require('https');
 const nodemailer = require('nodemailer');
@@ -1057,18 +1058,25 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
   try {
     const _t0 = Date.now();
 
-    // 1. Shell skript + scam-db lookup (paralelně)
-    const [{ stdout }, scamDb] = await Promise.all([
+    // 1. Shell skript + scam-db lookup + enrichment (paralelně)
+    const [{ stdout }, scamDb, quickEnrichment] = await Promise.all([
       runScript('/root/scanner/quick-scan.sh', [safeAddress], 60000),
       lookupScamDb(safeAddress).catch(e => {
         console.warn('[scan/quick] scam-db lookup failed (non-fatal):', e.message);
         return { known_scam: null, rugcheck: null, db_match: false };
+      }),
+      enrichScanResult(safeAddress).catch(e => {
+        console.warn('[scan/quick] enrichment failed (non-fatal):', e.message);
+        return null;
       })
     ]);
     const scriptMs = Date.now() - _t0;
     const slug = safeAddress.substring(0, 10).toLowerCase();
     const { reportText: shellReport, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, '');
     const rawReport = shellReport || stdout;
+
+    // IRIS score
+    const irisResult = calculateIRIS(quickEnrichment, scamDb);
 
     // Příprava scam-db sekce pro LLM
     let scamDbSection = '';
@@ -1085,6 +1093,9 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
     }
     if (!scamDbSection) scamDbSection = '\nScam databases: No match found.\n';
 
+    // IRIS sekce pro LLM
+    const irisSection = `\n${formatIrisForLLM(irisResult)}\n`;
+
     // 2. Sonnet executor + Opus advisor — LLM analýza
     let advisorResult = null;
     let finalReport   = rawReport;
@@ -1092,7 +1103,7 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
     try {
       advisorResult = await runWithAdvisor({
         systemPrompt: SECURITY_ANALYST_SYSTEM,
-        userMessage:  `Adresa: ${safeAddress}\n\nOn-chain data:\n${rawReport}${scamDbSection}`,
+        userMessage:  `Adresa: ${safeAddress}\n\nOn-chain data:\n${rawReport}${scamDbSection}${irisSection}`,
       });
       finalReport = advisorResult.text || rawReport;
       console.log(`[scan/quick] advisor=${advisorResult.provider} used=${advisorResult.advisorUsed} llmMs=${Date.now()-_t0-scriptMs}ms`);
@@ -1126,6 +1137,7 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
       provider:      advisorResult?.provider    ?? 'shell-only',
       signed:        signedEnvelope,
       scam_db:       scamDb,
+      iris:          { score: irisResult.score, grade: irisResult.grade },
       timestamp:     new Date().toISOString(),
     });
   } catch (err) {
@@ -1146,9 +1158,18 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPa
 
   try {
     const _t0 = Date.now();
-    const { stdout } = await runScript('/root/swarm/orchestrator/orchestrator.sh', [safeAddress], 120000);
+    // Swarm orchestrator + enrichment + scam-db in parallel (IRIS post-processing)
+    const [swarmOut, deepEnrichment, deepScamDb] = await Promise.allSettled([
+      runScript('/root/swarm/orchestrator/orchestrator.sh', [safeAddress], 120000),
+      enrichScanResult(safeAddress),
+      lookupScamDb(safeAddress)
+    ]);
     const scriptMs = Date.now() - _t0;
     console.log(`[scan/deep] address=${safeAddress} script=${scriptMs}ms`);
+
+    const { stdout } = swarmOut.status === 'fulfilled' ? swarmOut.value : { stdout: '' };
+    const deepEnrichmentData = deepEnrichment.status === 'fulfilled' ? deepEnrichment.value : null;
+    const deepScamDbData = deepScamDb.status === 'fulfilled' ? deepScamDb.value : { known_scam: null, rugcheck: null, db_match: false };
 
     let swarmResult = null;
     try { swarmResult = JSON.parse(stdout); } catch {}
@@ -1171,6 +1192,9 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPa
       signedEnvelope = signedEnvelope || fs2;
     }
 
+    // IRIS full breakdown + raw enrichment pro deep audit
+    const irisResult = calculateIRIS(deepEnrichmentData, deepScamDbData);
+
     db.logScanToHistory({
       email: req.apiKey?.email || null, address: safeAddress, scan_type: 'deep-audit',
       risk_score: swarmResult?.aggregate_score ?? null,
@@ -1186,6 +1210,8 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPa
       aggregate_score: swarmResult?.aggregate_score || null,
       rug_override:    swarmResult?.rug_override    || false,
       agents:          swarmResult?.agents          || null,
+      iris:            irisResult,
+      enrichment:      deepEnrichmentData || null,
       report:          reportText || stdout,
       signed:          signedEnvelope,
       timestamp: new Date().toISOString()
@@ -1207,14 +1233,16 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
 
   try {
     const _t0 = Date.now();
-    // Run script and RugCheck enrichment in parallel
-    const [scriptResult, enrichmentResult] = await Promise.allSettled([
+    // Run script, RugCheck enrichment, and scam-db lookup in parallel
+    const [scriptResult, enrichmentResult, scamDbResult] = await Promise.allSettled([
       runScript('/root/scanner/enhanced-token-scan.sh', [safeAddress], 150000),
-      enrichScanResult(safeAddress)
+      enrichScanResult(safeAddress),
+      lookupScamDb(safeAddress)
     ]);
     console.log(`[scan/token] address=${safeAddress} script=${Date.now()-_t0}ms`);
     const { stdout } = scriptResult.status === 'fulfilled' ? scriptResult.value : { stdout: '' };
     const enrichmentData = enrichmentResult.status === 'fulfilled' ? enrichmentResult.value : null;
+    const scamDb = scamDbResult.status === 'fulfilled' ? scamDbResult.value : { known_scam: null, rugcheck: null, db_match: false };
 
     const slug = safeAddress.substring(0, 10).toLowerCase();
     let data = null;
@@ -1227,8 +1255,14 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
       finalScore = combineScores(finalScore, enrichmentData.aggregated_risk);
     }
 
+    // IRIS full breakdown
+    const irisResult = calculateIRIS(enrichmentData, scamDb);
+
+    // IRIS sekce pro advisor kontext
+    const irisSection = `\n${formatIrisForLLM(irisResult)}\n`;
+
     // Advisor — šedá zóna 40-70
-    const advisorCtx = `Token audit pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}`;
+    const advisorCtx = `Token audit pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}${irisSection}`;
     const adv = await runAdvisorIfGreyZone({ score: finalScore, context: advisorCtx, scanType: 'token' });
 
     db.logScanToHistory({
@@ -1246,6 +1280,7 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
       data:          data || null,
       enrichment:    enrichmentData || null,
       risk_score:    finalScore,
+      iris:          irisResult,
       report:        (!data && (reportText || stdout)) || null,
       advisor:       adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
       signed,
