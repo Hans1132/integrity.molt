@@ -28,6 +28,7 @@ const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 const { lookupScamDb }       = require('./src/scam-db/lookup');
 const { enrichScanResult, combineScores } = require('./src/enrichment');
+const { parseTokenExtensionsFromBuffer }  = require('./src/enrichment/token-extensions');
 const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
 
 const https = require('https');
@@ -148,6 +149,54 @@ function loadLatestReport(reportsDir, slug, prefix) {
 const VERIFY_KEY_PATH = '/root/.secrets/verify_key.bin';
 const { SOLANA_RPC_URL: SOLANA_RPC } = require('./src/rpc');
 
+// ── Konstanty pro quick-rpc scan ──────────────────────────────────────────────
+const USDC_MINT       = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+const USDT_MINT       = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+// Adresy mint/freeze authority pro known stablecoiny (nevlastní riziko)
+const KNOWN_SAFE_AUTHORITIES = new Set([
+  'BJE5MMbqXjVwjAF7oxwPYXnrXoUCCqyHR3Zmqd7f8eRj', // USDC mint authority (Circle)
+  '3CCHpFBNeXRKwbEBnPVQD2PPzHdKNJwBuEBz3HUbkfHe', // USDT freeze authority
+]);
+// Tokeny s ověřenou legitimitou — přeskočí scam-db penalizaci (high-confidence false positives)
+const KNOWN_LEGITIMATE_TOKENS = new Set([
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC (Circle)
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',  // USDT (Tether)
+  'So11111111111111111111111111111111111111112',      // Wrapped SOL
+  'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',   // JUP
+  'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So',   // mSOL
+  'bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1',   // bSOL
+  'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',  // BONK
+  '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs',  // ETH (Wormhole)
+  '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh',  // BTC (Wormhole)
+]);
+
+/**
+ * Parsuje mintAuthority a freezeAuthority z raw Buffer SPL token mint accountu.
+ * SPL Token mint layout (82 bytes):
+ *   [0-3]   mintAuthority option (LE u32, 0=None, 1=Some)
+ *   [4-35]  mintAuthority pubkey (32 bytes)
+ *   [36-43] supply (u64 LE)
+ *   [44]    decimals (u8)
+ *   [45]    isInitialized (bool)
+ *   [46-49] freezeAuthority option (LE u32, 0=None, 1=Some)
+ *   [50-81] freezeAuthority pubkey (32 bytes)
+ */
+function parseMintAuthorities(rawData) {
+  if (!rawData || rawData.length < 82) {
+    return { mintAuthority: null, freezeAuthority: null };
+  }
+  try {
+    const mintAuthorityOpt   = rawData.readUInt32LE(0);
+    const freezeAuthorityOpt = rawData.readUInt32LE(46);
+    return {
+      mintAuthority:   mintAuthorityOpt   === 1 ? new PublicKey(rawData.slice(4, 36)).toBase58()  : null,
+      freezeAuthority: freezeAuthorityOpt === 1 ? new PublicKey(rawData.slice(50, 82)).toBase58() : null,
+    };
+  } catch {
+    return { mintAuthority: null, freezeAuthority: null };
+  }
+}
+
 // ── Quick RPC-only scan (no LLM, returns in ~1-2s) ────────────────────────────
 async function quickScanRpcOnly(address) {
   const t0 = Date.now();
@@ -180,7 +229,8 @@ async function quickScanRpcOnly(address) {
   const owner      = accountData.owner    || 'unknown';
   const executable = accountData.executable || false;
   const dataB64    = accountData.data?.[0] || '';
-  const dataLen    = dataB64 ? Buffer.from(dataB64, 'base64').length : 0;
+  const rawData    = dataB64 ? Buffer.from(dataB64, 'base64') : Buffer.alloc(0);
+  const dataLen    = rawData.length;
   const solBalance = lamports / 1e9;
 
   // Known program IDs
@@ -190,12 +240,13 @@ async function quickScanRpcOnly(address) {
   const VOTE_PROG       = 'Vote111111111111111111111111111111111111111p';
   const SYS_PROG        = '11111111111111111111111111111111';
 
+  const isMintAccount = (owner === TOKEN_PROG && dataLen === 82) || owner === TOKEN_2022_PROG;
+
   let addressType = 'wallet';
   if (executable) {
     addressType = 'on-chain program';
   } else if (owner === TOKEN_PROG) {
-    // data length 82 = mint account, 165 = token account
-    addressType = dataLen === 82 ? 'SPL token mint' : dataLen === 165 ? 'SPL token account' : 'SPL token account';
+    addressType = dataLen === 82 ? 'SPL token mint' : 'SPL token account';
   } else if (owner === TOKEN_2022_PROG) {
     addressType = 'Token-2022 mint';
   } else if (owner === STAKE_PROG) {
@@ -206,35 +257,125 @@ async function quickScanRpcOnly(address) {
     addressType = 'system account (wallet)';
   }
 
-  let score = 10;
+  // ── Authority check (SPL token & Token-2022 mint accounts) ───────────────
+  let mintAuthority   = null;
+  let freezeAuthority = null;
+  if (isMintAccount) {
+    ({ mintAuthority, freezeAuthority } = parseMintAuthorities(rawData));
+  }
+
+  // ── Token-2022 extensions (parsujeme z dat, která už máme — bez extra RPC) ─
+  const t2022Info = (owner === TOKEN_2022_PROG)
+    ? parseTokenExtensionsFromBuffer(rawData)
+    : { is_token_2022: false, extensions: [], extension_names: [] };
+
+  // ── Token age: spolehlivý check — earliest tx v naší sadě 10 musí být starý
+  // Pouze pro nové/neaktivní tokeny: pokud je celkový počet podpisů < 10
+  // (vrácen méně než 10), token je velmi nový nebo neaktivní — age check relevantní.
+  const firstBlockTime = signatures.length > 0 ? signatures[signatures.length - 1]?.blockTime : null;
+  const isVeryNew = (signatures.length < 5) && firstBlockTime
+    ? (Date.now() / 1000 - firstBlockTime) / 3600 < 24
+    : false;
+
+  // ── Risk scoring — base 0 ────────────────────────────────────────────────
+  let score = 0;
   const riskFactors = [];
 
-  if (lamports === 0) {
-    riskFactors.push('Zero SOL balance — account may be closed or drained');
-    score += 20;
-  }
-  const recentTxCount = signatures.length;
-  if (recentTxCount === 0 && lamports < 1_000_000) {
-    riskFactors.push('No recent activity and minimal balance');
-    score += 10;
-  }
-
-  // Scam-db score boost
-  if (scamDb.known_scam) {
+  // Known scam DB — nejvyšší priorita
+  // Přeskočíme well-known legitimní tokeny (known false positives z datasetu)
+  const isKnownLegitimate = KNOWN_LEGITIMATE_TOKENS.has(address);
+  if (scamDb.known_scam && !isKnownLegitimate) {
     const conf = scamDb.known_scam.confidence_score || scamDb.known_scam.confidence || 0.5;
-    score += Math.round(conf * 40);  // max +40 pro confidence=1.0
-    riskFactors.push(`Known scam database match (source: ${scamDb.known_scam.source}, confidence: ${conf})`);
+    score += 50;
+    riskFactors.push(`Known scam database match ⚠️ (source: ${scamDb.known_scam.source}, confidence: ${conf.toFixed ? conf.toFixed(2) : conf})`);
+  } else if (scamDb.known_scam && isKnownLegitimate) {
+    // DB match ale token je legitimní — jen informativní
+    riskFactors.push('No known scam match ✅ (verified legitimate token)');
   }
   if (scamDb.rugcheck?.rugged) {
     score += 35;
-    riskFactors.push('RugCheck: token confirmed rugged');
+    riskFactors.push('RugCheck: token confirmed rugged ⚠️');
   } else if (scamDb.rugcheck?.risk_level === 'danger') {
     score += 20;
-    riskFactors.push('RugCheck: danger level');
+    riskFactors.push('RugCheck: danger level ⚠️');
   } else if (scamDb.rugcheck?.risk_level === 'warn') {
     score += 10;
-    riskFactors.push('RugCheck: warn level');
+    riskFactors.push('RugCheck: warn level ⚠️');
   }
+  if (!scamDb.known_scam && !scamDb.rugcheck?.rugged) {
+    riskFactors.push('No known scam match ✅');
+  }
+
+  // Authority checks
+  if (isMintAccount) {
+    const isKnownStablecoin = address === USDC_MINT || address === USDT_MINT;
+    if (mintAuthority) {
+      if (isKnownStablecoin) {
+        riskFactors.push(`Mint authority: active (authorized issuer) ✅`);
+      } else if (KNOWN_SAFE_AUTHORITIES.has(mintAuthority)) {
+        riskFactors.push(`Mint authority: active (known safe issuer) ✅`);
+      } else {
+        score += 15;
+        riskFactors.push(`Mint authority: active — creator can mint new tokens ⚠️`);
+      }
+    } else {
+      riskFactors.push('Mint authority: revoked ✅');
+    }
+
+    if (freezeAuthority) {
+      if (isKnownStablecoin) {
+        riskFactors.push(`Freeze authority: active (stablecoin compliance feature) ✅`);
+      } else {
+        score += 5;
+        riskFactors.push(`Freeze authority: active — creator can freeze accounts ⚠️`);
+      }
+    } else {
+      riskFactors.push('Freeze authority: revoked ✅');
+    }
+
+    // Bonus pokud obě authority aktivní (plná kontrola tvůrce)
+    if (mintAuthority && freezeAuthority && !isKnownStablecoin) {
+      score += 5;
+    }
+  }
+
+  // Token-2022 extensions
+  if (t2022Info.is_token_2022 && t2022Info.extensions.length > 0) {
+    for (const ext of t2022Info.extensions) {
+      if (ext.severity === 'critical') {
+        score += 30;
+        riskFactors.push(`Token-2022: ${ext.name} — ${ext.description} ⚠️`);
+      } else if (ext.severity === 'high') {
+        score += 15;
+        riskFactors.push(`Token-2022: ${ext.name} — ${ext.description} ⚠️`);
+      } else if (ext.severity === 'medium') {
+        score += 5;
+        riskFactors.push(`Token-2022 extension: ${ext.name} ⚠️`);
+      }
+    }
+    if (!t2022Info.has_critical && !t2022Info.has_high) {
+      riskFactors.push(`Token-2022: ${t2022Info.extension_names.join(', ') || 'no risky extensions'} ✅`);
+    }
+  }
+
+  // Token věk — pouze pro tokeny s < 5 podpisy (opravdu nové/neaktivní)
+  if (isVeryNew) {
+    score += 25;
+    riskFactors.push('Token age: very new (< 24h, <5 total transactions) ⚠️');
+  }
+
+  // Zero balance
+  if (lamports === 0) {
+    riskFactors.push('Zero SOL balance — account may be closed or drained ⚠️');
+    score += 20;
+  }
+
+  const recentTxCount = signatures.length;
+  if (recentTxCount === 0 && lamports < 1_000_000) {
+    riskFactors.push('No recent activity and minimal balance ⚠️');
+    score += 10;
+  }
+
   score = Math.min(score, 100);
 
   // Owner label
@@ -247,12 +388,21 @@ async function quickScanRpcOnly(address) {
   };
   const ownerLabel = OWNER_NAMES[owner] || (owner.slice(0, 12) + '…');
 
+  const mintAuthLabel = !isMintAccount
+    ? 'N/A'
+    : mintAuthority ? 'active' : 'revoked';
+  const freezeAuthLabel = !isMintAccount
+    ? 'N/A'
+    : freezeAuthority ? 'active' : 'revoked';
+
   const checks = {
-    account_status:  { status: 'Active on-chain',             risk: 'safe' },
-    account_type:    { status: addressType,                   risk: 'safe' },
-    sol_balance:     { status: `${solBalance.toFixed(4)} SOL`, risk: lamports === 0 ? 'medium' : 'safe' },
-    owner_program:   { status: ownerLabel,                    risk: 'safe' },
-    recent_activity: {
+    account_status:   { status: 'Active on-chain',              risk: 'safe' },
+    account_type:     { status: addressType,                    risk: 'safe' },
+    sol_balance:      { status: `${solBalance.toFixed(4)} SOL`, risk: lamports === 0 ? 'medium' : 'safe' },
+    owner_program:    { status: ownerLabel,                     risk: 'safe' },
+    mint_authority:   { status: mintAuthLabel,                  risk: mintAuthority && !['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v','Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'].includes(address) && isMintAccount ? 'medium' : 'safe' },
+    freeze_authority: { status: freezeAuthLabel,                risk: freezeAuthority && isMintAccount && address !== USDC_MINT && address !== USDT_MINT ? 'low' : 'safe' },
+    recent_activity:  {
       status: recentTxCount >= 10 ? '10+ recent txs' : `${recentTxCount} recent txs`,
       risk:   recentTxCount === 0 && lamports < 1_000_000 ? 'medium' : 'safe'
     },
@@ -264,17 +414,30 @@ async function quickScanRpcOnly(address) {
     }
   };
 
+  if (t2022Info.is_token_2022) {
+    checks.token_2022 = {
+      status: t2022Info.extension_names.length > 0
+        ? `Extensions: ${t2022Info.extension_names.join(', ')}`
+        : 'Token-2022, no extensions',
+      risk: t2022Info.has_critical ? 'critical' : t2022Info.has_high ? 'high' : 'safe'
+    };
+  }
+
   const riskLevel = score >= 71 ? 'critical' : score >= 46 ? 'high' : score >= 21 ? 'medium' : 'low';
 
   let summary;
   if (executable) {
     summary = `On-chain program with ${solBalance.toFixed(4)} SOL balance. ${recentTxCount >= 10 ? 'Actively used' : `${recentTxCount} recent transactions`}.`;
-  } else if (addressType.includes('token')) {
-    summary = `${addressType.charAt(0).toUpperCase() + addressType.slice(1)}. Owned by ${ownerLabel}. Balance: ${solBalance.toFixed(4)} SOL.`;
+  } else if (isMintAccount) {
+    const authSummary = mintAuthority ? 'Mint authority active' : 'Mint authority revoked';
+    const freezeSummary = freezeAuthority ? ', freeze authority active' : ', freeze authority revoked';
+    summary = `${addressType.charAt(0).toUpperCase() + addressType.slice(1)}. ${authSummary}${freezeSummary}. Owner: ${ownerLabel}.`;
+    if (t2022Info.is_token_2022 && t2022Info.extension_names.length > 0) {
+      summary += ` Token-2022 extensions: ${t2022Info.extension_names.join(', ')}.`;
+    }
   } else {
     summary = `${riskLevel === 'low' ? 'Standard' : 'Flagged'} ${addressType}. Balance: ${solBalance.toFixed(4)} SOL. ${recentTxCount >= 10 ? '10+' : recentTxCount} recent transactions.`;
   }
-  if (riskFactors.length) summary += ' Risk: ' + riskFactors.join('; ') + '.';
 
   const evidence = signatures.slice(0, 5).map(s => ({
     signature: s.signature,
@@ -284,22 +447,25 @@ async function quickScanRpcOnly(address) {
   }));
 
   return {
-    risk_score:      score,
-    risk_level:      riskLevel,
+    risk_score:       score,
+    risk_level:       riskLevel,
     summary,
-    address_type:    addressType,
-    sol_balance:     solBalance,
-    owner_program:   owner,
-    is_executable:   executable,
-    recent_tx_count: recentTxCount,
+    address_type:     addressType,
+    sol_balance:      solBalance,
+    owner_program:    owner,
+    is_executable:    executable,
+    recent_tx_count:  recentTxCount,
+    mint_authority:   mintAuthority,
+    freeze_authority: freezeAuthority,
+    token_2022:       t2022Info.is_token_2022 ? t2022Info : null,
+    risk_factors:     riskFactors,
     checks,
     evidence,
-    scam_db:         scamDb,
+    scam_db:          scamDb,
     scan_type: 'quick-rpc',
     scan_ms:   Date.now()-t0
   };
 }
-const USDC_MINT       = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 function getVerifyKeyBase64() {
   try { return fs.readFileSync(VERIFY_KEY_PATH).toString('base64'); } catch { return null; }

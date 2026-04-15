@@ -275,4 +275,32 @@ async function checkTokenExtensions(mint) {
   }
 }
 
-module.exports = { checkTokenExtensions };
+/**
+ * Parsuje Token-2022 extensions z raw Buffer dat mint accountu.
+ * Lze použít pokud data již máme (bez extra RPC volání).
+ *
+ * @param {Buffer} rawData — dekódovaný Buffer z base64 accountData
+ * @returns {object}  — { is_token_2022: bool, extensions: [], ... }
+ */
+function parseTokenExtensionsFromBuffer(rawData) {
+  const isToken2022 = rawData.length > 82; // Token-2022 mint má > 82 bytů (base + extensions)
+  if (!isToken2022) {
+    return { is_token_2022: false, extensions: [], extension_names: [] };
+  }
+
+  const exts           = parseExtensions(rawData);
+  const hasCritical    = exts.some(e => e.severity === 'critical');
+  const hasHigh        = exts.some(e => e.severity === 'high');
+  const extensionNames = exts.map(e => e.name);
+
+  return {
+    is_token_2022:   true,
+    owner_program:   TOKEN_2022_PROG,
+    extensions:      exts,
+    has_critical:    hasCritical,
+    has_high:        hasHigh,
+    extension_names: extensionNames,
+  };
+}
+
+module.exports = { checkTokenExtensions, parseTokenExtensionsFromBuffer };
