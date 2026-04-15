@@ -14,6 +14,7 @@ node_modules/
 
 # ── Runtime data ───────────────────────────────────────────────────────────────
 data/
+!data/legit-tokens.json
 logs/
 *.log
 server.log

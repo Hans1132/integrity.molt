@@ -254,6 +254,7 @@ async function enrichScanResult(mintAddress) {
   }
 
   return {
+    mint: mintAddress,
     external_sources: {
       rugcheck: rugcheck  || null,
       solana_tracker: tracker || null

@@ -1,0 +1,1394 @@
+{
+  "_comment": "50 known legitimate Solana tokens — IRIS legit baseline",
+  "_source": "Manual curation of top-market-cap, audited, long-standing Solana tokens",
+  "_updated": "2026-04-15",
+  "tokens": [
+    {
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "symbol": "USDC",
+      "name": "USD Coin",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "symbol": "USDT",
+      "name": "Tether USD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "So11111111111111111111111111111111111111112",
+      "symbol": "WSOL",
+      "name": "Wrapped SOL",
+      "category": "wrapped"
+    },
+    {
+      "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "symbol": "JUP",
+      "name": "Jupiter",
+      "category": "dex"
+    },
+    {
+      "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+      "symbol": "RAY",
+      "name": "Raydium",
+      "category": "dex"
+    },
+    {
+      "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "symbol": "BONK",
+      "name": "Bonk",
+      "category": "memecoin"
+    },
+    {
+      "mint": "jtojtomepa8bduh8n8a5a4u53e7pjuljcatw8tcbk",
+      "symbol": "JTO",
+      "name": "Jito",
+      "category": "staking"
+    },
+    {
+      "mint": "HZ1JovNiVvGqfcWxrFCQSLJ3Fq1DjkPdqoq7xJnkAc9",
+      "symbol": "PYTH",
+      "name": "Pyth Network",
+      "category": "oracle"
+    },
+    {
+      "mint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+      "symbol": "ORCA",
+      "name": "Orca",
+      "category": "dex"
+    },
+    {
+      "mint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+      "symbol": "MNDE",
+      "name": "Marinade",
+      "category": "staking"
+    },
+    {
+      "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+      "symbol": "mSOL",
+      "name": "Marinade staked SOL",
+      "category": "staking"
+    },
+    {
+      "mint": "hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux",
+      "symbol": "HNT",
+      "name": "Helium Network Token",
+      "category": "depin"
+    },
+    {
+      "mint": "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof",
+      "symbol": "RENDER",
+      "name": "Render Token",
+      "category": "depin"
+    },
+    {
+      "mint": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+      "symbol": "WIF",
+      "name": "dogwifhat",
+      "category": "memecoin"
+    },
+    {
+      "mint": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
+      "symbol": "POPCAT",
+      "name": "Popcat",
+      "category": "memecoin"
+    },
+    {
+      "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+      "symbol": "jitoSOL",
+      "name": "Jito Staked SOL",
+      "category": "staking"
+    },
+    {
+      "mint": "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",
+      "symbol": "bSOL",
+      "name": "BlazeStake Staked SOL",
+      "category": "staking"
+    },
+    {
+      "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "symbol": "WETH",
+      "name": "Ether (Wormhole)",
+      "category": "bridged"
+    },
+    {
+      "mint": "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
+      "symbol": "WBTC",
+      "name": "Bitcoin (Wormhole)",
+      "category": "bridged"
+    },
+    {
+      "mint": "HxhWkVpk5NS4Ltg5nij2G671CKXFRKPK8vy271Ub4uEK",
+      "symbol": "HXRO",
+      "name": "Hxro",
+      "category": "derivatives"
+    },
+    {
+      "mint": "nosXBVoaCTtYdLvKY6Csb4AC8JCdQKKAaWYtx2ZMoo7",
+      "symbol": "NOS",
+      "name": "Nosana",
+      "category": "depin"
+    },
+    {
+      "mint": "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT",
+      "symbol": "STEP",
+      "name": "Step Finance",
+      "category": "defi"
+    },
+    {
+      "mint": "SHDWyBxihqiCjDYwQBu1F7AT3fGMSCQZtLbBBaRVBU",
+      "symbol": "SHDW",
+      "name": "Shadow Token",
+      "category": "storage"
+    },
+    {
+      "mint": "7i5KKsX2weiTkry7jA4ZwSuXGhs5eJBEjY8vVxR4pfRx",
+      "symbol": "GMT",
+      "name": "STEPN",
+      "category": "gamefi"
+    },
+    {
+      "mint": "AFbX8oGjGpmVFywabs9DVdpFFo1Tf1K9aGCXEJFSbmF6",
+      "symbol": "GST",
+      "name": "Green Satoshi Token",
+      "category": "gamefi"
+    },
+    {
+      "mint": "LFNTYraetVioAPnGJht4yNg2aUZFXR776cMeN9VMjXp",
+      "symbol": "LFNTY",
+      "name": "Lifinity",
+      "category": "dex"
+    },
+    {
+      "mint": "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+      "symbol": "stSOL",
+      "name": "Lido Staked SOL",
+      "category": "staking"
+    },
+    {
+      "mint": "METAewgxyPbgwsseH8T16a39CQ5VyVxZi9zXiDPY18m",
+      "symbol": "META",
+      "name": "Metaplex",
+      "category": "nft-infra"
+    },
+    {
+      "mint": "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
+      "symbol": "BTC",
+      "name": "Wrapped Bitcoin (Sollet)",
+      "category": "bridged"
+    },
+    {
+      "mint": "2FPyTwcZLUgFDLkXATCjB25eapcJjHXpiqKMBMygBDrT",
+      "symbol": "WETH2",
+      "name": "Ether (Sollet)",
+      "category": "bridged"
+    },
+    {
+      "mint": "A9mUU4qviSctJVPJdBJWkb28deg915LYJKrzQ19ji3FM",
+      "symbol": "USDCet",
+      "name": "USD Coin (Wormhole)",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "Ea5SjE2Y6yvCeW5dYTn7PYMuW5ikXkvbGdcmSnXeaLjS",
+      "symbol": "PAI",
+      "name": "Parrot USD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx",
+      "symbol": "ATLAS",
+      "name": "Star Atlas",
+      "category": "gamefi"
+    },
+    {
+      "mint": "poLisWXnNRwC6oBu1vHiuKQzFjGL4XDSu4g9qjz9qVk",
+      "symbol": "POLIS",
+      "name": "Star Atlas DAO",
+      "category": "gamefi"
+    },
+    {
+      "mint": "kinXdEcpDQeHPEuQnqmUgtYykqKCSVreKX4PwDAsAcQ",
+      "symbol": "KIN",
+      "name": "Kin",
+      "category": "social"
+    },
+    {
+      "mint": "GDfnEsia2WLAW5t8yx2X5j2mkfA74i5kwGdDuZHt7XmG",
+      "symbol": "COPE",
+      "name": "Cope",
+      "category": "social"
+    },
+    {
+      "mint": "9vMJfxuKxXBoEa7rM12mYLMwTacLMLDJqHozw96WQL8i",
+      "symbol": "UST",
+      "name": "UST (Wormhole)",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+      "symbol": "SBR",
+      "name": "Saber Protocol",
+      "category": "dex"
+    },
+    {
+      "mint": "CDJWUqTcYTVAKXAVXoQZFes5JUFc7owSeq7eMQcDSbo5",
+      "symbol": "SAMO",
+      "name": "Samoyed Coin",
+      "category": "memecoin"
+    },
+    {
+      "mint": "CWE8jPTUYhdCTZYWPTe1o5DFqfdjzWKc9WKz6rSjnUdR",
+      "symbol": "SLIM",
+      "name": "Solanium",
+      "category": "launchpad"
+    },
+    {
+      "mint": "EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp",
+      "symbol": "FIDA",
+      "name": "Bonfida",
+      "category": "dex"
+    },
+    {
+      "mint": "SNSNkV9zfG5ZKWQs6x4hxvBRV6s8SqMfSGCtECDvdMd",
+      "symbol": "SNS",
+      "name": "Solana Name Service",
+      "category": "infrastructure"
+    },
+    {
+      "mint": "4vMsoUT2BWatFweudnQM1xedRLfJgJ7hswhcpz4xgBTy",
+      "symbol": "WHALES",
+      "name": "Whale Ecosystem Coin",
+      "category": "social"
+    },
+    {
+      "mint": "DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7",
+      "symbol": "DRIFT",
+      "name": "Drift Protocol",
+      "category": "perps"
+    },
+    {
+      "mint": "TNSRxcUxoT9xBG3de7A4EnJhDWAJuCJzKHEEQAUFDcC",
+      "symbol": "TNSR",
+      "name": "Tensor",
+      "category": "nft-marketplace"
+    },
+    {
+      "mint": "W1toFyAqp1JEd8cQvFZGcbAj4bPMEfMF6YMbVwiydN2",
+      "symbol": "W",
+      "name": "Wormhole Token",
+      "category": "bridge"
+    },
+    {
+      "mint": "MEFNBXixkEbait3xn9bkm8WsJzXtVsaJEn4c8Sam21F",
+      "symbol": "MPLX",
+      "name": "Metaplex Foundation",
+      "category": "nft-infra"
+    },
+    {
+      "mint": "ZScHuTtqZukUrtZS43teTKGs13eq4TXoFougHGF1RyM",
+      "symbol": "ZBC",
+      "name": "Zebec Protocol",
+      "category": "payments"
+    },
+    {
+      "mint": "4LLbsb5ReP3yEtYzmXewyGjcir5uXtKFURtaEUVC2AHs",
+      "symbol": "SLIM2",
+      "name": "SLIM2",
+      "category": "defi"
+    },
+    {
+      "mint": "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1",
+      "symbol": "SBR2",
+      "name": "Saber",
+      "category": "dex"
+    },
+    {
+      "mint": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "symbol": "USDS",
+      "name": "USDS",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "5XZw2LKTyrfvfiskJ78AMpackRjPcyCif1WhUsPDuVqQ",
+      "symbol": "WBTC",
+      "name": "Wrapped Bitcoin",
+      "category": "defi"
+    },
+    {
+      "mint": "LinkhB3afbBKb2EQQu7s7umdZceV3wcvAUJhQAfQ23L",
+      "symbol": "LINK",
+      "name": "Chainlink",
+      "category": "defi"
+    },
+    {
+      "mint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "symbol": "CBBTC",
+      "name": "Coinbase Wrapped BTC",
+      "category": "defi"
+    },
+    {
+      "mint": "DEkqHyPN7GMRJ5cArtQFAWefqbZb33Hyf6s5iCwjEonT",
+      "symbol": "USDE",
+      "name": "Ethena USDe",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "symbol": "USD1",
+      "name": "USD1",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+      "symbol": "PYUSD",
+      "name": "PayPal USD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "Eh6XEPhSwoLv5wFApukmnaVSHQ6sAnoD9BmgmwQoN2sN",
+      "symbol": "SUSDE",
+      "name": "Ethena Staked USDe",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "7LWanZteUKtvFjv4MHYgKXXdAuCQYFPJysL9pxxdRQGn",
+      "symbol": "USYC",
+      "name": "Circle USYC",
+      "category": "defi"
+    },
+    {
+      "mint": "WLFinEv6ypjkczcS83FZqFpgFZYwQXutRbxGe7oC16g",
+      "symbol": "WLFI",
+      "name": "World Liberty Financial",
+      "category": "defi"
+    },
+    {
+      "mint": "GyWgeqpy5GueU2YbkE8xqUeVEokCMMCEeUrfbtMw6phr",
+      "symbol": "BUIDL",
+      "name": "BlackRock USD Institutional Digital Liquidity Fund",
+      "category": "defi"
+    },
+    {
+      "mint": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+      "symbol": "USDG",
+      "name": "Global Dollar",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "AvZZF1YaZDziPY2RCK4oJrRVrbN3mTD9NL24hPeaZeUj",
+      "symbol": "SYRUPUSDC",
+      "name": "syrupUSDC",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "A1KLoBrKBde8Ty9qtNQUtq3C2ortoC3u7twggz7sEto6",
+      "symbol": "USDY",
+      "name": "Ondo US Dollar Yield",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn",
+      "symbol": "PUMP",
+      "name": "Pump.fun",
+      "category": "defi"
+    },
+    {
+      "mint": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
+      "symbol": "JLP",
+      "name": "Jupiter Perpetuals Liquidity Provider Token",
+      "category": "defi"
+    },
+    {
+      "mint": "BNso1VUJnh4zcfpZa6986Ea66P6TCp59hvtNJ8b1X85",
+      "symbol": "BNSOL",
+      "name": "Binance Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "8yXrtJ54jZtE84xEBzTESKuegjcAkAuDrdAhRd8i8n3T",
+      "symbol": "USDTB",
+      "name": "USDtb",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "LBTCgU4b3wsFKsPwBn1rRZDx5DoFutM6RPiEt1TPDsY",
+      "symbol": "LBTC",
+      "name": "Lombard Staked BTC",
+      "category": "defi"
+    },
+    {
+      "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+      "symbol": "TRUMP",
+      "name": "Official Trump",
+      "category": "defi"
+    },
+    {
+      "mint": "CP4w2B3og2TaFUpye1kr8pdeJwwahtESKppZnffN9n9d",
+      "symbol": "BDX",
+      "name": "Beldex",
+      "category": "defi"
+    },
+    {
+      "mint": "i7u4r16TcsJTgq1kAG8opmVZyVnAKBwLKu6ZPMwzxNc",
+      "symbol": "OUSG",
+      "name": "OUSG",
+      "category": "defi"
+    },
+    {
+      "mint": "4qQeZ5LwSz6HuupUu8jCtgXyW1mYQcNbFAW1sWZp89HL",
+      "symbol": "CAKE",
+      "name": "PancakeSwap",
+      "category": "defi"
+    },
+    {
+      "mint": "SoLvHDFVstC74Jr9eNLTDoG4goSUsn1RENmjNtFKZvW",
+      "symbol": "SOLVBTC",
+      "name": "Solv Protocol BTC",
+      "category": "defi"
+    },
+    {
+      "mint": "3iQL8BFS2vE7mww4ehAqQHAsbmRNCrPxizWAT2Zfyr9y",
+      "symbol": "VIRTUAL",
+      "name": "Virtuals Protocol",
+      "category": "defi"
+    },
+    {
+      "mint": "2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
+      "symbol": "PENGU",
+      "name": "Pudgy Penguins",
+      "category": "defi"
+    },
+    {
+      "mint": "6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU",
+      "symbol": "TBTC",
+      "name": "tBTC",
+      "category": "defi"
+    },
+    {
+      "mint": "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v",
+      "symbol": "JUPSOL",
+      "name": "Jupiter Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+      "symbol": "EURC",
+      "name": "EURC",
+      "category": "defi"
+    },
+    {
+      "mint": "6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG",
+      "symbol": "USX",
+      "name": "USX",
+      "category": "defi"
+    },
+    {
+      "mint": "8fr7WGTVFszfyNWRMXj6fRjZZAnDwmXwEpCrtzmUkdih",
+      "symbol": "WYLDS",
+      "name": "Hastra Wrapped YLDS",
+      "category": "defi"
+    },
+    {
+      "mint": "3b8X44fLF9ooXaUm3hhSgjpmVs6rZZ3pPoGnGahc3Uu7",
+      "symbol": "PRIME",
+      "name": "PRIME",
+      "category": "defi"
+    },
+    {
+      "mint": "J3NKxxXZcnNiMjKw9hYb2K4LUxgwB6t1FtPtQVsv3KFr",
+      "symbol": "SPX",
+      "name": "SPX6900",
+      "category": "defi"
+    },
+    {
+      "mint": "J6pQQ3FAcJQeWPPGppWRb4nM8jU3wLyYbRrLh7feMfvd",
+      "symbol": "2Z",
+      "name": "DoubleZero",
+      "category": "defi"
+    },
+    {
+      "mint": "JDzPbXboQYWVmdxXS3LbvjM52RtsV1QaSv2AzoCiai2o",
+      "symbol": "FO",
+      "name": "Official FO",
+      "category": "defi"
+    },
+    {
+      "mint": "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
+      "symbol": "PYTH",
+      "name": "Pyth Network",
+      "category": "defi"
+    },
+    {
+      "mint": "gtBTCGWvSRYYoZpU9UZj6i3eUGUpgksXzzsbHk2K9So",
+      "symbol": "GTBTC",
+      "name": "Gate Wrapped BTC",
+      "category": "defi"
+    },
+    {
+      "mint": "ZBCNpuD7YMXzTHB2fhGkGi78MNsHGLRXUhRewNRm9RU",
+      "symbol": "ZBCN",
+      "name": "Zebec Network",
+      "category": "defi"
+    },
+    {
+      "mint": "2Xva1NeLRuBFdK41gEuXqgeWtnKKDve9PKeCnMEpNG6K",
+      "symbol": "OHM",
+      "name": "Olympus",
+      "category": "defi"
+    },
+    {
+      "mint": "Dso1bDeDjCQxTrWHqUUi63oBvV7Mdm6WaobLbQ7gnPQ",
+      "symbol": "DSOL",
+      "name": "Drift Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "uniBKsEV37qLRFZD7v3Z9drX6voyiCM8WcaePqeSSLc",
+      "symbol": "UNIBTC",
+      "name": "Universal BTC",
+      "category": "defi"
+    },
+    {
+      "mint": "HmMubgKx91Tpq3jmfcKQwsv5HrErqnCTTRJMB6afFR2u",
+      "symbol": "9BIT",
+      "name": "The9bit",
+      "category": "defi"
+    },
+    {
+      "mint": "7bxM8cRFZpzonzZtzmrcWHNX1dijrEVU4VkjjtVyBmqE",
+      "symbol": "WSRUSD",
+      "name": "Wrapped Savings rUSD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "AUSD1jCcCyPLybk1YnvPWsHQSrZ46dxwoMniN4N2UEB9",
+      "symbol": "AUSD",
+      "name": "AUSD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+      "symbol": "FARTCOIN",
+      "name": "Fartcoin",
+      "category": "defi"
+    },
+    {
+      "mint": "Grass7B4RdKfBCjTKgSqnXkqjwiGvQyFbuSCUJr3XXjs",
+      "symbol": "GRASS",
+      "name": "Grass",
+      "category": "defi"
+    },
+    {
+      "mint": "HsRpHQn6VbyMs5b5j5SV6xQ2VvpvvCCzu19GjytVSCoz",
+      "symbol": "STRK",
+      "name": "Starknet",
+      "category": "defi"
+    },
+    {
+      "mint": "C1MHyoTJpRTeS9AQCyspNVu2EWAYCZwmJ1jNkEArFP1f",
+      "symbol": "WAPE",
+      "name": "Wrapped ApeCoin",
+      "category": "defi"
+    },
+    {
+      "mint": "3dQTr7ror2QPKQ3GbBCokJUmjErGg8kTJzdnYjNfvi3Z",
+      "symbol": "BORG",
+      "name": "SwissBorg",
+      "category": "defi"
+    },
+    {
+      "mint": "6xHEyem9hmkGtVq6XGCiQUGpPsHBaoYuYdFNZa5ondo",
+      "symbol": "CRCLON",
+      "name": "Circle Internet Group (Ondo Tokenized Stock)",
+      "category": "defi"
+    },
+    {
+      "mint": "59obFNBzyTBGowrkif5uK7ojS58vsuWz3ZCvg6tfZAGw",
+      "symbol": "PSTUSDC",
+      "name": "PayFi Strategy Token USDC",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "eEUiUs4JWYZrp72djAGF1A8PhpR6rHphGeGN7GbVLp6",
+      "symbol": "GALA",
+      "name": "GALA",
+      "category": "defi"
+    },
+    {
+      "mint": "EPeUFDgHRxs9xxEPVaL6kfGQvCon7jmAWKVUHuux1Tpz",
+      "symbol": "BAT",
+      "name": "Basic Attention",
+      "category": "defi"
+    },
+    {
+      "mint": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+      "symbol": "JTO",
+      "name": "Jito",
+      "category": "defi"
+    },
+    {
+      "mint": "5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5",
+      "symbol": "ONYC",
+      "name": "Onchain Yield Coin",
+      "category": "defi"
+    },
+    {
+      "mint": "GzX1ireZDU865FiMaKrdVB1H6AE8LAqWYCg6chrMrfBw",
+      "symbol": "FRXUSD",
+      "name": "Frax USD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "FubtUcvhSCr3VPXEcxouoQjKQ7NWTCzXyECe76B7L3f8",
+      "symbol": "ACRED",
+      "name": "Apollo Diversified Credit Securitize Fund",
+      "category": "defi"
+    },
+    {
+      "mint": "3bSGpKYPut6RXDxp41nvb2GM7eR4kEmJExFFHoYkW3w2",
+      "symbol": "LUX",
+      "name": "Luxxcoin",
+      "category": "defi"
+    },
+    {
+      "mint": "DuEy8wWrzCUun5ZbbG9hkVqXqqicpTQw8gB7nEAzpCHQ",
+      "symbol": "FLUID",
+      "name": "Fluid",
+      "category": "defi"
+    },
+    {
+      "mint": "DghpMkatCiUsofbTmid3M3kAbDTPqDwKiYHnudXeGG52",
+      "symbol": "EURCV",
+      "name": "EUR CoinVertible",
+      "category": "defi"
+    },
+    {
+      "mint": "CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH",
+      "symbol": "CASH",
+      "name": "CASH",
+      "category": "defi"
+    },
+    {
+      "mint": "pSo1f9nQXWgXibFtKf7NWYxb5enAM4qfP6UJSiXRQfL",
+      "symbol": "PSOL",
+      "name": "Phantom Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "Dm5BxyMetG3Aq5PaG1BrG7rBYqEMtnkjvPNMExfacVk7",
+      "symbol": "ATH",
+      "name": "Aethir",
+      "category": "defi"
+    },
+    {
+      "mint": "vSoLxydx6akxyMD9XEcPvGYNGq6Nn66oqVb3UkGkei7",
+      "symbol": "VSOL",
+      "name": "The Vault Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "7Q2afV64in6N6SeZsAAB81TJzwDoD6zpqmHkzi9Dcavn",
+      "symbol": "JSOL",
+      "name": "JPool Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "9ckR7pPPvyPadACDTzLwK2ZAEeUJ3qGSnzPs8bVaHrSy",
+      "symbol": "USDU",
+      "name": "USDu",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3",
+      "symbol": "SKR",
+      "name": "Seeker",
+      "category": "defi"
+    },
+    {
+      "mint": "Bybit2vBJGhPF52GBdNaQfUJ6ZpThSgHBobjWZpLPb4B",
+      "symbol": "BBSOL",
+      "name": "Bybit Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "DUSDt4AeLZHWYmcXnVGYdgAzjtzU5mXUVnTMdnSzAttM",
+      "symbol": "DUSD",
+      "name": "StandX DUSD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "FUAfBo2jgks6gB4Z4LfZkqSZgzNucisEHqnNebaRxM1P",
+      "symbol": "MELANIA",
+      "name": "Melania Meme",
+      "category": "defi"
+    },
+    {
+      "mint": "KMNo3nJsBXfcpJTVhZcXLW7RmTwTt4GVFE7suUBo9sS",
+      "symbol": "KMNO",
+      "name": "Kamino",
+      "category": "defi"
+    },
+    {
+      "mint": "mzeroXDoBpRVhnEXBra27qzAMdxgpWVY3DzQW7xMVJp",
+      "symbol": "WM",
+      "name": "WrappedM by M0",
+      "category": "defi"
+    },
+    {
+      "mint": "SoLvAiHLF7LGEaiTN5KGZt1bNnraoWTi5mjcvRoDAX4",
+      "symbol": "XSOLVBTC",
+      "name": "Solv Protocol Staked BTC",
+      "category": "defi"
+    },
+    {
+      "mint": "BCNT4t3rv5Hva8RnUtJUJLnxzeFAabcYp8CghC1SmWin",
+      "symbol": "BC",
+      "name": "BCGame Coin",
+      "category": "defi"
+    },
+    {
+      "mint": "HNg5PYJmtqcmzXrv6S9zP1CDKk5BgDuyFBxbvNApump",
+      "symbol": "ALCH",
+      "name": "Alchemist AI",
+      "category": "defi"
+    },
+    {
+      "mint": "J1Wpmugrooj1yMyQKrdZ2vwRXG5rhfx3vTnYE39gpump",
+      "symbol": "WOULD",
+      "name": "would",
+      "category": "defi"
+    },
+    {
+      "mint": "9PR7nCP9DpcUotnDPVLUBUZKu5WAYkwrCUx9wDnSpump",
+      "symbol": "BAN",
+      "name": "Comedian",
+      "category": "defi"
+    },
+    {
+      "mint": "5aLhp9VnUEKcsdtkfsf2DUgpJfomx7GmYVny24dHUZoB",
+      "symbol": "XAUM",
+      "name": "Matrixdock Gold",
+      "category": "defi"
+    },
+    {
+      "mint": "JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD",
+      "symbol": "JUPUSD",
+      "name": "JupUSD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "dog1viwbb2vWDpER5FrJ4YFG6gq6XuyFohUe9TXN65u",
+      "symbol": "DOG",
+      "name": "Dog (Bitcoin)",
+      "category": "defi"
+    },
+    {
+      "mint": "7dUKUopcNWW6CcU4eRxCHh1uiMh32zDrmGf6ufqhxann",
+      "symbol": "BABYDOGE",
+      "name": "Baby Doge Coin",
+      "category": "defi"
+    },
+    {
+      "mint": "AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P",
+      "symbol": "XAUT0",
+      "name": "Tether Gold Tokens",
+      "category": "defi"
+    },
+    {
+      "mint": "METvsvVRapdj9cFLzq4Tr43xK4tAjQfwX76z3n6mWQL",
+      "symbol": "MET",
+      "name": "Meteora",
+      "category": "defi"
+    },
+    {
+      "mint": "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ",
+      "symbol": "W",
+      "name": "Wormhole",
+      "category": "defi"
+    },
+    {
+      "mint": "61V8vBaqAGMpgDQi4JcAwo1dmBGHsyhzodcPqnEVpump",
+      "symbol": "ARC",
+      "name": "AI Rig Complex",
+      "category": "defi"
+    },
+    {
+      "mint": "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk",
+      "symbol": "SOETH",
+      "name": "Wrapped Ethereum (Sollet)",
+      "category": "defi"
+    },
+    {
+      "mint": "4Njvi3928U3figEF5tf8xvjLC5GqUN33oe4XTJNe7xXC",
+      "symbol": "T",
+      "name": "Threshold Network",
+      "category": "defi"
+    },
+    {
+      "mint": "7kN5FQMD8ja4bzysEgc5FXmryKd6gCgjiWnhksjHCFb3",
+      "symbol": "LION",
+      "name": "Loaded Lions",
+      "category": "defi"
+    },
+    {
+      "mint": "34mJztT9am2jybSukvjNqRjgJBZqHJsHnivArx1P4xy1",
+      "symbol": "VBILL",
+      "name": "VanEck Treasury Fund",
+      "category": "defi"
+    },
+    {
+      "mint": "72puLt71H93Z9CzHuBRTwFpL4TG3WZUhnoCC7p8gxigu",
+      "symbol": "USDGO",
+      "name": "USDGO",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "u9nmK5sQovm6ACVCQbbq8xUMpFqdPSYxdxVwXUX4sjY",
+      "symbol": "ORDI",
+      "name": "ORDI",
+      "category": "defi"
+    },
+    {
+      "mint": "4Zp52aF4hZi9fzH19xpbWKYKQvgLyCN67KFbrQDqeTKh",
+      "symbol": "ZAMA",
+      "name": "Zama",
+      "category": "defi"
+    },
+    {
+      "mint": "J3umBWqhSjd13sag1E1aUojViWvPYA5dFNyqpKuX3WXj",
+      "symbol": "HOME",
+      "name": "HOME",
+      "category": "defi"
+    },
+    {
+      "mint": "BeGY8KqKxboEwRbJd1q9H2K829jS4Rc5dEyNMYXCbV5p",
+      "symbol": "NPC",
+      "name": "Non-Playable Coin",
+      "category": "defi"
+    },
+    {
+      "mint": "DBRiDgJAMsM95moTzJs7M9LnkGErpbv9v6CUR1DXnUu5",
+      "symbol": "DBR",
+      "name": "deBridge",
+      "category": "defi"
+    },
+    {
+      "mint": "he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A",
+      "symbol": "HSOL",
+      "name": "Helius Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "CreiuhfwdWCN5mJbMJtA9bBpYQrQF2tCBuZwSPWfpump",
+      "symbol": "PYTHIA",
+      "name": "PYTHIA",
+      "category": "defi"
+    },
+    {
+      "mint": "GAehkgN1ZDNvavX81FmzCcwRnzekKMkSyUNq8WkMsjX1",
+      "symbol": "SWOP",
+      "name": "Swop",
+      "category": "defi"
+    },
+    {
+      "mint": "WMTXyYKUMTG3VuZA5beXuHVRLpyTwwaoP7h2i8YpuRH",
+      "symbol": "WMTX",
+      "name": "World Mobile Token",
+      "category": "defi"
+    },
+    {
+      "mint": "CtzPWv73Sn1dMGVU3ZtLv9yWSyUAanBni19YWDaznnkn",
+      "symbol": "XBTC",
+      "name": "OKX Wrapped BTC",
+      "category": "defi"
+    },
+    {
+      "mint": "brBg8x9yT4WnQd8Z43aX7wfrGMrimLfT2WCWRibHo3d",
+      "symbol": "BRBTC",
+      "name": "Bedrock BTC",
+      "category": "defi"
+    },
+    {
+      "mint": "sctmB7GPi5L2Q5G9tUSzXvhZ4YiDMEGcRov9KfArQpx",
+      "symbol": "DFDVSOL",
+      "name": "DFDV Staked SOL",
+      "category": "defi"
+    },
+    {
+      "mint": "Hg8bKz4mvs8KNj9zew1cEF9tDw1x2GViB4RFZjVEmfrD",
+      "symbol": "TDCCP",
+      "name": "TDCCP",
+      "category": "defi"
+    },
+    {
+      "mint": "vQoYWru2pbUdcVkUrRH74ktQDJgVjRcDvsoDbUzM5n9",
+      "symbol": "REKT",
+      "name": "Rekt",
+      "category": "defi"
+    },
+    {
+      "mint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+      "symbol": "TSLAX",
+      "name": "Tesla xStock",
+      "category": "defi"
+    },
+    {
+      "mint": "ChVzxWRmrTeSgwd3Ui3UumcN8KX7VK3WaD4KGeSKpypj",
+      "symbol": "SUSHI",
+      "name": "Sushi",
+      "category": "defi"
+    },
+    {
+      "mint": "7JA5eZdCzztSfQbJvS8aVVxMFfd81Rs9VvwnocV1mKHu",
+      "symbol": "GEOD",
+      "name": "Geodnet",
+      "category": "defi"
+    },
+    {
+      "mint": "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+      "symbol": "CRCLX",
+      "name": "Circle xStock",
+      "category": "defi"
+    },
+    {
+      "mint": "BRZbFNQDcWLfcdHmAkqEVnLHCAWKTRf6eHyEaWdZp3JN",
+      "symbol": "BRZ",
+      "name": "Brazilian Digital",
+      "category": "defi"
+    },
+    {
+      "mint": "MEFNBXixkEbait3xn9bkm8WsJzXtVsaJEn4c8Sam21u",
+      "symbol": "ME",
+      "name": "Magic Eden",
+      "category": "defi"
+    },
+    {
+      "mint": "ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY",
+      "symbol": "MOODENG",
+      "name": "Moo Deng",
+      "category": "defi"
+    },
+    {
+      "mint": "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5",
+      "symbol": "MEW",
+      "name": "cat in a dogs world",
+      "category": "defi"
+    },
+    {
+      "mint": "4UbvZiomFvXDnZSz6vdHiDNiHozH2ykTEqjhhbVHiv9z",
+      "symbol": "XUSD",
+      "name": "StraitsX XUSD",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump",
+      "symbol": "PNUT",
+      "name": "Peanut the Squirrel",
+      "category": "defi"
+    },
+    {
+      "mint": "AAeENcfHbTExuTvs4q7r9Bjax98Dg6BGX3aMph4bTLdK",
+      "symbol": "RIF",
+      "name": "Rootstock Infrastructure Framework",
+      "category": "defi"
+    },
+    {
+      "mint": "JBQXZYo1PAKQkePTZerBmMU5ujcMm177wyyQza8S8gNg",
+      "symbol": "MGG",
+      "name": "MimboGameGroup",
+      "category": "defi"
+    },
+    {
+      "mint": "bioJ9JTqW62MLz7UKHU69gtKhPpGi1BQhccj2kmSvUJ",
+      "symbol": "BIO",
+      "name": "Bio Protocol",
+      "category": "defi"
+    },
+    {
+      "mint": "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
+      "symbol": "USELESS",
+      "name": "Useless Coin",
+      "category": "defi"
+    },
+    {
+      "mint": "FeR8VBqNRSUD5NtXAj2n3j1dAHkZHfyDktKuLXD4pump",
+      "symbol": "JELLYJELLY",
+      "name": "Jelly-My-Jelly",
+      "category": "defi"
+    },
+    {
+      "mint": "2Wu1g2ft7qZHfTpfzP3wLdfPeV1is4EwQ3CXBfRYAciD",
+      "symbol": "GOHOME",
+      "name": "GOHOME",
+      "category": "defi"
+    },
+    {
+      "mint": "UNTyTuyNPhLufn4K4SMsW6BxbvfYEMgQ4qUT9orPapp",
+      "symbol": "UNT",
+      "name": "UnityWallet Token",
+      "category": "defi"
+    },
+    {
+      "mint": "26f12PmBk77wQV1TzLe8XKkNBvMFggbuypxdtMLzNLzz",
+      "symbol": "ZIG",
+      "name": "ZIGChain",
+      "category": "defi"
+    },
+    {
+      "mint": "6LX8BhMQ4Sy2otmAWj7Y5sKd9YTVVUgfMsBzT6B9W7ct",
+      "symbol": "FRAX",
+      "name": "Frax (prev. FXS)",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "7ZCm8WBN9aLa3o47SoYctU6iLdj7wkGG5SV2hE5CgtD5",
+      "symbol": "ELON",
+      "name": "Dogelon Mars",
+      "category": "defi"
+    },
+    {
+      "mint": "HVbpJAQGNpkgBaYBZQBR1t7yFdvaYVp2vCQQfKKEN4tM",
+      "symbol": "USDP",
+      "name": "Pax Dollar",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "NKaTB5vC3srLog8W7jzdjnejig2iH8eDpkDM31Dosak",
+      "symbol": "OSAK",
+      "name": "Osaka Protocol",
+      "category": "defi"
+    },
+    {
+      "mint": "DrZ26cKJDksVRWib3DVVsjo9eeXccc7hKhDJviiYEEZY",
+      "symbol": "YZY",
+      "name": "YZY",
+      "category": "defi"
+    },
+    {
+      "mint": "G7vQWurMkMMm2dU3iZpXYFTHT9Biio4F4gZCrwFpKNwG",
+      "symbol": "BIRB",
+      "name": "Moonbirds",
+      "category": "defi"
+    },
+    {
+      "mint": "Eg2ymQ2aQqjMcibnmTt8erC6Tvk9PVpJZCxvVPJz2agu",
+      "symbol": "PUMPCADE",
+      "name": "PUMPCADE",
+      "category": "defi"
+    },
+    {
+      "mint": "k18WJUULWheRkSpSquYGdNNmtuE2Vbw1hpuUi92ondo",
+      "symbol": "SPYON",
+      "name": "SPDR S&P 500 ETF (Ondo Tokenized ETF)",
+      "category": "defi"
+    },
+    {
+      "mint": "MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac",
+      "symbol": "MNGO",
+      "name": "Mango",
+      "category": "defi"
+    },
+    {
+      "mint": "6JLG8iUkAuqiBhL3j2ckDMDf5oWAa6awmyaWezKondo",
+      "symbol": "IBITON",
+      "name": "iShares Bitcoin Trust (Ondo Tokenized)",
+      "category": "defi"
+    },
+    {
+      "mint": "DpxKNEi3XVeRByaGqYKvz2w6E2PhPgBAqdayLcQEpump",
+      "symbol": "SOS",
+      "name": "Strategic Oil Supply",
+      "category": "defi"
+    },
+    {
+      "mint": "BPxxfRCXkUVhig4HS1Lh7kZqV6SPJhzfEk4x6fVBjPCy",
+      "symbol": "BP",
+      "name": "Backpack",
+      "category": "defi"
+    },
+    {
+      "mint": "Dz8VutERqbHR2aFL5A3s1Ky4dG1unJT1jUFXXPaY9ytX",
+      "symbol": "WOO",
+      "name": "WOO",
+      "category": "defi"
+    },
+    {
+      "mint": "EiVMQrvdDYK77eK6N6cyh5sGBe5Y1MQWVA7YaURVpump",
+      "symbol": "AINTI",
+      "name": "AIntivirus",
+      "category": "defi"
+    },
+    {
+      "mint": "Ce2gx9KGXJ6C9Mp5b5x1sn9Mg87JwEbrQby4Zqo3pump",
+      "symbol": "NEET",
+      "name": "Not in Employment, Education, or Training",
+      "category": "defi"
+    },
+    {
+      "mint": "BZLbGTNCSFfoth2GYDtwr7e4imWzpR5jqcUuGEwr646K",
+      "symbol": "IO",
+      "name": "io.net",
+      "category": "defi"
+    },
+    {
+      "mint": "5DkzT65YJvCsZcot9L6qwkJnsBCPmKHjJz3QU7t7QeRW",
+      "symbol": "ANA",
+      "name": "Nirvana ANA",
+      "category": "defi"
+    },
+    {
+      "mint": "iy11ytbSGcUnrjE6Lfv78TFqxKyUESfku1FugS9ondo",
+      "symbol": "SLVON",
+      "name": "iShares Silver Trust (Ondo Tokenized Stock)",
+      "category": "defi"
+    },
+    {
+      "mint": "HrYNm6jTQ71LoFphjVKBTdAE4uja7WsmLG8VxB8ondo",
+      "symbol": "QQQON",
+      "name": "Invesco QQQ ETF (Ondo Tokenized ETF)",
+      "category": "defi"
+    },
+    {
+      "mint": "AY1Ww6MxwC3cCiyrandHqLrp4FXvzgcwQTZpJ2FEpump",
+      "symbol": "AMIKO",
+      "name": "Amiko",
+      "category": "defi"
+    },
+    {
+      "mint": "PERLEQKUNUp1dgFZ8EvyXHdN9d6ZQqfGxALDvfs6pDs",
+      "symbol": "PRL",
+      "name": "Perle",
+      "category": "defi"
+    },
+    {
+      "mint": "BgwQjVNMWvt2d8CN51CsbniwRWyZ9H9HfHkEsvikeVuZ",
+      "symbol": "DEP",
+      "name": "DEAPCOIN",
+      "category": "defi"
+    },
+    {
+      "mint": "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82",
+      "symbol": "BOME",
+      "name": "BOOK OF MEME",
+      "category": "defi"
+    },
+    {
+      "mint": "67iVSrbgQKiPjttU9uXx9CXUoS1Si3XUhrXeiNAUUZSR",
+      "symbol": "OZA",
+      "name": "Ozapay",
+      "category": "defi"
+    },
+    {
+      "mint": "FWGWrsrvgcz1w6LjSSnuHB5y6KyWXhUKjLWhvDSJ48hE",
+      "symbol": "FROG",
+      "name": "just a frog",
+      "category": "defi"
+    },
+    {
+      "mint": "Fz9edBpaURPPzpKVRR1A8PENYDEgHqwx5D5th28ondo",
+      "symbol": "MUON",
+      "name": "Micron Technology (Ondo Tokenized Stock)",
+      "category": "defi"
+    },
+    {
+      "mint": "98sMhvDwXj1RQi5c5Mndm3vPe9cBqPrbLaufMXFNMh5g",
+      "symbol": "HYPE",
+      "name": "Wormhole Bridged HYPE",
+      "category": "defi"
+    },
+    {
+      "mint": "bbahNA5vT9WJeYft8tALrH1LXWffjwqVoUbqYa1ondo",
+      "symbol": "GOOGLON",
+      "name": "Alphabet Class A (Ondo Tokenized Stock)",
+      "category": "defi"
+    },
+    {
+      "mint": "AFJtnuqGMaj5jAo6Pwxo28r1f7XAXXTSA8q3rG3q8b4A",
+      "symbol": "CARV",
+      "name": "CARV",
+      "category": "defi"
+    },
+    {
+      "mint": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+      "symbol": "SPYX",
+      "name": "SP500 xStock",
+      "category": "defi"
+    },
+    {
+      "mint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
+      "symbol": "ZEC",
+      "name": "OmniBridge Bridged Zcash (Solana)",
+      "category": "defi"
+    },
+    {
+      "mint": "CmVUoJUt7hMGc9ze7s8zYdnA7enMfCAFdQCggxcbACWU",
+      "symbol": "CWU",
+      "name": "CommonWealth",
+      "category": "defi"
+    },
+    {
+      "mint": "WETZjtprkDMCcUxPi9PfWnowMRZkiGGHDb9rABuRZ2U",
+      "symbol": "WET",
+      "name": "HumidiFi",
+      "category": "defi"
+    },
+    {
+      "mint": "8bUbe1ujsM1G3JEbBWVVCXa2widmuPdKUB2rGKMYFw7R",
+      "symbol": "AGI",
+      "name": "Delysium",
+      "category": "defi"
+    },
+    {
+      "mint": "3jUf2RTyXp867piSB2dt8uUcNiLDW58asjGtXkRAkBbe",
+      "symbol": "GUN",
+      "name": "Gunz",
+      "category": "defi"
+    },
+    {
+      "mint": "inxKXw9V2NDZE7hDijzpJaKKUb97NEPJDTCEEiYg4yY",
+      "symbol": "INX",
+      "name": "Infinex",
+      "category": "defi"
+    },
+    {
+      "mint": "8smindLdDuySY6i2bStQX9o8DVhALCXCMbNxD98unx35",
+      "symbol": "USDCV",
+      "name": "USD CoinVertible",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "gEGtLTPNQ7jcg25zTetkbmF7teoDLcrfTnQfmn2ondo",
+      "symbol": "NVDAON",
+      "name": "NVIDIA (Ondo Tokenized Stock)",
+      "category": "defi"
+    },
+    {
+      "mint": "Ho5fkxk9uqUuVN5kt7TUFacduWCpKPAuYkM9HD3KAXA2",
+      "symbol": "NYC",
+      "name": "NYC",
+      "category": "defi"
+    },
+    {
+      "mint": "Dfh5DzRgSvvCFDoYc2ciTkMrbDfRKybA4SoFbPmApump",
+      "symbol": "PIPPIN",
+      "name": "pippin",
+      "category": "defi"
+    },
+    {
+      "mint": "AeXrLftu8chuY4ctc6oDeG4dUx6Yr4aqeakUMFNvACdg",
+      "symbol": "CPOOL",
+      "name": "Clearpool",
+      "category": "defi"
+    },
+    {
+      "mint": "6CAsXfiCXZfP8APCG6Vma2DFMindopxiqYQN4LSQfhoC",
+      "symbol": "POKT",
+      "name": "Pocket Network",
+      "category": "defi"
+    },
+    {
+      "mint": "14zP2ToQ79XWvc7FQpm4bRnp9d6Mp1rFfsUW3gpLcRX",
+      "symbol": "AIXBT",
+      "name": "aixbt",
+      "category": "defi"
+    },
+    {
+      "mint": "DvjbEsdca43oQcw2h3HW1CT7N3x5vRcr3QrvTUHnXvgV",
+      "symbol": "DOOD",
+      "name": "Doodles",
+      "category": "defi"
+    },
+    {
+      "mint": "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
+      "symbol": "MSTRX",
+      "name": "MicroStrategy xStock",
+      "category": "defi"
+    },
+    {
+      "mint": "CiuH3kcRXJhdikbZsjfpvFaMaGVSCmFodWcwizjhhXcY",
+      "symbol": "WGLUE",
+      "name": "Wrapped Glue",
+      "category": "defi"
+    },
+    {
+      "mint": "6FDJbSkiySbetXaELZYaL9im8mAyCkMfHB7rtDt9p3qp",
+      "symbol": "ROSA",
+      "name": "Rosa Inu",
+      "category": "defi"
+    },
+    {
+      "mint": "9LzCMqDgTKYz9Drzqnpgee3SGa89up3a247ypMj2xrqM",
+      "symbol": "AUDIO",
+      "name": "Audius",
+      "category": "defi"
+    },
+    {
+      "mint": "BqPqrrQuoQXFGGEAEMnPmDgZ6RWQCajWnY3V6Yp4DZWP",
+      "symbol": "ES",
+      "name": "Eclipse",
+      "category": "defi"
+    },
+    {
+      "mint": "ABt79MkRXUsoHuV2CVQT32YMXQhTparKFjmidQxgiQ6E",
+      "symbol": "ORDER",
+      "name": "Orderly",
+      "category": "defi"
+    },
+    {
+      "mint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+      "symbol": "NVDAX",
+      "name": "NVIDIA xStock",
+      "category": "defi"
+    },
+    {
+      "mint": "CqW2pd6dCPG9xKZfAsTovzDsMmAGKJSDBNcwM96ondo",
+      "symbol": "IVVON",
+      "name": "iShares Core S&P 500 ETF (Ondo Tokenized ETF)",
+      "category": "defi"
+    },
+    {
+      "mint": "oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp",
+      "symbol": "ORE",
+      "name": "ORE",
+      "category": "defi"
+    },
+    {
+      "mint": "zZbQjiRg8uSxZaPu996XuviuZeSY6nsaMuutKZQBJga",
+      "symbol": "WFRAX",
+      "name": "Wrapped FRAX",
+      "category": "stablecoin"
+    },
+    {
+      "mint": "ApqLH7ovTBeEjgBMXH8udnBttwR9k5JEv9pNnVQV7Xsa",
+      "symbol": "CORN",
+      "name": "Corn",
+      "category": "defi"
+    },
+    {
+      "mint": "69RX85eQoEsnZvXGmLNjYcWgVkp9r2JjahVm99KbJETU",
+      "symbol": "HOLO",
+      "name": "Holoworld",
+      "category": "defi"
+    },
+    {
+      "mint": "7Zhxshgt7Ft6pHFYMrHE1epWdWre7sJ1Af1GhEUnitas",
+      "symbol": "UP",
+      "name": "Unitas",
+      "category": "defi"
+    },
+    {
+      "mint": "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
+      "symbol": "QQQX",
+      "name": "Nasdaq xStock",
+      "category": "defi"
+    },
+    {
+      "mint": "6dKCoWjpj5MFU5gWDEFdpUUeBasBLK3wLEwhUzQPAa1e",
+      "symbol": "CHEX",
+      "name": "Chintai",
+      "category": "defi"
+    }
+  ],
+  "_comment_2": "+181 tokenů z CoinGecko top-200 Solana ecosystem"
+}

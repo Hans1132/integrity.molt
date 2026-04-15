@@ -19,6 +19,47 @@
  *   - Solana Tracker normalizace (src/enrichment/solana-tracker.js)
  */
 
+const path = require('path');
+
+// ── Whitelist legitimních tokenů ──────────────────────────────────────────────
+// Tokeny v tomto setu dostávají benignní treatment pro mint authority scoring.
+let _legitMints = null;
+function getLegitMints() {
+  if (_legitMints) return _legitMints;
+  try {
+    const data = require(path.join(__dirname, '../../data/legit-tokens.json'));
+    _legitMints = new Set((data.tokens || []).map(t => t.mint));
+  } catch {
+    _legitMints = new Set();
+  }
+  return _legitMints;
+}
+
+// ── Známé DEX program adresy ──────────────────────────────────────────────────
+// Tyto adresy jsou LP pool vaults / program-owned accounts — ne skuteční holdeři.
+// Filtrují se z top_holders před výpočtem HHI a top1%.
+const DEX_PROGRAM_IDS = new Set([
+  // Raydium
+  '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',  // AMM v4
+  'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',  // CLMM
+  'HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8',  // AMM v3 (legacy)
+  'routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS',   // Router
+  // Orca
+  'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',   // Whirlpools
+  '9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP',  // Whirlpool fees (legacy)
+  // Meteora
+  'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo',   // DLMM
+  'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EkAW7vAR',  // AMM
+  'M2mx93ekt1fmXSVkTrUL9xVFHkmME8HTUi5Cyc5aF7K',   // Dynamic AMM
+  // Phoenix
+  'PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY',
+  // Lifinity
+  'EewxydAPCCVuNEyrVN68PuSYdQ7wKn27V9Gjeoi8dy3S',
+  // OpenBook / Serum
+  'srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX',   // Serum DEX v3
+  'opnb2LAfJYbRMAHHvqjCwQxanZn7n1aFDpJh5oPaTth',   // OpenBook v2
+]);
+
 // ── I — Inflows thresholds ────────────────────────────────────────────────────
 // Zdroj: obecné threshold z enrichment analýzy; LP burn je klíčový rug signál.
 
@@ -145,15 +186,33 @@ function scoreInflows(enrichment) {
  */
 function scoreRights(enrichment) {
   const rugcheck   = enrichment?.external_sources?.rugcheck || null;
+  const tracker    = enrichment?.external_sources?.solana_tracker || null;
   const extensions = enrichment?.token_extensions || null;
+  const mint       = enrichment?.mint || null;
 
   let score = 0;
   const details = [];
 
-  // Mint authority aktivní (0-10)
+  // Mint authority aktivní (0-15, podmíněně)
+  // +15 POUZE pokud: token age < 7 dní NEBO HHI > 0.25 NEBO není v KNOWN_LEGITIMATE_TOKENS
+  // Logika: etablované legitimní tokeny s mint_auth mají nízké riziko (governance, treasury).
+  // Nové nebo koncentrované tokeny s mint_auth = velmi vysoké riziko neomezeného mintování.
   if (rugcheck?.mint_authority) {
-    score += 10;
-    details.push('mint_authority_active');
+    const ageHours  = tracker?.age_hours ?? null;
+    const isNew     = ageHours !== null && ageHours < 168;          // < 7 dní
+    const holders   = (rugcheck.top_holders || [])
+      .filter(h => !DEX_PROGRAM_IDS.has(h.address));
+    const hhi       = holders.reduce((s, h) => s + (h.pct / 100) ** 2, 0);
+    const isConc    = hhi > 0.25;
+    const isLegit   = mint && getLegitMints().has(mint);
+
+    if (isNew || isConc || !isLegit) {
+      score += 15;
+      const why = [isNew && `age=${ageHours?.toFixed(0)}h`, isConc && `hhi=${hhi.toFixed(2)}`, !isLegit && 'not_whitelisted']
+        .filter(Boolean).join(',');
+      details.push(`mint_authority_active(${why})`);
+    }
+    // else: etablovaný legitimní token s nízkou koncentrací → +0
   }
 
   // Freeze authority aktivní (0-8)
@@ -220,7 +279,10 @@ function scoreImbalance(enrichment, scamDb) {
   const details = [];
 
   // Top holder koncentrace (0-10)
-  const topHolder = rugcheck?.top_holders?.[0];
+  // Filtrujeme known DEX program accounts — LP vaults nejsou skuteční holdeři.
+  const filteredHolders = (rugcheck?.top_holders || [])
+    .filter(h => !DEX_PROGRAM_IDS.has(h.address));
+  const topHolder = filteredHolders[0] ?? null;
   if (topHolder?.pct != null) {
     if (topHolder.pct > IMBALANCE.top_holder_critical_pct) {
       score += 10;

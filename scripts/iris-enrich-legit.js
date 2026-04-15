@@ -26,6 +26,27 @@ if (!RPC_URL) {
   process.exit(1);
 }
 
+// --new-only: zpracuj pouze tokeny, které ještě nejsou v iris_enrichment (source='legit_baseline')
+const NEW_ONLY = process.argv.includes('--new-only');
+
+// Známé DEX/pool program IDs — jejich token accounts se filtrují z holder metriky.
+// Zahrnutí LP vaultů zkresluje top1% a HHI směrem k false positive.
+const DEX_PROGRAM_IDS = new Set([
+  '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',  // Raydium AMM v4
+  'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',  // Raydium CLMM
+  'HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8',  // Raydium AMM v3
+  'routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS',   // Raydium Router
+  'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',   // Orca Whirlpools
+  '9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP',  // Orca legacy
+  'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo',   // Meteora DLMM
+  'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EkAW7vAR',  // Meteora AMM
+  'M2mx93ekt1fmXSVkTrUL9xVFHkmME8HTUi5Cyc5aF7K',   // Meteora Dynamic AMM
+  'PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY',   // Phoenix
+  'EewxydAPCCVuNEyrVN68PuSYdQ7wKn27V9Gjeoi8dy3S',   // Lifinity
+  'srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX',   // Serum DEX v3
+  'opnb2LAfJYbRMAHHvqjCwQxanZn7n1aFDpJh5oPaTth',   // OpenBook v2
+]);
+
 const LEGIT_TOKENS = require('../data/legit-tokens.json').tokens;
 const db = new Database(DB_PATH);
 
@@ -180,14 +201,36 @@ async function enrichToken({ mint, symbol }) {
     }
     await sleep(250);
 
-    // 2. getTokenLargestAccounts → HHI
+    // 2. getTokenLargestAccounts → HHI (s DEX filter)
     try {
       const largestRes = await rpcCall('getTokenLargestAccounts', [mint, { commitment: 'confirmed' }], 1);
-      const accounts = largestRes?.value ?? [];
-      row.holder_count = accounts.length;
-      if (accounts.length > 0) {
-        const m = computeHolderMetrics(accounts);
-        row.hhi = m.hhi; row.top1_holder_pct = m.top1; row.top10_holder_pct = m.top10;
+      const rawAccounts = largestRes?.value ?? [];
+      row.holder_count = rawAccounts.length;
+
+      if (rawAccounts.length > 0) {
+        // Načti owners top 20 účtů abychom mohli filtrovat DEX pool vaults
+        let accounts = rawAccounts;
+        try {
+          const addrs  = rawAccounts.slice(0, 20).map(a => a.address);
+          const mAcct  = await rpcCall('getMultipleAccounts', [addrs, { encoding: 'base64', commitment: 'confirmed' }], 1);
+          const owners = (mAcct?.value || []).map(a => a?.owner || null);
+          // Filtruj DEX program-owned accounts
+          accounts = rawAccounts.filter((_, i) => {
+            const owner = owners[i];
+            return !owner || !DEX_PROGRAM_IDS.has(owner);
+          });
+          if (accounts.length < rawAccounts.length) {
+            console.log(`    [DEX-filter] ${symbol}: vyfiltrováno ${rawAccounts.length - accounts.length} DEX pool účtů`);
+          }
+        } catch (filterErr) {
+          // Selhal fetch owners — pokračujeme bez filtru
+          console.warn(`    [DEX-filter] ${symbol}: owner fetch failed (${filterErr.message}), metriky bez filtru`);
+        }
+
+        if (accounts.length > 0) {
+          const m = computeHolderMetrics(accounts);
+          row.hhi = m.hhi; row.top1_holder_pct = m.top1; row.top10_holder_pct = m.top10;
+        }
       }
     } catch (_) {}
     await sleep(250);
@@ -230,16 +273,29 @@ async function enrichToken({ mint, symbol }) {
 }
 
 async function main() {
-  console.log(`[legit-enrich] Enriching ${LEGIT_TOKENS.length} legit tokens...`);
+  let tokens = LEGIT_TOKENS;
+
+  if (NEW_ONLY) {
+    // Načti mints, které už mají záznam v iris_enrichment (source='legit_baseline')
+    const enrichedSet = new Set(
+      db.prepare("SELECT mint FROM iris_enrichment WHERE source='legit_baseline'")
+        .all()
+        .map(r => r.mint)
+    );
+    tokens = LEGIT_TOKENS.filter(t => !enrichedSet.has(t.mint));
+    console.log(`[legit-enrich] --new-only: ${tokens.length} nových tokenů (${LEGIT_TOKENS.length - tokens.length} přeskočeno — již enrichováno)`);
+  }
+
+  console.log(`[legit-enrich] Enriching ${tokens.length} legit tokens...`);
   const t0 = Date.now();
 
-  for (const token of LEGIT_TOKENS) {
+  for (const token of tokens) {
     await enrichToken(token);
     await sleep(500); // 2 req/s overall (RugCheck rate limit)
   }
 
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-  console.log(`\n[legit-enrich] DONE — ${LEGIT_TOKENS.length} tokens in ${elapsed}s`);
+  console.log(`\n[legit-enrich] DONE — ${tokens.length} tokens in ${elapsed}s`);
 
   // Rychlá sumarizace
   const stats = db.prepare(`
