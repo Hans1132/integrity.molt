@@ -115,6 +115,20 @@ async function runAdvisorIfGreyZone({ score, context, scanType, alwaysRun = fals
   }
 }
 
+// ── In-memory job store pro async bot advisor (TTL 10 min, max 100 jobů) ────────
+const _botJobs = new Map(); // jobId → { chat_id, ts, endpoint }
+function _botJobCleanup() {
+  const now = Date.now();
+  for (const [id, j] of _botJobs) {
+    if (now - j.ts > 600_000) _botJobs.delete(id);
+  }
+  // FIFO eviction pokud přesáhne 100 záznamů
+  if (_botJobs.size > 100) {
+    const oldest = [..._botJobs.entries()].sort((a, b) => a[1].ts - b[1].ts);
+    for (const [id] of oldest.slice(0, _botJobs.size - 100)) _botJobs.delete(id);
+  }
+}
+
 // Načte nejnovější report soubory pro danou adresu (txt + signed.json).
 // prefix = '' pro quick/deep, 'token-audit', 'wallet-profile', 'defi-pool', 'swarm'
 function loadLatestReport(reportsDir, slug, prefix) {
@@ -4061,10 +4075,13 @@ ${shellReport ? `Shell scan report:\n${shellReport}` : '(shell scan unavailable)
 });
 
 // POST /internal/bot/token — SPL token audit pro Telegram bot (bez platby)
-// Body: { address }
+// Body: { address, chat_id? }
+// Pokud chat_id přítomno: 2-fázový response (preliminary < 5s + async advisor → Telegram zpráva)
+// Pokud chat_id chybí: sync mode jako dřív (advisor s max 55s timeoutem)
 app.post('/internal/bot/token', requireBotKey, express.json(), async (req, res) => {
   const raw = (req.body?.address || '').trim();
   const safeAddress = raw.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '').slice(0, 44);
+  const chatId = req.body?.chat_id || null;
   if (!safeAddress || safeAddress.length < 32)
     return res.status(400).json({ error: 'Invalid Solana address' });
 
@@ -4072,30 +4089,87 @@ app.post('/internal/bot/token', requireBotKey, express.json(), async (req, res) 
     const result = await auditToken(safeAddress);
     db.logEvent({ name: 'bot_token_audit', resource: safeAddress, ip: req.ip }).catch(() => {});
 
-    // Advisor pro grey-zone skóre (40-70)
-    let advisorResult = null;
-    if (result.risk_score >= 40 && result.risk_score <= 70) {
+    const inGrey = typeof result.risk_score === 'number' && result.risk_score >= 40 && result.risk_score <= 70;
+
+    if (chatId && inGrey) {
+      // Fáze A: okamžitá preliminary odpověď
+      _botJobCleanup();
+      const jobId = `token-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      _botJobs.set(jobId, { chat_id: chatId, ts: Date.now(), endpoint: 'bot-token' });
+
+      res.json({
+        status:       'preliminary',
+        address:      safeAddress,
+        risk_score:   result.risk_score,
+        category:     result.category,
+        summary:      result.summary,
+        advisor_used: false,
+        findings:     result.findings || [],
+        job_id:       jobId,
+      });
+
+      // Fáze B: async advisor → Telegram push
+      setImmediate(async () => {
+        try {
+          const advisorResult = await runWithAdvisor({
+            systemPrompt: SECURITY_ANALYST_SYSTEM,
+            userMessage:  `Token audit data:\n${JSON.stringify(result, null, 2)}`,
+            maxAdvisorUses: 2,
+          });
+          db.logAdvisorUsage(null, 'bot-token', advisorResult);
+          const advText = advisorResult?.text || '';
+          if (advText) {
+            const msg = `<b>Token advisor update</b> (${safeAddress.slice(0, 8)}...)\n\n${advText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 3800)}`;
+            await sendTelegramAlert(chatId, msg).catch(tgErr =>
+              console.warn('[bot/token] telegram push failed:', tgErr.message)
+            );
+          }
+        } catch (advErr) {
+          console.warn('[bot/token] advisor failed (non-fatal):', advErr.message);
+        } finally {
+          _botJobs.delete(jobId);
+        }
+      });
+
+    } else if (inGrey) {
+      // Sync mode (bez chat_id) — advisor s 55s timeoutem
+      let advisorResult = null;
       try {
-        advisorResult = await runWithAdvisor({
-          systemPrompt: SECURITY_ANALYST_SYSTEM,
-          userMessage:  `Token audit data:\n${JSON.stringify(result, null, 2)}`,
-          maxAdvisorUses: 2,
-        });
+        advisorResult = await Promise.race([
+          runWithAdvisor({
+            systemPrompt: SECURITY_ANALYST_SYSTEM,
+            userMessage:  `Token audit data:\n${JSON.stringify(result, null, 2)}`,
+            maxAdvisorUses: 2,
+          }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('advisor timeout 55s')), 55_000)),
+        ]);
         db.logAdvisorUsage(null, 'bot-token', advisorResult);
       } catch (advErr) {
         console.warn('[bot/token] advisor failed (non-fatal):', advErr.message);
       }
-    }
 
-    res.json({
-      status:       'complete',
-      address:      safeAddress,
-      risk_score:   result.risk_score,
-      category:     result.category,
-      summary:      advisorResult?.text || result.summary,
-      advisor_used: advisorResult?.advisorUsed ?? false,
-      findings:     result.findings || [],
-    });
+      res.json({
+        status:       'complete',
+        address:      safeAddress,
+        risk_score:   result.risk_score,
+        category:     result.category,
+        summary:      advisorResult?.text || result.summary,
+        advisor_used: advisorResult?.advisorUsed ?? false,
+        findings:     result.findings || [],
+      });
+
+    } else {
+      // Skóre mimo šedou zónu — žádný advisor
+      res.json({
+        status:       'complete',
+        address:      safeAddress,
+        risk_score:   result.risk_score,
+        category:     result.category,
+        summary:      result.summary,
+        advisor_used: false,
+        findings:     result.findings || [],
+      });
+    }
   } catch (e) {
     console.error('[bot/token] error:', e.message);
     res.status(500).json({ error: 'Token audit failed', detail: e.message });
@@ -4103,10 +4177,13 @@ app.post('/internal/bot/token', requireBotKey, express.json(), async (req, res) 
 });
 
 // POST /internal/bot/evm — EVM token scan pro Telegram bot (bez platby)
-// Body: { address, chain? }
+// Body: { address, chain?, chat_id? }
+// Pokud chat_id přítomno: 2-fázový response (preliminary < 5s + async advisor → Telegram zpráva)
+// Pokud chat_id chybí: sync mode jako dřív (runAdvisorIfGreyZone blokuje max 55s)
 app.post('/internal/bot/evm', requireBotKey, express.json(), async (req, res) => {
   const address = (req.body?.address || '').trim();
   const chain   = (req.body?.chain   || 'ethereum').trim().toLowerCase();
+  const chatId  = req.body?.chat_id || null;
 
   if (!/^0x[0-9a-fA-F]{40}$/.test(address))
     return res.status(400).json({ error: 'Invalid EVM address (expected 0x + 40 hex chars)' });
@@ -4117,22 +4194,73 @@ app.post('/internal/bot/evm', requireBotKey, express.json(), async (req, res) =>
     const evmRes = await scanEVMToken(address, chain);
     db.logEvent({ name: 'bot_evm_scan', resource: chain, ip: req.ip }).catch(() => {});
 
-    // Advisor — šedá zóna
     const evmBotCtx = `EVM token scan ${chain}/${address}:\nScore: ${evmRes.score}\nRecommendation: ${evmRes.recommendation}\nFindings:\n${evmRes.findings.map(f=>`[${f.severity}] ${f.label}`).join('\n')}`;
-    const adv = await runAdvisorIfGreyZone({ score: evmRes.score, context: evmBotCtx, scanType: 'bot-evm' });
+    const inGrey = typeof evmRes.score === 'number' && evmRes.score >= 40 && evmRes.score <= 70;
 
-    res.json({
-      status:         'complete',
-      chain,
-      address,
-      score:          evmRes.score,
-      risk_level:     evmRes.risk_level || null,
-      recommendation: evmRes.recommendation,
-      findings:       evmRes.findings,
-      meta:           evmRes.meta,
-      advisor:        adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
-      signed:         adv?.signed || null,
-    });
+    if (chatId && inGrey) {
+      // Fáze A: okamžitá preliminary odpověď
+      _botJobCleanup();
+      const jobId = `evm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      _botJobs.set(jobId, { chat_id: chatId, ts: Date.now(), endpoint: 'bot-evm' });
+
+      res.json({
+        status:         'preliminary',
+        chain,
+        address,
+        score:          evmRes.score,
+        risk_level:     evmRes.risk_level || null,
+        recommendation: evmRes.recommendation,
+        findings:       evmRes.findings,
+        meta:           evmRes.meta,
+        advisor:        null,
+        signed:         null,
+        job_id:         jobId,
+      });
+
+      // Fáze B: async advisor → Telegram push
+      setImmediate(async () => {
+        try {
+          const adv = await runAdvisorIfGreyZone({ score: evmRes.score, context: evmBotCtx, scanType: 'bot-evm' });
+          if (adv?.text) {
+            const msg = `<b>EVM advisor update</b> (${chain}/${address.slice(0, 8)}...)\n\n${adv.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 3800)}`;
+            await sendTelegramAlert(chatId, msg).catch(tgErr =>
+              console.warn('[bot/evm] telegram push failed:', tgErr.message)
+            );
+          }
+        } catch (advErr) {
+          console.warn('[bot/evm] advisor failed (non-fatal):', advErr.message);
+        } finally {
+          _botJobs.delete(jobId);
+        }
+      });
+
+    } else {
+      // Sync mode (bez chat_id nebo mimo šedou zónu) — původní chování s 55s timeoutem na advisor
+      let adv = null;
+      if (inGrey) {
+        try {
+          adv = await Promise.race([
+            runAdvisorIfGreyZone({ score: evmRes.score, context: evmBotCtx, scanType: 'bot-evm' }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('advisor timeout 55s')), 55_000)),
+          ]);
+        } catch (advErr) {
+          console.warn('[bot/evm] advisor failed (non-fatal):', advErr.message);
+        }
+      }
+
+      res.json({
+        status:         'complete',
+        chain,
+        address,
+        score:          evmRes.score,
+        risk_level:     evmRes.risk_level || null,
+        recommendation: evmRes.recommendation,
+        findings:       evmRes.findings,
+        meta:           evmRes.meta,
+        advisor:        adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
+        signed:         adv?.signed || null,
+      });
+    }
   } catch (e) {
     console.error('[bot/evm] scan error:', e.message);
     res.status(500).json({ error: 'EVM scan failed', detail: e.message });
