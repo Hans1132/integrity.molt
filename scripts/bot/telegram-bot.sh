@@ -311,7 +311,7 @@ Preliminary results in a few seconds, full AI analysis follows shortly..."
     result=$(curl -s -X POST "${SERVER_API}/internal/bot/token" \
         -H "Content-Type: application/json" \
         -H "X-Admin-Key: ${BOT_ADMIN_KEY}" \
-        --max-time 10 \
+        --max-time 90 \
         -d "{\"address\":\"${safe_address}\",\"chat_id\":\"${chat_id}\"}" 2>/dev/null)
 
     if [ -z "$result" ]; then
@@ -574,7 +574,7 @@ Preliminary results in a few seconds, full AI analysis follows shortly..."
     result=$(curl -s -X POST "${SERVER_API}/internal/bot/evm" \
         -H "Content-Type: application/json" \
         -H "X-Admin-Key: ${BOT_ADMIN_KEY}" \
-        --max-time 10 \
+        --max-time 90 \
         -d "{\"address\":\"${address}\",\"chain\":\"${chain}\",\"chat_id\":\"${chat_id}\"}")
 
     if [ -z "$result" ]; then
@@ -850,19 +850,6 @@ main() {
         if [ "$count" -gt 0 ]; then
             log "Processing $count updates"
 
-            echo "$updates" | python3 - << 'PYEOF'
-import sys, json
-data = json.load(sys.stdin)
-for u in data.get('result', []):
-    uid = u.get('update_id', 0)
-    msg = u.get('message', {})
-    chat_id = msg.get('chat', {}).get('id', '')
-    user_id = msg.get('from', {}).get('id', '')
-    text = (msg.get('text') or '').strip()
-    # Vypsat jako shell-parsovatelný formát
-    print(f"{uid}|{chat_id}|{user_id}|{text}")
-PYEOF
-            # Re-parse pro shell zpracování
             while IFS='|' read -r update_id chat_id user_id text; do
                 [ -z "$update_id" ] && continue
                 [ -z "$chat_id" ] && continue
