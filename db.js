@@ -245,6 +245,20 @@ function initSchema() {
       fetched_at  TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS rugcheck_cache_fetched ON rugcheck_cache (fetched_at DESC);
+
+    -- Validation log — záznam každé validace reportu před podpisem
+    CREATE TABLE IF NOT EXISTS validation_log (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      mint              TEXT,
+      scan_type         TEXT    NOT NULL DEFAULT 'token-audit',
+      valid             INTEGER NOT NULL DEFAULT 1,  -- 0/1
+      issues_json       TEXT,   -- JSON array of issue objects
+      corrections_count INTEGER NOT NULL DEFAULT 0,
+      escalations_count INTEGER NOT NULL DEFAULT 0,
+      created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS validation_log_mint    ON validation_log (mint, created_at DESC);
+    CREATE INDEX IF NOT EXISTS validation_log_invalid ON validation_log (valid, created_at DESC);
   `);
   // Migruj sloupce pro existující DB (bezpečné i při opakovaném volání)
   migrateKnownScamsSchema();
@@ -1027,6 +1041,23 @@ function logAccuracySignal({ scanId, mint, scanType, rawScore, llmScore, finalSc
   );
 }
 
+function logValidationIssues({ mint, scanType, valid, issues, correctionsCount }) {
+  const issuesArr = Array.isArray(issues) ? issues : [];
+  const escalations = issuesArr.filter(i => i.action === 'escalate').length;
+  db.prepare(`
+    INSERT INTO validation_log
+      (mint, scan_type, valid, issues_json, corrections_count, escalations_count)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    mint           || null,
+    scanType       || 'token-audit',
+    valid ? 1 : 0,
+    JSON.stringify(issuesArr),
+    correctionsCount ?? 0,
+    escalations
+  );
+}
+
 function logUserFeedback(mint, feedback, note) {
   // Update the most recent signal for this mint
   db.prepare(`
@@ -1228,6 +1259,8 @@ module.exports = {
   getLiveStats,
   // Accuracy monitoring
   logAccuracySignal, logUserFeedback, getAccuracyStats,
+  // Validation log
+  logValidationIssues,
   // Scam database
   lookupKnownScam, upsertKnownScam, getKnownScamsCount,
   lookupScamCreator, rebuildScamCreators,

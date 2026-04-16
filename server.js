@@ -30,6 +30,13 @@ const { lookupScamDb }       = require('./src/scam-db/lookup');
 const { enrichScanResult, combineScores } = require('./src/enrichment');
 const { parseTokenExtensionsFromBuffer }  = require('./src/enrichment/token-extensions');
 const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
+const {
+  validateReport,
+  applyCorrectionsToAuditResult,
+  buildLLMReportFromAuditResult,
+  buildRawDataFromAuditResult,
+  formatValidationStatus,
+} = require('./src/validation/report-validator');
 
 const https = require('https');
 const nodemailer = require('nodemailer');
@@ -1805,7 +1812,26 @@ app.post(
     try {
       const _t0 = Date.now();
       const auditResult = await auditToken(safeMint, safeTokenName);
-      console.log(`[scan/token-audit] mint=${safeMint} scan=${Date.now()-_t0}ms score=${auditResult.risk_score} category=${auditResult.category}`);
+
+      // Validation layer — po LLM analýze, před Ed25519 podpisem
+      const _llmReport = buildLLMReportFromAuditResult(auditResult);
+      const _rawData   = buildRawDataFromAuditResult(auditResult);
+      const _validation = validateReport(_llmReport, _rawData);
+      const _corrCount  = applyCorrectionsToAuditResult(auditResult, _validation.issues);
+      const _validStatus = formatValidationStatus(_validation, _corrCount);
+      try {
+        db.logValidationIssues({
+          mint:             safeMint,
+          scanType:         'token-audit',
+          valid:            _validation.valid,
+          issues:           _validation.issues,
+          correctionsCount: _corrCount,
+        });
+      } catch (vLogErr) {
+        console.warn('[scan/token-audit] validation log failed (non-fatal):', vLogErr.message);
+      }
+
+      console.log(`[scan/token-audit] mint=${safeMint} scan=${Date.now()-_t0}ms score=${auditResult.risk_score} category=${auditResult.category} validation=${_validStatus}`);
 
       // Build text report for signing
       const reportLines = [
@@ -1924,8 +1950,10 @@ app.post(
           key_id:  signedEnvelope.key_id,
           note:    'verify_key field in the signed envelope is the base64-encoded Ed25519 public key'
         } : null,
-        scan_ms:    auditResult.scan_ms,
-        timestamp:  new Date().toISOString()
+        scan_ms:             auditResult.scan_ms,
+        timestamp:           new Date().toISOString(),
+        validated:           _validation.valid,
+        corrections_applied: _corrCount,
       };
 
       // Optional callback webhook
@@ -4256,6 +4284,24 @@ app.post('/internal/bot/token', requireBotKey, express.json(), async (req, res) 
     const result = await auditToken(safeAddress);
     db.logEvent({ name: 'bot_token_audit', resource: safeAddress, ip: req.ip }).catch(() => {});
 
+    // Validation layer
+    const _botLLM       = buildLLMReportFromAuditResult(result);
+    const _botRaw       = buildRawDataFromAuditResult(result);
+    const _botValidation = validateReport(_botLLM, _botRaw);
+    const _botCorrCount  = applyCorrectionsToAuditResult(result, _botValidation.issues);
+    const _botValidStatus = formatValidationStatus(_botValidation, _botCorrCount);
+    try {
+      db.logValidationIssues({
+        mint:             safeAddress,
+        scanType:         'bot-token',
+        valid:            _botValidation.valid,
+        issues:           _botValidation.issues,
+        correctionsCount: _botCorrCount,
+      });
+    } catch (vLogErr) {
+      console.warn('[bot/token] validation log failed (non-fatal):', vLogErr.message);
+    }
+
     const inGrey = typeof result.risk_score === 'number' && result.risk_score >= 40 && result.risk_score <= 70;
 
     if (chatId && inGrey) {
@@ -4265,14 +4311,15 @@ app.post('/internal/bot/token', requireBotKey, express.json(), async (req, res) 
       _botJobs.set(jobId, { chat_id: chatId, ts: Date.now(), endpoint: 'bot-token' });
 
       res.json({
-        status:       'preliminary',
-        address:      safeAddress,
-        risk_score:   result.risk_score,
-        category:     result.category,
-        summary:      result.summary,
-        advisor_used: false,
-        findings:     result.findings || [],
-        job_id:       jobId,
+        status:            'preliminary',
+        address:           safeAddress,
+        risk_score:        result.risk_score,
+        category:          result.category,
+        summary:           result.summary,
+        advisor_used:      false,
+        findings:          result.findings || [],
+        job_id:            jobId,
+        validation_status: _botValidStatus,
       });
 
       // Fáze B: async advisor → Telegram push
@@ -4286,7 +4333,8 @@ app.post('/internal/bot/token', requireBotKey, express.json(), async (req, res) 
           db.logAdvisorUsage(null, 'bot-token', advisorResult);
           const advText = advisorResult?.text || '';
           if (advText) {
-            const msg = `<b>Token advisor update</b> (${safeAddress.slice(0, 8)}...)\n\n${advText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 3800)}`;
+            const escapedValidStatus = _botValidStatus.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const msg = `<b>Token advisor update</b> (${safeAddress.slice(0, 8)}...) ${escapedValidStatus}\n\n${advText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 3800)}`;
             await sendTelegramAlert(chatId, msg).catch(tgErr =>
               console.warn('[bot/token] telegram push failed:', tgErr.message)
             );
@@ -4316,25 +4364,27 @@ app.post('/internal/bot/token', requireBotKey, express.json(), async (req, res) 
       }
 
       res.json({
-        status:       'complete',
-        address:      safeAddress,
-        risk_score:   result.risk_score,
-        category:     result.category,
-        summary:      advisorResult?.text || result.summary,
-        advisor_used: advisorResult?.advisorUsed ?? false,
-        findings:     result.findings || [],
+        status:            'complete',
+        address:           safeAddress,
+        risk_score:        result.risk_score,
+        category:          result.category,
+        summary:           advisorResult?.text || result.summary,
+        advisor_used:      advisorResult?.advisorUsed ?? false,
+        findings:          result.findings || [],
+        validation_status: _botValidStatus,
       });
 
     } else {
       // Skóre mimo šedou zónu — žádný advisor
       res.json({
-        status:       'complete',
-        address:      safeAddress,
-        risk_score:   result.risk_score,
-        category:     result.category,
-        summary:      result.summary,
-        advisor_used: false,
-        findings:     result.findings || [],
+        status:            'complete',
+        address:           safeAddress,
+        risk_score:        result.risk_score,
+        category:          result.category,
+        summary:           result.summary,
+        advisor_used:      false,
+        findings:          result.findings || [],
+        validation_status: _botValidStatus,
       });
     }
   } catch (e) {
