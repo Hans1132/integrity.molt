@@ -384,7 +384,19 @@ async function auditToken(mintAddress, tokenName, options = {}) {
   }
 
   // Přidej finding pokud je token v known_scams databázi
-  if (scamDbResult.known_scam) {
+  // Přeskočíme well-known legitimní tokeny (false positives ze SolRPDS datasetu)
+  const KNOWN_LEGITIMATE_MINTS = new Set([
+    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC (Circle)
+    'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',  // USDT (Tether)
+    'So11111111111111111111111111111111111111112',      // Wrapped SOL
+    'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',   // JUP
+    'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So',   // mSOL
+    'bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1',   // bSOL
+    'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',  // BONK
+    '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs',  // ETH (Wormhole)
+    '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh',  // BTC (Wormhole)
+  ]);
+  if (scamDbResult.known_scam && !KNOWN_LEGITIMATE_MINTS.has(mintAddress)) {
     const ks = scamDbResult.known_scam;
     const detail = `Zdroj: ${ks.source}` +
       (ks.scam_type ? `, typ: ${ks.scam_type}` : '') +
@@ -591,7 +603,14 @@ async function auditToken(mintAddress, tokenName, options = {}) {
       }
     }
   } catch (e) {
-    finding('low', 'holders', `Could not fetch holder distribution: ${e.message}`);
+    // RPC 503 / rate-limit je časté u velkých tokenů (USDC, SOL) — nesnižuj skóre
+    const isRateLimit = /503|429|rate.limit/i.test(e.message);
+    if (isRateLimit) {
+      findings.push({ severity: 'info', category: 'holders',
+        label: 'Holder distribution unavailable (RPC rate limit — retry later)', detail: null });
+    } else {
+      finding('low', 'holders', `Could not fetch holder distribution: ${e.message}`);
+    }
   }
 
   // ── 6. Metaplex metadata ──────────────────────────────────────────────────

@@ -26,7 +26,15 @@ integrity.molt API server is running healthy (0 errors in 2h, 111 total scans in
 - **[openapi.json] No `x-payment` annotations on any endpoint** -- openapi.json paths list all scan endpoints but none have x-payment pricing metadata. Any client using OpenAPI spec won't discover pricing.
 
 ### UX problemy
-- **Free scan requires CAPTCHA** but curl-based API testing can't easily solve it. The A2A bypass (`x-a2a-caller: 1` from localhost) exists but isn't documented.
+- **Free scan requires CAPTCHA** for `/scan/free` endpoint. For local API testing, use the internal bypass:
+  ```bash
+  # CAPTCHA bypass — funguje jen z 127.0.0.1
+  curl -s http://127.0.0.1:3402/scan/free -X POST \
+    -H "Content-Type: application/json" \
+    -H "x-a2a-caller: 1" \
+    -d '{"address":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEWGkZwyTDt1v","type":"quick"}'
+  ```
+  Bypass podmínka: `x-a2a-caller: 1` header + request z `127.0.0.1` (server.js:3373).
 - **`average_response_time_ms: 0`** in stats -- counter appears to not be recording response times, making the "< 3s" stat a hardcoded fallback rather than real data.
 - **Demo scan button** on landing page uses `demoScan()` JS function -- if this calls `/scan/free` it will also need CAPTCHA.
 

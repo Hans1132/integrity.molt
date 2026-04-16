@@ -849,14 +849,19 @@ async function getLiveStats() {
       (SELECT COUNT(*) FROM payments WHERE verified = 1)                                AS total_payments,
       (SELECT ROUND(100.0 * COUNT(CASE WHEN risk_score IS NOT NULL THEN 1 END)
               / NULLIF(COUNT(*), 0), 1)
-        FROM scan_history WHERE scan_type != 'legacy-import')                           AS success_rate_pct
+        FROM scan_history WHERE scan_type != 'legacy-import')                           AS success_rate_pct,
+      (SELECT ROUND(AVG(CAST(json_extract(result_json, '$.scan_ms') AS INTEGER)), 0)
+        FROM scan_history
+        WHERE result_json IS NOT NULL
+          AND json_extract(result_json, '$.scan_ms') IS NOT NULL
+          AND strftime('%Y-%m-%d', created_at) >= date('now', '-7 days'))               AS avg_scan_ms
   `).get();
   return {
     total_scans:             r?.total_scans        || 0,
     scans_today:             r?.scans_today        || 0,
     total_payments:          r?.total_payments     || 0,
     success_rate_pct:        r?.success_rate_pct   || 0,
-    average_response_time_ms: null   // timing not yet stored in scan_history
+    average_response_time_ms: r?.avg_scan_ms || null
   };
 }
 

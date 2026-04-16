@@ -148,9 +148,11 @@ handle_help() {
     local username="${2:-friend}"
     send_message "$chat_id" "👋 <b>integrity.molt</b> — AI-native security scanner
 
-<b>Solana:</b>
-• <code>/scan &lt;address&gt;</code> — AI security scan (free, 3×/day)
-• <code>/token &lt;mint_address&gt;</code> — SPL token audit (mint/freeze/distribution)
+<b>Solana (free, 3×/day):</b>
+• <code>/scan &lt;address&gt;</code> — AI security scan (token / wallet / program)
+• <code>/token &lt;mint&gt;</code> — SPL token audit (mint/freeze/distribution)
+• <code>/wallet &lt;address&gt;</code> — wallet risk profile
+• <code>/pool &lt;address&gt;</code> — DeFi pool analysis
 
 <b>EVM (ETH/BSC/Polygon/Arbitrum/Base):</b>
 • <code>/evm &lt;0x_address&gt; [chain]</code> — EVM token scan
@@ -159,6 +161,9 @@ handle_help() {
 <b>Smart Contract:</b>
 • <code>/contract &lt;github_url&gt;</code> — Rust/Solidity audit (cargo-audit + AI)
   Example: <code>/contract https://github.com/owner/repo</code>
+
+<b>Deep audit (paid, 5 USDC):</b>
+• <code>/deep &lt;address&gt;</code> — full multi-agent swarm audit
 
 <b>Other:</b>
 • <code>/upgrade</code> — subscription tiers and pricing
@@ -810,6 +815,199 @@ ${findings_text}
     log_scan "contract|$user_id|$chat_id|$github_url|done"
 }
 
+# ── Handler: /wallet ─────────────────────────────────────────────────────────
+handle_wallet() {
+    local chat_id="$1"
+    local user_id="$2"
+    local address="$3"
+
+    if [ -z "$address" ]; then
+        send_message "$chat_id" "❌ Provide a Solana address: <code>/wallet &lt;address&gt;</code>"
+        return
+    fi
+
+    if ! echo "$address" | grep -qP '^[1-9A-HJ-NP-Za-km-z]{32,44}$'; then
+        send_message "$chat_id" "❌ Invalid Solana address. Must be 32–44 base58 characters."
+        return
+    fi
+
+    if ! check_rate_limit "$user_id"; then
+        send_message "$chat_id" "⏳ Rate limit: max 3 free scans per day. /upgrade for unlimited."
+        return
+    fi
+
+    send_typing "$chat_id"
+    send_message "$chat_id" "👤 Starting wallet risk profile for:
+<code>${address}</code>
+
+Checking: balance, program ownership, activity, risk signals...
+Please wait 20–40 seconds..."
+
+    log "Wallet scan: address=$address chat_id=$chat_id"
+
+    local safe_address
+    safe_address=$(echo "$address" | tr -cd '1-9A-HJ-NP-Za-km-z' | cut -c1-44)
+
+    local result
+    result=$(curl -s -X POST "${SERVER_API}/internal/bot/quick" \
+        -H "Content-Type: application/json" \
+        -H "X-Admin-Key: ${BOT_ADMIN_KEY}" \
+        --max-time 120 \
+        -d "{\"address\":\"${safe_address}\"}" 2>/dev/null)
+
+    if [ -z "$result" ]; then
+        send_message "$chat_id" "❌ Server did not respond. Please try again in a moment."
+        return
+    fi
+
+    local error
+    error=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('error',''))" 2>/dev/null)
+    if [ -n "$error" ]; then
+        send_message "$chat_id" "❌ Wallet scan failed: ${error}"
+        return
+    fi
+
+    local report risk_level risk_score
+    report=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('report',''))" 2>/dev/null)
+    risk_level=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('risk_level','') or '')" 2>/dev/null)
+    risk_score=$(echo "$result" | python3 -c "import sys,json; v=json.load(sys.stdin).get('risk_score'); print(v if v is not None else '')" 2>/dev/null)
+
+    local formatted remoji="🟡"
+    formatted=$(format_for_telegram "$report")
+    case "$risk_level" in
+        low|safe)   remoji="🟢" ;;
+        high|avoid) remoji="🔴" ;;
+        critical)   remoji="🆘" ;;
+    esac
+
+    local risk_header="${remoji} <b>Wallet Risk: ${risk_level^^}</b>"
+    [ -n "$risk_score" ] && risk_header="${risk_header} | Score: ${risk_score}/100"
+
+    send_message "$chat_id" "${risk_header}
+
+<pre>${formatted}</pre>
+
+<i>Full wallet profile (0.75 USDC): https://intmolt.org · /upgrade</i>"
+    log_scan "wallet|$user_id|$chat_id|$address|done|risk=$risk_level|score=$risk_score"
+}
+
+# ── Handler: /pool ────────────────────────────────────────────────────────────
+handle_pool() {
+    local chat_id="$1"
+    local user_id="$2"
+    local address="$3"
+
+    if [ -z "$address" ]; then
+        send_message "$chat_id" "❌ Provide a pool address: <code>/pool &lt;address&gt;</code>"
+        return
+    fi
+
+    if ! echo "$address" | grep -qP '^[1-9A-HJ-NP-Za-km-z]{32,44}$'; then
+        send_message "$chat_id" "❌ Invalid Solana address."
+        return
+    fi
+
+    if ! check_rate_limit "$user_id"; then
+        send_message "$chat_id" "⏳ Rate limit: max 3 free scans per day. /upgrade for unlimited."
+        return
+    fi
+
+    send_typing "$chat_id"
+    send_message "$chat_id" "🌊 Starting DeFi pool analysis for:
+<code>${address}</code>
+
+Checking: program ownership, liquidity signals, rug indicators...
+Please wait 20–40 seconds..."
+
+    log "Pool scan: address=$address chat_id=$chat_id"
+
+    local safe_address
+    safe_address=$(echo "$address" | tr -cd '1-9A-HJ-NP-Za-km-z' | cut -c1-44)
+
+    local result
+    result=$(curl -s -X POST "${SERVER_API}/internal/bot/quick" \
+        -H "Content-Type: application/json" \
+        -H "X-Admin-Key: ${BOT_ADMIN_KEY}" \
+        --max-time 120 \
+        -d "{\"address\":\"${safe_address}\"}" 2>/dev/null)
+
+    if [ -z "$result" ]; then
+        send_message "$chat_id" "❌ Server did not respond. Please try again in a moment."
+        return
+    fi
+
+    local error
+    error=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('error',''))" 2>/dev/null)
+    if [ -n "$error" ]; then
+        send_message "$chat_id" "❌ Pool scan failed: ${error}"
+        return
+    fi
+
+    local report risk_level risk_score
+    report=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('report',''))" 2>/dev/null)
+    risk_level=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('risk_level','') or '')" 2>/dev/null)
+    risk_score=$(echo "$result" | python3 -c "import sys,json; v=json.load(sys.stdin).get('risk_score'); print(v if v is not None else '')" 2>/dev/null)
+
+    local formatted remoji="🟡"
+    formatted=$(format_for_telegram "$report")
+    case "$risk_level" in
+        low|safe)   remoji="🟢" ;;
+        high|avoid) remoji="🔴" ;;
+        critical)   remoji="🆘" ;;
+    esac
+
+    local risk_header="${remoji} <b>Pool Risk: ${risk_level^^}</b>"
+    [ -n "$risk_score" ] && risk_header="${risk_header} | Score: ${risk_score}/100"
+
+    send_message "$chat_id" "${risk_header}
+
+<pre>${formatted}</pre>
+
+<i>Full pool scan (0.75 USDC): https://intmolt.org · /upgrade</i>"
+    log_scan "pool|$user_id|$chat_id|$address|done|risk=$risk_level|score=$risk_score"
+}
+
+# ── Handler: /deep (upsell — vyžaduje platbu) ─────────────────────────────────
+handle_deep() {
+    local chat_id="$1"
+    local address="$2"
+
+    if [ -z "$address" ]; then
+        send_message "$chat_id" "🔬 <b>Deep Audit</b> — full multi-agent swarm analysis
+
+<b>Includes:</b>
+• RPC scan + IRIS scoring
+• Token enrichment (RugCheck, Solana Tracker)
+• Ed25519 signed report
+• LLM security analyst review (Opus)
+
+<b>Price: 5.00 USDC</b> · via x402 micropayment
+
+<b>How to use:</b>
+<code>POST https://intmolt.org/scan/deep</code>
+With <code>X-PAYMENT</code> header (see API docs)
+
+📄 API docs: https://intmolt.org/openapi.json
+🔑 Or subscribe: /upgrade (unlimited deep audits)"
+        return
+    fi
+
+    send_message "$chat_id" "🔬 <b>Deep Audit</b> for <code>${address}</code>
+
+<b>Price: 5.00 USDC</b> via x402 micropayment.
+
+<b>Option 1 — API:</b>
+<code>POST https://intmolt.org/scan/deep</code>
+Body: <code>{\"address\": \"${address}\"}</code>
+Header: <code>X-PAYMENT: &lt;base64 tx&gt;</code>
+
+<b>Option 2 — Web:</b>
+→ https://intmolt.org/scan?type=deep&amp;address=${address}
+
+<b>Option 3 — Subscribe:</b>
+→ /upgrade — unlimited deep audits from \$49/mo"
+}
+
 # ── Hlavní polling loop ───────────────────────────────────────────────────────
 main() {
     log "Telegram bot starting (long-polling mode)"
@@ -877,6 +1075,24 @@ main() {
                             arg=$(echo "$text" | grep -oP '[1-9A-HJ-NP-Za-km-z]{32,44}' | head -1)
                         fi
                         handle_token "$chat_id" "$user_id" "$arg" &
+                        ;;
+                    /wallet)
+                        if [ -z "$arg" ]; then
+                            arg=$(echo "$text" | grep -oP '[1-9A-HJ-NP-Za-km-z]{32,44}' | head -1)
+                        fi
+                        handle_wallet "$chat_id" "$user_id" "$arg" &
+                        ;;
+                    /pool)
+                        if [ -z "$arg" ]; then
+                            arg=$(echo "$text" | grep -oP '[1-9A-HJ-NP-Za-km-z]{32,44}' | head -1)
+                        fi
+                        handle_pool "$chat_id" "$user_id" "$arg" &
+                        ;;
+                    /deep)
+                        if [ -z "$arg" ]; then
+                            arg=$(echo "$text" | grep -oP '[1-9A-HJ-NP-Za-km-z]{32,44}' | head -1)
+                        fi
+                        handle_deep "$chat_id" "$arg" &
                         ;;
                     /evm)
                         handle_evm "$chat_id" "$user_id" "$arg" &

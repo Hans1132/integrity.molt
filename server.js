@@ -1006,7 +1006,8 @@ const { handleA2ARequest, handleA2ASubscribe, buildAgentCard } = require('./src/
 
 // Agent card — machine-readable capability description for A2A discovery
 app.get('/.well-known/agent.json', (req, res) => {
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  // Preferuj APP_URL (produkce) před req.protocol/host (za NGINX proxy vrací http://127.0.0.1)
+  const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   res.json(buildAgentCard(baseUrl));
 });
 
