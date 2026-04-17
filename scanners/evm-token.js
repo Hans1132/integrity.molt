@@ -7,6 +7,14 @@ const fs = require('fs');
 const path = require('path');
 const { lookupScamCreator } = require('../src/scam-db/lookup');
 
+// ── Known legitimate EVM token symbols (for impersonation context) ────────────
+// Addresses for each chain are in config/known-safe-tokens.json
+// MOLT EVM address: add to config when token launches on EVM chains
+const KNOWN_LEGITIMATE_EVM_SYMBOLS = new Set([
+  'usdc', 'usdt', 'weth', 'wbtc', 'dai', 'uni', 'aave', 'link',
+  'crv', 'ens', 'wbnb', 'molt'
+]);
+
 // ── Known-safe token whitelist ────────────────────────────────────────────────
 function loadEvmWhitelist() {
   try {
@@ -621,8 +629,45 @@ async function scanEVMToken(contractAddress, chain = 'ethereum') {
     }
   }
 
+  // ── (m) Contextual scoring: proxy/mint downgrade if multisig or timelock ──
+  let ownerIsMultisig = false;
+  let timelockDetected = false;
+
+  if (meta.owner && meta.owner !== 'renounced' && meta.isProxy) {
+    try {
+      const ownerCode = await rpcCall(cfg.rpc, 'eth_getCode', [meta.owner, 'latest']);
+      // Gnosis Safe contains getOwners() selector 0xa0e67e2b in bytecode
+      if (ownerCode && ownerCode !== '0x') {
+        ownerIsMultisig = ownerCode.toLowerCase().includes('a0e67e2b');
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  if (sourceCode) {
+    timelockDetected = /TimelockController|ITimelock\b|\btimelock\b/i.test(sourceCode);
+  }
+
+  for (let i = 0; i < findings.length; i++) {
+    const f = findings[i];
+    if ((f.category === 'proxy' || f.category === 'supply') && (f.severity === 'high' || f.severity === 'critical')) {
+      if (timelockDetected) {
+        findings[i] = { ...f, severity: 'low', label: f.label + ' — timelock present (changes are time-delayed)' };
+      } else if (ownerIsMultisig) {
+        findings[i] = { ...f, severity: 'medium', label: f.label + ' — admin is Gnosis Safe multisig' };
+      }
+    }
+  }
+
+  meta.ownerIsMultisig = ownerIsMultisig;
+  meta.timelockDetected = timelockDetected;
+
   // ── Risk score + recommendation ───────────────────────────────────────────
   let score = Math.min(100, findings.reduce((acc, f) => acc + (WEIGHTS[f.severity] || 0), 0));
+
+  // Reduce score by 10 for established tokens (>1 year old, active transfer history)
+  if ((meta.ageDays || 0) > 365 && (meta.transferCount || 0) >= 100) {
+    score = Math.max(0, score - 10);
+  }
 
   // Cap score for whitelisted contracts
   if (wlEntry && wlEntry.max_score != null) {

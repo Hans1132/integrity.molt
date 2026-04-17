@@ -648,7 +648,7 @@ Retry with the correct chain:
     name=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('meta',{}).get('name') or 'unknown')" 2>/dev/null)
     symbol=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('meta',{}).get('symbol') or '?')" 2>/dev/null)
     verified=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('meta',{}).get('verified','?'))" 2>/dev/null)
-    age=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); v=d.get('meta',{}).get('ageDays'); print(v if v is not None else '?')" 2>/dev/null)
+    age=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); v=d.get('meta',{}).get('ageDays'); print(v if v is not None else 'unknown')" 2>/dev/null)
     findings_text=$(echo "$result" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
@@ -656,12 +656,21 @@ findings=d.get('findings',[])
 if not findings:
     print('✅ No significant findings.')
 else:
-    for f in findings[:10]:
+    for f in findings[:8]:
         sev=f.get('severity','?').upper()
-        cat=f.get('category','?')
         label=f.get('label','?')
-        emoji={'CRITICAL':'🆘','HIGH':'🔴','MEDIUM':'🟡','LOW':'🟢'}.get(sev,'⚪')
-        print(f'{emoji} [{sev}] [{cat}] {label}')
+        icon={'CRITICAL':'🔴','HIGH':'⚠️','MEDIUM':'🟡','LOW':'ℹ️'}.get(sev,'ℹ️')
+        print(f'{icon} {label}')
+" 2>/dev/null)
+    check_hints=$(echo "$result" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+findings=d.get('findings',[])
+cats={f.get('category','') for f in findings}
+hints=[]
+if 'proxy' in cats: hints.append('Is proxy admin a multisig?')
+if 'supply' in cats: hints.append('Is there a timelock?')
+if hints: print('💡 Check: ' + ' · '.join(hints))
 " 2>/dev/null)
 
     # Emoji podle risk_level (server pole), ne podle textu recommendation
@@ -680,19 +689,30 @@ else:
         fi
     fi
 
-    send_message "$chat_id" "${emoji} <b>EVM Token Scan</b>
+    local score_label
+    case "$risk_level" in
+        safe|low)     score_label="LOW"      ;;
+        medium)       score_label="MEDIUM"   ;;
+        high|avoid)   score_label="HIGH"     ;;
+        critical)     score_label="CRITICAL" ;;
+        *)            score_label="${risk_level^^}" ;;
+    esac
 
-📛 <b>${name}</b> (${symbol}) — ${chain}
-📍 <code>${address}</code>
-✅ Verified: ${verified} | 📅 Age: ${age} days
+    local age_display=""
+    if [ -n "$age" ] && [ "$age" != "unknown" ] && [ "$age" != "?" ]; then
+        age_display=" · Age: ${age}d"
+    fi
 
-🎯 <b>Risk Score: ${score}/100</b>
-📋 Doporučení: <b>${recommendation}</b>
+    local hints_line=""
+    [ -n "$check_hints" ] && hints_line="
+${check_hints}
+"
 
---- Findings ---
-${findings_text}
+    send_message "$chat_id" "${emoji} <b>${name}</b> (${chain}) — Score: ${score}/100 ${score_label}
+<code>${address}</code>${age_display}
 
-<i>Full report: https://intmolt.org · API docs: https://intmolt.org/openapi.json</i>
+${findings_text}${hints_line}
+<i>Full report: https://intmolt.org/scan?chain=${chain}&amp;address=${address}</i>
 <i>Subscription from \$15/mo — /upgrade</i>"
 
     log_scan "evm|$user_id|$chat_id|$address|$chain|score=$score|risk=$risk_level|rec=$recommendation"
