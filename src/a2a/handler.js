@@ -81,10 +81,22 @@ const SKILLS = {
     description: 'Full adversarial simulation — forks on-chain state, probes 7 attack playbooks, returns signed risk report.',
     inputModes:  ['text/plain'],
     outputModes: ['application/json'],
-    priceUSDC:   10.00,    // config/pricing.js: adversarial = 10_000_000
+    priceUSDC:    4.00,    // config/pricing.js: adversarial = 4_000_000 (under AutoPilot 5 USDC limit)
     tags:        ['solana', 'program', 'security', 'simulation'],
   },
 };
+
+// ── Artifact helper — flatten scan result for A2A callers ────────────────────
+// Internal scan endpoints return { status, type, address, data: { risk_level, ... } }.
+// A2A callers expect risk_level at parts[0].data.risk_level (not parts[0].data.data.risk_level).
+// This merges the inner .data fields into the top level while preserving outer metadata.
+function flattenScanResult(scanResult) {
+  if (scanResult && typeof scanResult === 'object' && scanResult.data && typeof scanResult.data === 'object') {
+    const { data, ...outer } = scanResult;
+    return { ...outer, ...data };
+  }
+  return scanResult;
+}
 
 // ── Skill executor — calls internal loopback REST endpoints ──────────────────
 // This avoids circular requires (scan logic lives in server.js) and ensures all
@@ -318,12 +330,13 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
     updateTask(task.id, { status: { state: 'working' } });
     try {
       const scanResult = await executeSkill(skillId, address, metadata?.options || {}, paymentHeader);
+      const artifactData = flattenScanResult(scanResult);
       updateTask(task.id, {
         status:    { state: 'completed' },
         artifacts: [{
           name:     `${skillId}_result`,
           mimeType: 'application/json',
-          parts:    [{ type: 'data', data: scanResult }]
+          parts:    [{ type: 'data', data: artifactData }]
         }]
       });
       // Log approved AutoPilot spend
@@ -339,7 +352,7 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
         artifacts: [{
           name:     `${skillId}_result`,
           mimeType: 'application/json',
-          parts:    [{ type: 'data', data: scanResult }]
+          parts:    [{ type: 'data', data: artifactData }]
         }]
       });
     } catch (e) {
@@ -491,6 +504,7 @@ async function handleA2ASubscribe(req, res) {
 
   try {
     const scanResult = await executeSkill(skillId, address, metadata?.options || {}, paymentHeader);
+    const artifactData = flattenScanResult(scanResult);
 
     clearInterval(keepalive);
 
@@ -499,11 +513,11 @@ async function handleA2ASubscribe(req, res) {
       artifacts: [{
         name:     `${skillId}_result`,
         mimeType: 'application/json',
-        parts:    [{ type: 'data', data: scanResult }]
+        parts:    [{ type: 'data', data: artifactData }]
       }]
     });
 
-    sseWrite(res, 'task_completed', { taskId: task.id, result: scanResult });
+    sseWrite(res, 'task_completed', { taskId: task.id, result: artifactData });
     res.end();
 
   } catch (e) {

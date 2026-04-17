@@ -21,7 +21,7 @@ const PRICING = {
   'token-audit':       750_000,   // 0.75 USDC
   'agent-token':       150_000,   // 0.15 USDC
   delta:             1_000_000,   // 1.00 USDC
-  adversarial:      10_000_000,   // 10.00 USDC
+  adversarial:       4_000_000,   //  4.00 USDC (under AutoPilot 5 USDC per-tx limit)
 };
 
 // Human-readable USDC prices (for /info and documentation).
@@ -37,7 +37,7 @@ const PRICING_DISPLAY = {
   'token-audit':   '0.75 USDC',
   'agent-token':   '0.15 USDC',
   delta:           '1.00 USDC',
-  adversarial:    '10.00 USDC',
+  adversarial:     '4.00 USDC',
 };
 
 module.exports = { PRICING, PRICING_DISPLAY };
