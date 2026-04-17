@@ -4,18 +4,27 @@
   "version": "2.0",
   "agent": {
     "name": "integrity.molt",
-    "agent_id": "molt_78587c41ed99a3375022dc28",
+    "agent_id": "2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy",
     "domain": "intmolt.org",
     "wallet": "BFmkPKu2tS9RoMufgJUd9GyabzC91hriAbMS6Hmr8TX6",
+    "authority": "EvXNCtaoVuC1NQLQswAnqsbQKPgVTdjrrLKa8MpMJiLf",
+    "owner": "HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY",
     "description": "AI-powered Solana security scanner and adversarial simulator",
     "version": "0.4.1",
-    "registration_status": "pending_o14"
+    "registration_status": "registered",
+    "registry": "solana:101:metaplex",
+    "irys_doc": "https://gateway.irys.xyz/3p4zvdZg4ALoFbf55uO0VxS4cMVYcp8qnCdcOk7Ru4o",
+    "image": "https://molt.mypinata.cloud/ipfs/QmbbWfSR3LK9ZiLzBvMLDR4hZKnC1xjTAUejGAHXifacPe",
+    "x402Support": true,
+    "active": true
   },
   "endpoints": {
     "a2a": "https://intmolt.org/a2a",
+    "a2a_proxy": "https://multiclaw.moltid.workers.dev/c/integrity/a2a",
     "a2a_subscribe": "https://intmolt.org/a2a/subscribe",
     "agent_card": "https://intmolt.org/.well-known/agent.json",
-    "x402_discovery": "https://intmolt.org/.well-known/x402.json"
+    "x402_discovery": "https://intmolt.org/.well-known/x402.json",
+    "web": "https://intmolt.org"
   },
   "skills": [
     {
