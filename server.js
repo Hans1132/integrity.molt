@@ -1237,6 +1237,12 @@ app.post('/api/v1/feedback', express.json(), (req, res) => {
 // Calls enrichment + calculateIRIS without shell scripts or LLM — safe for internal bot use.
 // 127.0.0.1 is exempt from rate limit (Moltbook heartbeat).
 const _freeScanRL = new Map(); // IP → { count, windowStart }
+const _legitTokens = (() => {
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/legit-tokens.json'), 'utf8'));
+    return new Set((raw.tokens || []).map(t => t.mint));
+  } catch { return new Set(); }
+})();
 app.post('/scan/iris', express.json(), async (req, res) => {
   const ip = req.ip || '127.0.0.1';
   if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
@@ -1263,11 +1269,15 @@ app.post('/scan/iris', express.json(), async (req, res) => {
       lookupScamDb(safeAddress).catch(() => ({ known_scam: null, rugcheck: null, db_match: false })),
     ]);
     const iris = calculateIRIS(enrichment, scamDb);
+    const isWhitelisted = _legitTokens.has(safeAddress);
+    const scamDbOut = isWhitelisted
+      ? { known_scam: false, whitelisted: true, note: 'Verified legitimate token', db_match: false }
+      : { known_scam: scamDb.known_scam, rugcheck: scamDb.rugcheck, db_match: scamDb.db_match };
     res.json({
       status:    'complete',
       address:   safeAddress,
       iris:      { score: iris.score, grade: iris.grade, breakdown: iris.breakdown },
-      scam_db:   { known_scam: scamDb.known_scam, rugcheck: scamDb.rugcheck, db_match: scamDb.db_match },
+      scam_db:   scamDbOut,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
