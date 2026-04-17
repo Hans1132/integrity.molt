@@ -1019,7 +1019,20 @@ app.get('/.well-known/agent.json', (req, res) => {
 });
 
 // A2A JSON-RPC 2.0 endpoint — tasks/send, tasks/get, tasks/cancel
-app.post('/a2a', express.json({ limit: '64kb' }), handleA2ARequest);
+const _a2aRL = new Map();
+const _a2aRLMiddleware = (req, res, next) => {
+  const ip = req.ip || '127.0.0.1';
+  // 127.0.0.1 = internal calls from own services — exempt
+  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return next();
+  const now = Date.now();
+  const entry = _a2aRL.get(ip) || { count: 0, windowStart: now };
+  if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }
+  entry.count++;
+  _a2aRL.set(ip, entry);
+  if (entry.count > 20) return res.status(429).json({ error: 'Rate limit exceeded (20 req/min per IP)' });
+  next();
+};
+app.post('/a2a', express.json({ limit: '64kb' }), _a2aRLMiddleware, handleA2ARequest);
 
 // A2A SSE streaming endpoint — POST /a2a/subscribe
 // Body: { skill, address, sessionId?, metadata? }
