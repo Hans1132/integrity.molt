@@ -1233,6 +1233,48 @@ app.post('/api/v1/feedback', express.json(), (req, res) => {
   }
 });
 
+// IRIS-only scan — lightweight bot endpoint, rate-limited (10 req/min/IP)
+// Calls enrichment + calculateIRIS without shell scripts or LLM — safe for internal bot use.
+// 127.0.0.1 is exempt from rate limit (Moltbook heartbeat).
+const _freeScanRL = new Map(); // IP → { count, windowStart }
+app.post('/scan/iris', express.json(), async (req, res) => {
+  const ip = req.ip || '127.0.0.1';
+  if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
+    const now = Date.now();
+    const entry = _freeScanRL.get(ip) || { count: 0, windowStart: now };
+    if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }
+    entry.count++;
+    _freeScanRL.set(ip, entry);
+    if (entry.count > 10) {
+      return res.status(429).json({ error: 'Rate limit exceeded (10 req/min)' });
+    }
+  }
+
+  const address = req.body?.address || req.body?.target;
+  if (!address) return res.status(400).json({ error: 'Missing address field' });
+  const safeAddress = address.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
+  if (!safeAddress || safeAddress.length < 32 || safeAddress.length > 44) {
+    return res.status(400).json({ error: 'Invalid Solana address format' });
+  }
+
+  try {
+    const [enrichment, scamDb] = await Promise.all([
+      enrichScanResult(safeAddress).catch(() => null),
+      lookupScamDb(safeAddress).catch(() => ({ known_scam: null, rugcheck: null, db_match: false })),
+    ]);
+    const iris = calculateIRIS(enrichment, scamDb);
+    res.json({
+      status:    'complete',
+      address:   safeAddress,
+      iris:      { score: iris.score, grade: iris.grade, breakdown: iris.breakdown },
+      scam_db:   { known_scam: scamDb.known_scam, rugcheck: scamDb.rugcheck, db_match: scamDb.db_match },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Scan failed', detail: err.message });
+  }
+});
+
 // Quick Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
 app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quickPaymentAccepts, PRICING.quick), express.json(), async (req, res) => {
   const address = req.body.address || req.body.target;
