@@ -129,9 +129,8 @@ async function internalPost(path, body, paymentHeader, timeoutMs = 60_000) {
 async function executeSkill(skillId, address, options = {}, paymentHeader = null) {
   switch (skillId) {
     case 'quick_scan':
-      // Free tier — /scan/free (CAPTCHA-gated, rate-limited by IP).
-      // /scan/quick is the paid REST variant (0.50 USDC); A2A exposes the free tier.
-      return internalPost('/scan/free', { address, chain: 'solana' }, null, 30_000);
+      // IRIS-only endpoint — enrichment + calculateIRIS, no CAPTCHA, 127.0.0.1 rate-limit exempt.
+      return internalPost('/scan/iris', { address }, null, 30_000);
 
     case 'token_audit':
       return internalPost('/scan/token', { address }, paymentHeader, 60_000);
