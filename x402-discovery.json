@@ -1,6 +1,66 @@
 {
   "x402": true,
+  "x402_version": "2.0",
   "version": "2.0",
+  "agent": {
+    "name": "integrity.molt",
+    "agent_id": "molt_78587c41ed99a3375022dc28",
+    "domain": "intmolt.org",
+    "wallet": "BFmkPKu2tS9RoMufgJUd9GyabzC91hriAbMS6Hmr8TX6",
+    "description": "AI-powered Solana security scanner and adversarial simulator",
+    "version": "0.4.1",
+    "registration_status": "pending_o14"
+  },
+  "endpoints": {
+    "a2a": "https://intmolt.org/a2a",
+    "a2a_subscribe": "https://intmolt.org/a2a/subscribe",
+    "agent_card": "https://intmolt.org/.well-known/agent.json",
+    "x402_discovery": "https://intmolt.org/.well-known/x402.json"
+  },
+  "skills": [
+    {
+      "id": "quick_scan",
+      "name": "Quick Scan",
+      "description": "Fast on-chain scan of a Solana address — account info, balance, basic risk assessment. Free tier, rate-limited.",
+      "pricing": { "type": "free" },
+      "tags": ["solana", "security", "free"]
+    },
+    {
+      "id": "token_audit",
+      "name": "Token Audit",
+      "description": "SPL token launch audit — mint authority, freeze authority, holder distribution, rug risk.",
+      "pricing": { "type": "per_call", "amount": 0.75, "currency": "USDC", "protocol": "x402" },
+      "tags": ["solana", "token", "security"]
+    },
+    {
+      "id": "agent_token_scan",
+      "name": "Agent Token Scan",
+      "description": "Metaplex Agent Token security scan — Core NFT backing, treasury PDA, update authority risk, creator royalties, DAO governance, activity analysis.",
+      "pricing": { "type": "per_call", "amount": 0.15, "currency": "USDC", "protocol": "x402" },
+      "tags": ["solana", "metaplex", "agent-token", "nft", "security"]
+    },
+    {
+      "id": "wallet_profile",
+      "name": "Wallet Profile",
+      "description": "Wallet profiling — age, activity, DeFi exposure, risk classification.",
+      "pricing": { "type": "per_call", "amount": 0.75, "currency": "USDC", "protocol": "x402" },
+      "tags": ["solana", "wallet", "security"]
+    },
+    {
+      "id": "deep_audit",
+      "name": "Deep Audit",
+      "description": "Comprehensive Solana program security audit — static analysis, LLM-verified findings, Ed25519-signed report.",
+      "pricing": { "type": "per_call", "amount": 5.00, "currency": "USDC", "protocol": "x402" },
+      "tags": ["solana", "program", "security", "audit"]
+    },
+    {
+      "id": "adversarial_sim",
+      "name": "Adversarial Simulation",
+      "description": "Full adversarial simulation — forks on-chain state, probes 7 attack playbooks, returns signed risk report.",
+      "pricing": { "type": "per_call", "amount": 4.00, "currency": "USDC", "protocol": "x402" },
+      "tags": ["solana", "program", "security", "simulation"]
+    }
+  ],
   "provider": {
     "name": "integrity.molt",
     "description": "Real-time Solana risk monitoring for traders, bots, and protocol teams",
@@ -79,7 +139,7 @@
     {
       "path": "/api/v2/scan/token",
       "method": "POST",
-      "description": "Token scan: checks mint authority (can more tokens be created?), freeze authority (can accounts be frozen?), top-10 holder concentration, total supply. Returns risk rating per factor.",
+      "description": "Token scan: checks mint authority, freeze authority, top-10 holder concentration, total supply. Returns risk rating per factor.",
       "price": "0.75",
       "currency": "USDC",
       "micro_usdc": 750000,
@@ -92,7 +152,7 @@
     {
       "path": "/api/v2/scan/wallet",
       "method": "POST",
-      "description": "Rug check: estimates wallet age from transaction history, activity level, DeFi exposure via token holdings, and classifies risk profile (fresh wallet / whale / dormant / normal user).",
+      "description": "Wallet age estimation, activity level, DeFi exposure via token holdings, risk profile classification.",
       "price": "0.75",
       "currency": "USDC",
       "micro_usdc": 750000,
@@ -118,7 +178,7 @@
     {
       "path": "/api/v2/scan/evm-token",
       "method": "POST",
-      "description": "EVM token risk scan for Base, Ethereum, and Arbitrum. Honeypot detection, source code analysis (blacklist, adjustable fees, mint, pause, selfdestruct, proxy, ownership), contract age, deployer info. Risk score 0-100 with Ed25519 signed report.",
+      "description": "EVM token risk scan for Base, Ethereum, Arbitrum. Honeypot detection, source code analysis, contract age, deployer info. Risk score 0-100 with Ed25519 signed report.",
       "price": "0.75",
       "currency": "USDC",
       "micro_usdc": 750000,
@@ -126,12 +186,12 @@
       "payTo": "6u8gFVyzyf5dUtKPQKFwSsiAHwkpfKZfJji8J6jzcwvM",
       "input": {"type": "application/json", "schema": {"address": "string (0x EVM contract address)", "chain": "string (base|ethereum|arbitrum, default: base)"}},
       "output": {"type": "application/json"},
-      "tags": ["evm", "token", "honeypot", "base", "ethereum", "arbitrum", "security", "risk-score"]
+      "tags": ["evm", "token", "honeypot", "base", "ethereum", "arbitrum", "security"]
     },
     {
       "path": "/api/v1/scan/agent-token",
       "method": "POST",
-      "description": "Agent Token Security Scan — analyzes Metaplex Core Agent Tokens: Core NFT backing verification, treasury PDA, update authority risk, creator royalties, DAO/governance check, and activity analysis. Launched 2026-04-13 as integrity.molt launch partner.",
+      "description": "Agent Token Security Scan — Metaplex Core Agent Tokens: NFT backing, treasury PDA, update authority risk, creator royalties, DAO governance, activity analysis.",
       "price": "0.15",
       "currency": "USDC",
       "micro_usdc": 150000,
@@ -139,7 +199,7 @@
       "payTo": "6u8gFVyzyf5dUtKPQKFwSsiAHwkpfKZfJji8J6jzcwvM",
       "input": {"type": "application/json", "schema": {"mint": "string (Metaplex Core asset address)"}},
       "output": {"type": "application/json"},
-      "tags": ["agent-token", "metaplex-core", "nft", "security", "solana", "launch-partner"]
+      "tags": ["agent-token", "metaplex-core", "nft", "security", "solana"]
     },
     {
       "path": "/api/v2/delta/:address",
@@ -157,10 +217,10 @@
     {
       "path": "/api/v2/adversarial/simulate",
       "method": "POST",
-      "description": "Adversarial simulation — forks on-chain state and systematically probes 7 exploit paths: authority_takeover, oracle_manipulation, flash_loan, etc. Returns signed risk report.",
-      "price": "10.00",
+      "description": "Adversarial simulation — forks on-chain state and probes 7 exploit paths. Returns signed risk report.",
+      "price": "4.00",
       "currency": "USDC",
-      "micro_usdc": 10000000,
+      "micro_usdc": 4000000,
       "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "payTo": "6u8gFVyzyf5dUtKPQKFwSsiAHwkpfKZfJji8J6jzcwvM",
       "input": {"type": "application/json", "schema": {"program_id": "string (Solana program address)"}},
