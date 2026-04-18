@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px;
+    height: 630px;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0a0e1a 0%, #141a2e 100%);
+    color: #e4e7ee;
+    position: relative;
+    overflow: hidden;
+  }
+  .grid-bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image:
+      linear-gradient(rgba(79, 154, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79, 154, 255, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .container {
+    position: relative;
+    padding: 60px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 50px;
+  }
+  .logo {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .logo .accent { color: #4f9aff; }
+  .iris-badge {
+    background: rgba(79, 154, 255, 0.15);
+    border: 1px solid rgba(79, 154, 255, 0.4);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #4f9aff;
+    letter-spacing: 1px;
+  }
+  .main {
+    display: flex;
+    align-items: center;
+    gap: 60px;
+    flex: 1;
+  }
+  .score-ring-wrap {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    flex-shrink: 0;
+  }
+  .score-ring { transform: rotate(-90deg); }
+  .ring-bg-circle { fill: none; stroke: rgba(79, 154, 255, 0.1); stroke-width: 14; }
+  .ring-fill-circle { fill: none; stroke-width: 14; stroke-linecap: round; }
+  .ring-fill-low      { stroke: #22c55e; }
+  .ring-fill-medium   { stroke: #facc15; }
+  .ring-fill-high     { stroke: #f97316; }
+  .ring-fill-critical { stroke: #ef4444; }
+  .score-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .score-value {
+    font-size: 88px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -3px;
+  }
+  .score-total { font-size: 22px; color: #6b7280; margin-top: 4px; }
+  .details { flex: 1; }
+  .risk-label-line {
+    font-size: 20px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .risk-level {
+    font-size: 76px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 28px;
+  }
+  .risk-level.low      { color: #22c55e; }
+  .risk-level.medium   { color: #facc15; }
+  .risk-level.high     { color: #f97316; }
+  .risk-level.critical { color: #ef4444; }
+  .address-box {
+    background: rgba(30, 35, 50, 0.6);
+    border: 1px solid rgba(79, 154, 255, 0.2);
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    color: #9ca3af;
+    margin-bottom: 20px;
+  }
+  .factors { font-size: 18px; color: #9ca3af; line-height: 1.6; }
+  .factor-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .factor-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #4f9aff;
+    flex-shrink: 0;
+  }
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 30px;
+    border-top: 1px solid rgba(79, 154, 255, 0.1);
+    font-size: 16px;
+    color: #6b7280;
+  }
+  .footer .url { color: #4f9aff; font-weight: 600; }
+  .footer .signed { display: flex; align-items: center; gap: 8px; }
+  .check { color: #22c55e; font-weight: bold; }
+</style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="container">
+    <div class="header">
+      <div class="logo">integrity<span class="accent">.molt</span></div>
+      <div class="iris-badge">IRIS v1</div>
+    </div>
+
+    <div class="main">
+      <div class="score-ring-wrap">
+        <svg class="score-ring" width="280" height="280">
+          <circle class="ring-bg-circle" cx="140" cy="140" r="130"/>
+          <circle class="ring-fill-circle ring-fill-{{RISK_CLASS}}"
+                  cx="140" cy="140" r="130"
+                  stroke-dasharray="{{CIRCUMFERENCE}}"
+                  stroke-dashoffset="{{RING_OFFSET}}"/>
+        </svg>
+        <div class="score-center">
+          <div class="score-value">{{SCORE}}</div>
+          <div class="score-total">/100</div>
+        </div>
+      </div>
+
+      <div class="details">
+        <div class="risk-label-line">Security scan</div>
+        <div class="risk-level {{RISK_CLASS}}">{{RISK_LEVEL}} RISK</div>
+        <div class="address-box">{{ADDRESS_SHORT}}</div>
+        <div class="factors">{{FACTORS_HTML}}</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="url">intmolt.org/scan/{{ADDRESS_SHORT}}</div>
+      <div class="signed">
+        <span class="check">&#10003;</span>
+        Ed25519 signed &middot; IRIS v1.0
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -3883,6 +3883,28 @@ app.get('/scan/:address', async (req, res) => {
   res.type('html').send(html);
 });
 
+// OG image for /scan/:address — rendered by Puppeteer, cached 5 min in-memory
+const { generateOgImage, warmBrowser: ogWarmBrowser } = require('./src/og/generator');
+
+app.get('/og-scan/:file', async (req, res) => {
+  const m = /^([1-9A-HJ-NP-Za-km-z]{32,44})\.png$/.exec(req.params.file);
+  if (!m) return res.status(400).send('Invalid address');
+  const address = m[1];
+
+  try {
+    const buffer = await generateOgImage(address);
+    res.set({
+      'Content-Type':  'image/png',
+      'Cache-Control': 'public, max-age=300',
+      'Content-Length': buffer.length,
+    });
+    res.send(buffer);
+  } catch (err) {
+    console.error('[og-scan] Failed:', err.message);
+    res.redirect('/og-image.png');
+  }
+});
+
 // ── User watchlist endpoints (email-based, no telegram required) ──────────────
 app.get('/watchlist/user', requireApiKey, async (req, res) => {
   let email = null;
@@ -4662,6 +4684,9 @@ db.initSchema()
         setInterval(() => runWatchlistMonitor().catch(e => console.error('[watchlist-monitor] interval failed:', e.message)), WATCHLIST_INTERVAL_MS);
       }, 60_000);
 
+      // Pre-warm Puppeteer browser — avoids cold-start on first OG request
+      setTimeout(() => ogWarmBrowser(), 5000);
+
       // Weekly digest — každou neděli v 8:00 UTC
       scheduleWeeklyDigest();
 
@@ -4684,8 +4709,10 @@ db.initSchema()
 
     // ── Graceful shutdown — umožní dokončit in-flight requesty ─────────────
     function gracefulShutdown(signal) {
+      const { shutdown: ogShutdown } = require('./src/og/generator');
       console.log(`[shutdown] ${signal} received — closing HTTP server...`);
-      server.close(() => {
+      server.close(async () => {
+        await ogShutdown().catch(e => console.error('[shutdown] og:', e.message));
         console.log('[shutdown] All connections closed, exiting cleanly');
         process.exit(0);
       });
