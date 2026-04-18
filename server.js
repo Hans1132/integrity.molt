@@ -1168,6 +1168,16 @@ app.post('/email/capture', express.json(), (req, res) => {
 app.get('/stats',              async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
 app.get('/api/v1/stats',       async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
 app.get('/api/v2/stats',       async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
+app.get('/api/v1/quota', async (req, res) => {
+  const ip   = req.ip;
+  const used = await db.countFreeScansToday(ip).catch(() => 0);
+  res.json({
+    scans_used:      used,
+    scans_limit:     FREE_SCAN_LIMIT,
+    scans_remaining: Math.max(0, FREE_SCAN_LIMIT - used),
+    resets_at:       'midnight UTC',
+  });
+});
 app.get('/api/v1/stats/advisor', (req, res) => {
   try {
     const days  = Math.min(parseInt(req.query.days) || 30, 365);
@@ -1276,6 +1286,21 @@ app.post('/scan/iris', express.json(), async (req, res) => {
     return res.status(400).json({ error: 'Invalid Solana address format' });
   }
 
+  const isInternal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  if (!isInternal) {
+    const usedToday = await db.countFreeScansToday(ip).catch(() => 0);
+    if (usedToday >= FREE_SCAN_LIMIT) {
+      return res.status(429).json({
+        error:       'Daily free scan limit reached',
+        limit:       FREE_SCAN_LIMIT,
+        used:        usedToday,
+        remaining:   0,
+        resets_at:   'midnight UTC',
+        upgrade_url: 'https://intmolt.org/scan',
+      });
+    }
+  }
+
   try {
     const [enrichment, scamDb] = await Promise.all([
       enrichScanResult(safeAddress).catch(() => null),
@@ -1294,6 +1319,10 @@ app.post('/scan/iris', express.json(), async (req, res) => {
         !f.toLowerCase().includes('rug') &&
         !f.toLowerCase().includes('suspicious')
       );
+    }
+
+    if (!isInternal) {
+      db.logEvent({ name: 'free_scan_used', resource: 'iris', ip }).catch(() => {});
     }
 
     res.json({
