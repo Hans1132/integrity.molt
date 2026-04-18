@@ -168,6 +168,7 @@
     .dim-bar { height: 100%; border-radius: 3px; background: var(--accent); width: 0; transition: width 1s ease; }
     .dim-score-row { display: flex; align-items: center; justify-content: space-between; }
     .dim-score-val { font-family: var(--mono); font-size: 18px; font-weight: 700; color: #fff; }
+    .dim-score-val.dim-pending { color: #6b7280; font-weight: 400; font-size: 16px; }
     .dim-score-max { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
     .dim-details { margin-top: 8px; }
     .dim-detail-tag {
@@ -408,15 +409,23 @@
     const det  = document.getElementById('details-' + name);
     if (!val || !bar || !dimData) return;
     const score = typeof dimData.score === 'number' ? dimData.score : 0;
-    val.textContent = score;
-    bar.style.width = (score / 25 * 100) + '%';
-    if (score >= 15) bar.style.background = 'var(--red)';
-    else if (score >= 8) bar.style.background = 'var(--yellow)';
-    else bar.style.background = 'var(--green)';
+    const tags  = Array.isArray(dimData.details) ? dimData.details : [];
+    const hasData = score > 0 || tags.length > 0;
 
-    const tags = Array.isArray(dimData.details) ? dimData.details : [];
-    if (tags.length && det) {
-      det.innerHTML = tags.map(t => `<span class="dim-detail-tag">${escapeHtml(t)}</span>`).join('');
+    if (hasData) {
+      val.textContent = score;
+      val.classList.remove('dim-pending');
+      bar.style.width = (score / 25 * 100) + '%';
+      if (score >= 15) bar.style.background = 'var(--red)';
+      else if (score >= 8) bar.style.background = 'var(--yellow)';
+      else bar.style.background = 'var(--green)';
+      if (tags.length && det) {
+        det.innerHTML = tags.map(t => `<span class="dim-detail-tag">${escapeHtml(t)}</span>`).join('');
+      }
+    } else {
+      val.textContent = '—';
+      val.classList.add('dim-pending');
+      val.closest('.dim-card').title = 'Data enrichment pending — requires Helius archive RPC';
     }
   }
 

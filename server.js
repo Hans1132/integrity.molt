@@ -1286,12 +1286,23 @@ app.post('/scan/iris', express.json(), async (req, res) => {
     const scamDbOut = isWhitelisted
       ? { known_scam: false, whitelisted: true, note: 'Verified legitimate token', db_match: false }
       : { known_scam: scamDb.known_scam, rugcheck: scamDb.rugcheck, db_match: scamDb.db_match };
+
+    let riskFactors = Array.isArray(iris.risk_factors) ? iris.risk_factors : [];
+    if (isWhitelisted) {
+      riskFactors = riskFactors.filter(f =>
+        !f.toLowerCase().includes('scam') &&
+        !f.toLowerCase().includes('rug') &&
+        !f.toLowerCase().includes('suspicious')
+      );
+    }
+
     res.json({
-      status:    'complete',
-      address:   safeAddress,
-      iris:      { score: iris.score, grade: iris.grade, breakdown: iris.breakdown },
-      scam_db:   scamDbOut,
-      timestamp: new Date().toISOString(),
+      status:       'complete',
+      address:      safeAddress,
+      iris:         { score: iris.score, grade: iris.grade, breakdown: iris.breakdown },
+      scam_db:      scamDbOut,
+      risk_factors: riskFactors,
+      timestamp:    new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: 'Scan failed', detail: err.message });
@@ -3861,9 +3872,16 @@ app.get('/scan/:address', async (req, res) => {
     const score = typeof irisData.iris?.score === 'number' ? irisData.iris.score : (irisData.risk_score ?? '?');
     const grade = (irisData.iris?.grade || irisData.risk_level || 'UNKNOWN').toUpperCase();
 
-    meta.TITLE          = `${grade} Risk (${score}/100) — ${shortAddr} | integrity.molt`;
-    meta.OG_TITLE       = `${grade} Risk — ${score}/100`;
-    meta.DESCRIPTION    = `IRIS scan: ${shortAddr} scored ${score}/100 (${grade} risk)`;
+    const riskDescriptor =
+      grade === 'LOW'    || grade === 'SAFE'    ? 'verified legitimate with no critical risk factors' :
+      grade === 'MEDIUM' || grade === 'CAUTION' ? 'shows moderate risk signals that warrant attention' :
+      grade === 'HIGH'                          ? 'contains significant red flags detected by IRIS methodology' :
+      grade === 'CRITICAL' || grade === 'DANGER'? 'matches known scam patterns — avoid interaction' :
+      'analyzed with IRIS methodology';
+
+    meta.TITLE          = `${grade} Risk (${score}/100) · Solana Token Security Scan | integrity.molt`;
+    meta.OG_TITLE       = `${grade} Risk — ${score}/100 · ${address.slice(0, 8)}...`;
+    meta.DESCRIPTION    = `Solana token ${address.slice(0, 8)}...${address.slice(-4)} ${riskDescriptor}. AI-native security analysis with Ed25519-signed report. Scan yours free at intmolt.org.`;
     meta.OG_DESCRIPTION = meta.DESCRIPTION;
     // Safe JSON injection — guard against </script> in values
     meta.IRIS_JSON      = JSON.stringify(irisData).replace(/<\//g, '<\\/');

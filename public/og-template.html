@@ -133,8 +133,10 @@
     font-size: 16px;
     color: #6b7280;
   }
-  .footer .url { color: #4f9aff; font-weight: 600; }
   .footer .signed { display: flex; align-items: center; gap: 8px; }
+  .footer .cta { font-size: 18px; color: #e4e7ee; }
+  .footer .cta strong { color: #4f9aff; font-weight: 700; margin-right: 6px; }
+  .footer .cta .url { color: #9ca3af; font-family: 'SF Mono', Menlo, monospace; font-size: 16px; }
   .check { color: #22c55e; font-weight: bold; }
 </style>
 </head>
@@ -170,7 +172,10 @@
     </div>
 
     <div class="footer">
-      <div class="url">intmolt.org/scan/{{ADDRESS_SHORT}}</div>
+      <div class="cta">
+        <strong>Scan any Solana token &rarr;</strong>
+        <span class="url">intmolt.org/scan/&lt;mint&gt;</span>
+      </div>
       <div class="signed">
         <span class="check">&#10003;</span>
         Ed25519 signed &middot; IRIS v1.0

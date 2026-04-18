@@ -110,7 +110,7 @@ async function generateOgImage(address) {
   const br   = await getBrowser();
   const page = await br.newPage();
   try {
-    await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 2 });
+    await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 1 });
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 10000 });
     const shot = await page.screenshot({
       type:            'png',
