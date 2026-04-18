@@ -3827,6 +3827,62 @@ app.get('/scan/history', requireApiKey, async (req, res) => {
   res.json({ history: rows });
 });
 
+// Public shareable scan URL — MUST be defined AFTER all specific /scan/xxx routes
+// to prevent :address wildcard from swallowing /scan/cached, /scan/quota, etc.
+app.get('/scan/:address', async (req, res) => {
+  const { address } = req.params;
+
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
+    return res.status(400).send('Invalid Solana address');
+  }
+
+  const shortAddr = address.slice(0, 8) + '…';
+  let meta = {
+    TITLE:       `Security Scan — ${shortAddr} | integrity.molt`,
+    DESCRIPTION: `IRIS security scan for Solana token ${shortAddr}`,
+    OG_TITLE:    `Scan: ${shortAddr}`,
+    OG_DESCRIPTION: `IRIS-scored on-chain analysis by integrity.molt`,
+    ADDRESS:     address,
+    IRIS_JSON:   'null'
+  };
+
+  try {
+    const ctrl    = new AbortController();
+    const timer   = setTimeout(() => ctrl.abort(), 8000);
+    const irisRes = await fetch('http://127.0.0.1:3402/scan/iris', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ address }),
+      signal:  ctrl.signal
+    });
+    clearTimeout(timer);
+    const irisData = await irisRes.json();
+
+    const score = typeof irisData.iris?.score === 'number' ? irisData.iris.score : (irisData.risk_score ?? '?');
+    const grade = (irisData.iris?.grade || irisData.risk_level || 'UNKNOWN').toUpperCase();
+
+    meta.TITLE          = `${grade} Risk (${score}/100) — ${shortAddr} | integrity.molt`;
+    meta.OG_TITLE       = `${grade} Risk — ${score}/100`;
+    meta.DESCRIPTION    = `IRIS scan: ${shortAddr} scored ${score}/100 (${grade} risk)`;
+    meta.OG_DESCRIPTION = meta.DESCRIPTION;
+    // Safe JSON injection — guard against </script> in values
+    meta.IRIS_JSON      = JSON.stringify(irisData).replace(/<\//g, '<\\/');
+  } catch (err) {
+    console.warn('[scan/:address] IRIS fetch failed:', err.message);
+  }
+
+  const template = fs.readFileSync(path.join(__dirname, 'public', 'scan-view.html'), 'utf8');
+  const html = template
+    .replace(/\{\{TITLE\}\}/g,          escapeHtml(meta.TITLE))
+    .replace(/\{\{DESCRIPTION\}\}/g,    escapeHtml(meta.DESCRIPTION))
+    .replace(/\{\{OG_TITLE\}\}/g,       escapeHtml(meta.OG_TITLE))
+    .replace(/\{\{OG_DESCRIPTION\}\}/g, escapeHtml(meta.OG_DESCRIPTION))
+    .replace(/\{\{ADDRESS\}\}/g,        address)        // validated base58 — safe
+    .replace(/\{\{IRIS_JSON\}\}/g,      meta.IRIS_JSON); // pre-escaped above
+
+  res.type('html').send(html);
+});
+
 // ── User watchlist endpoints (email-based, no telegram required) ──────────────
 app.get('/watchlist/user', requireApiKey, async (req, res) => {
   let email = null;

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}}</title>
+  <meta name="description" content="{{DESCRIPTION}}">
+  <link rel="canonical" href="https://intmolt.org/scan/{{ADDRESS}}">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://intmolt.org/scan/{{ADDRESS}}">
+  <meta property="og:title" content="{{OG_TITLE}}">
+  <meta property="og:description" content="{{OG_DESCRIPTION}}">
+  <meta property="og:image" content="https://intmolt.org/og-scan/{{ADDRESS}}.png">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@integritymolt">
+  <meta name="twitter:title" content="{{OG_TITLE}}">
+  <meta name="twitter:description" content="{{OG_DESCRIPTION}}">
+  <meta name="twitter:image" content="https://intmolt.org/og-scan/{{ADDRESS}}.png">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0f;
+      --bg-card:   #0f0f18;
+      --bg-alt:    #12121e;
+      --border:    #1e1e2e;
+      --accent:    #4da6ff;
+      --accent-dim:#2a6aaa;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --red:       #f85149;
+      --text:      #d0d8e8;
+      --text-dim:  #6a7490;
+      --text-faint:#3a3f54;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    header { border-bottom: 1px solid var(--border); padding: 20px 0; }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; }
+    .logo-text { font-family: var(--mono); font-size: 18px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+    .logo-text span { color: var(--accent); }
+    .badge { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border: 1px solid var(--accent-dim); color: var(--accent); border-radius: 4px; white-space: nowrap; }
+    nav { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    nav a { color: var(--text-dim); font-size: 13px; transition: color .15s; }
+    nav a:hover { color: var(--text); text-decoration: none; }
+
+    footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 64px; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .footer-brand { font-family: var(--mono); font-size: 13px; color: var(--text-faint); }
+    .footer-brand span { color: var(--accent); }
+    .footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
+    .footer-links a { font-size: 13px; color: var(--text-faint); }
+    .footer-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Page hero ── */
+    .page-hero { padding: 40px 0 32px; border-bottom: 1px solid var(--border); }
+    .page-eyebrow { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+    .page-hero h1 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 10px; letter-spacing: -0.3px; }
+
+    /* ── Address bar ── */
+    .address-bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 16px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 8px;
+      font-family: var(--mono); font-size: 13px;
+    }
+    .address-bar code { flex: 1; word-break: break-all; color: var(--text); }
+    .address-bar button {
+      flex-shrink: 0; padding: 4px 10px;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-dim); font-size: 12px;
+      cursor: pointer; transition: color .15s, border-color .15s;
+    }
+    .address-bar button:hover { color: var(--text); border-color: var(--accent-dim); }
+
+    /* ── Score card ── */
+    .score-section { padding: 36px 0; }
+    .score-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 32px;
+      display: flex; align-items: center; gap: 32px; flex-wrap: wrap;
+    }
+    .score-ring { position: relative; width: 130px; height: 130px; flex-shrink: 0; }
+    .progress-ring { width: 130px; height: 130px; transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+    .ring-fill {
+      fill: none; stroke: var(--accent); stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 339.29;
+      stroke-dashoffset: 339.29;
+      transition: stroke-dashoffset 1s ease, stroke .4s;
+    }
+    .ring-fill.risk-low    { stroke: var(--green);  }
+    .ring-fill.risk-medium { stroke: var(--yellow); }
+    .ring-fill.risk-high   { stroke: var(--red);    }
+    .score-center {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .score-number { font-family: var(--mono); font-size: 30px; font-weight: 700; color: #fff; line-height: 1; }
+    .score-denom  { font-family: var(--mono); font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+    .score-meta { flex: 1; min-width: 180px; }
+    .risk-badge {
+      display: inline-block; font-family: var(--mono); font-size: 14px; font-weight: 700;
+      padding: 5px 14px; border-radius: 6px; margin-bottom: 10px;
+      background: rgba(77,166,255,.12); border: 1px solid rgba(77,166,255,.3); color: var(--accent);
+    }
+    .risk-badge.risk-low    { background: rgba(63,185,80,.12);  border-color: rgba(63,185,80,.3);  color: var(--green);  }
+    .risk-badge.risk-medium { background: rgba(210,153,34,.12); border-color: rgba(210,153,34,.3); color: var(--yellow); }
+    .risk-badge.risk-high   { background: rgba(248,81,73,.12);  border-color: rgba(248,81,73,.3);  color: var(--red);    }
+    .score-label { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+    .score-source { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
+
+    /* ── Scam DB badge ── */
+    .scam-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 11px; padding: 3px 10px;
+      border-radius: 4px; margin-top: 8px;
+      background: rgba(63,185,80,.08); border: 1px solid rgba(63,185,80,.25); color: var(--green);
+    }
+    .scam-pill.danger { background: rgba(248,81,73,.08); border-color: rgba(248,81,73,.3); color: var(--red); }
+
+    /* ── Sections ── */
+    .section { margin-top: 32px; }
+    .section-title {
+      font-family: var(--mono); font-size: 12px; font-weight: 600;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+
+    /* ── IRIS breakdown ── */
+    .dims-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    @media (max-width: 480px) { .dims-grid { grid-template-columns: 1fr; } }
+    .dim-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 18px;
+    }
+    .dim-name { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .dim-bar-wrap { background: var(--bg-alt); border-radius: 3px; height: 5px; margin-bottom: 8px; overflow: hidden; }
+    .dim-bar { height: 100%; border-radius: 3px; background: var(--accent); width: 0; transition: width 1s ease; }
+    .dim-score-row { display: flex; align-items: center; justify-content: space-between; }
+    .dim-score-val { font-family: var(--mono); font-size: 18px; font-weight: 700; color: #fff; }
+    .dim-score-max { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+    .dim-details { margin-top: 8px; }
+    .dim-detail-tag {
+      display: inline-block; font-family: var(--mono); font-size: 10px;
+      padding: 1px 6px; border-radius: 3px; margin: 2px 2px 0 0;
+      background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.25); color: var(--red);
+    }
+
+    /* ── Risk factors ── */
+    .factors-list { list-style: none; }
+    .factors-list li {
+      padding: 10px 14px; margin-bottom: 6px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+      font-size: 13px; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .factors-list li::before { content: '⚠'; font-size: 12px; color: var(--yellow); flex-shrink: 0; }
+    .factors-list li.clean::before { content: '✓'; color: var(--green); }
+    .factors-list li.clean { color: var(--text-dim); }
+
+    /* ── Share ── */
+    .share-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 18px; border-radius: 7px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none; text-decoration: none; transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; text-decoration: none; }
+    .btn-twitter { background: #1a1a1a; color: #fff; border: 1px solid #333; }
+    .btn-copy    { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-rescan  { background: var(--bg-alt); color: var(--text-dim); border: 1px solid var(--border); }
+
+    /* ── Upsell ── */
+    .upsell-card {
+      margin-top: 32px; padding: 24px 28px;
+      background: linear-gradient(135deg, #0d1520, #0f0f18);
+      border: 1px solid var(--accent-dim); border-radius: 12px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    }
+    .upsell-text h3 { font-size: 16px; color: #fff; margin-bottom: 4px; }
+    .upsell-text p  { font-size: 13px; color: var(--text-dim); }
+
+    /* ── Verify ── */
+    .verify-line { margin-top: 24px; font-size: 12px; color: var(--text-faint); }
+    .verify-line a { color: var(--text-faint); text-decoration: underline; }
+
+    /* ── Loading skeleton ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-alt) 25%, var(--border) 50%, var(--bg-alt) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px; color: transparent; user-select: none;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .loading-state { opacity: .6; }
+
+    @media (max-width: 600px) {
+      .score-card { justify-content: center; text-align: center; }
+      .score-meta { text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo-wrap">
+        <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none">
+          <div class="logo-text">integrity<span>.</span>molt</div>
+        </a>
+        <span class="badge">IRIS v1</span>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/scan">Scan</a>
+        <a href="/docs.html">Docs</a>
+        <a href="/compare.html">Compare</a>
+        <a href="/#plans" style="color:var(--accent)">Subscribe</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <div class="page-hero">
+      <div class="page-eyebrow">Security Scan</div>
+      <h1 id="page-title">{{OG_TITLE}}</h1>
+    </div>
+
+    <div class="score-section">
+      <div class="address-bar" style="margin-bottom:20px">
+        <code id="address-code">{{ADDRESS}}</code>
+        <button onclick="copyAddress()" id="copy-addr-btn">Copy</button>
+      </div>
+
+      <div class="score-card">
+        <div class="score-ring">
+          <svg viewBox="0 0 120 120" class="progress-ring" aria-hidden="true">
+            <circle class="ring-bg" cx="60" cy="60" r="54"/>
+            <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="54"/>
+          </svg>
+          <div class="score-center">
+            <div class="score-number" id="score-number">—</div>
+            <div class="score-denom">/100</div>
+          </div>
+        </div>
+
+        <div class="score-meta">
+          <div class="risk-badge" id="risk-badge">LOADING</div>
+          <div class="score-label">IRIS Risk Score</div>
+          <div class="score-source">empirical · 33k scam dataset</div>
+          <div id="scam-pill-wrap" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">IRIS Breakdown</div>
+      <div class="dims-grid" id="dims-grid">
+        <div class="dim-card" id="dim-inflows">
+          <div class="dim-name">Inflows</div>
+          <div class="dim-bar-wrap"><div class="dim-bar" id="bar-inflows"></div></div>
+          <div class="dim-score-row">
+            <span class="dim-score-val" id="val-inflows">—</span>
+            <span class="dim-score-max">/25</span>
+          </div>
+          <div class="dim-details" id="details-inflows"></div>
+        </div>
+        <div class="dim-card" id="dim-rights">
+          <div class="dim-name">Rights</div>
+          <div class="dim-bar-wrap"><div class="dim-bar" id="bar-rights"></div></div>
+          <div class="dim-score-row">
+            <span class="dim-score-val" id="val-rights">—</span>
+            <span class="dim-score-max">/25</span>
+          </div>
+          <div class="dim-details" id="details-rights"></div>
+        </div>
+        <div class="dim-card" id="dim-imbalance">
+          <div class="dim-name">Imbalance</div>
+          <div class="dim-bar-wrap"><div class="dim-bar" id="bar-imbalance"></div></div>
+          <div class="dim-score-row">
+            <span class="dim-score-val" id="val-imbalance">—</span>
+            <span class="dim-score-max">/25</span>
+          </div>
+          <div class="dim-details" id="details-imbalance"></div>
+        </div>
+        <div class="dim-card" id="dim-speed">
+          <div class="dim-name">Speed</div>
+          <div class="dim-bar-wrap"><div class="dim-bar" id="bar-speed"></div></div>
+          <div class="dim-score-row">
+            <span class="dim-score-val" id="val-speed">—</span>
+            <span class="dim-score-max">/25</span>
+          </div>
+          <div class="dim-details" id="details-speed"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Risk Factors</div>
+      <ul class="factors-list" id="factors-list">
+        <li class="skeleton" style="height:40px">&nbsp;</li>
+        <li class="skeleton" style="height:40px;margin-top:6px;opacity:.6">&nbsp;</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Share this scan</div>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">
+        Share the result with your community — link updates live with fresh IRIS data.
+      </p>
+      <div class="share-buttons">
+        <a id="share-twitter" class="btn btn-twitter" target="_blank" rel="noopener noreferrer">
+          Share on X
+        </a>
+        <button onclick="copyUrl()" class="btn btn-copy">Copy link</button>
+        <a href="/scan" class="btn btn-rescan">Scan another</a>
+      </div>
+    </div>
+
+    <div class="upsell-card">
+      <div class="upsell-text">
+        <h3>Need deeper analysis?</h3>
+        <p>Deep Audit includes holder analysis, LP checks, deployer history &amp; signed PDF report.</p>
+      </div>
+      <a href="/scan#deep" class="btn btn-primary">Deep Audit — 5 USDC</a>
+    </div>
+
+    <div class="verify-line">
+      Reports signed with Ed25519 ·
+      <a href="/verify.html">Verify signature</a> ·
+      <a href="/docs.html">IRIS methodology</a>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">integrity<span>.</span>molt — AI-native Solana security scanner</div>
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/docs.html">API Docs</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/verify.html">Verify Report</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Server-injected IRIS data — avoids second network round-trip -->
+<script type="application/json" id="iris-data">{{IRIS_JSON}}</script>
+
+<script>
+  const ADDRESS = '{{ADDRESS}}';
+  const CIRC    = 339.29; // 2π × r=54
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function riskClass(grade) {
+    if (!grade) return '';
+    return 'risk-' + grade.toLowerCase();
+  }
+
+  function renderDim(name, dimData) {
+    const val  = document.getElementById('val-' + name);
+    const bar  = document.getElementById('bar-' + name);
+    const det  = document.getElementById('details-' + name);
+    if (!val || !bar || !dimData) return;
+    const score = typeof dimData.score === 'number' ? dimData.score : 0;
+    val.textContent = score;
+    bar.style.width = (score / 25 * 100) + '%';
+    if (score >= 15) bar.style.background = 'var(--red)';
+    else if (score >= 8) bar.style.background = 'var(--yellow)';
+    else bar.style.background = 'var(--green)';
+
+    const tags = Array.isArray(dimData.details) ? dimData.details : [];
+    if (tags.length && det) {
+      det.innerHTML = tags.map(t => `<span class="dim-detail-tag">${escapeHtml(t)}</span>`).join('');
+    }
+  }
+
+  function renderScan(data) {
+    const score = typeof data.iris?.score === 'number' ? data.iris.score : (data.risk_score ?? 0);
+    const grade = (data.iris?.grade || data.risk_level || 'UNKNOWN').toUpperCase();
+
+    // Score ring
+    const offset = CIRC - (score / 100) * CIRC;
+    const ring   = document.getElementById('ring-fill');
+    ring.style.strokeDashoffset = offset;
+    ring.className = 'ring-fill ' + riskClass(grade);
+
+    // Score number + badge
+    document.getElementById('score-number').textContent = score;
+    const badge = document.getElementById('risk-badge');
+    badge.textContent = grade;
+    badge.className   = 'risk-badge ' + riskClass(grade);
+
+    // Title sync
+    document.getElementById('page-title').textContent = grade + ' Risk — ' + score + '/100';
+
+    // Scam DB pill
+    const sd = data.scam_db;
+    if (sd) {
+      const pillWrap = document.getElementById('scam-pill-wrap');
+      const isDanger = sd.known_scam && !sd.whitelisted;
+      const label    = sd.whitelisted ? '✓ Whitelisted — verified legitimate'
+                     : sd.known_scam  ? '✗ Known scam — database match'
+                     : '✓ Not in scam database';
+      pillWrap.innerHTML = `<span class="scam-pill${isDanger ? ' danger' : ''}">${escapeHtml(label)}</span>`;
+    }
+
+    // IRIS breakdown dims
+    const bd = data.iris?.breakdown || {};
+    renderDim('inflows',  bd.inflows);
+    renderDim('rights',   bd.rights);
+    renderDim('imbalance', bd.imbalance);
+    renderDim('speed',    bd.speed);
+
+    // Risk factors
+    const factors   = Array.isArray(data.risk_factors) ? data.risk_factors : [];
+    const factorEl  = document.getElementById('factors-list');
+    if (factors.length === 0) {
+      factorEl.innerHTML = '<li class="clean">No critical risk factors detected</li>';
+    } else {
+      factorEl.innerHTML = factors.map(f => `<li>${escapeHtml(f)}</li>`).join('');
+    }
+
+    // Share URL
+    const shareText = `Security scan: ${grade} risk (${score}/100) — ${ADDRESS.slice(0, 8)}...`;
+    const shareUrl  = `https://intmolt.org/scan/${ADDRESS}`;
+    document.getElementById('share-twitter').href =
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+  }
+
+  async function loadFromServer() {
+    const el = document.getElementById('iris-data');
+    if (el && el.textContent.trim() && el.textContent.trim() !== 'null') {
+      try {
+        const data = JSON.parse(el.textContent);
+        if (data && (data.iris || data.risk_score !== undefined)) {
+          renderScan(data);
+          return;
+        }
+      } catch {}
+    }
+    // Fallback: fetch live
+    const res  = await fetch('/scan/iris', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ address: ADDRESS })
+    });
+    const data = await res.json();
+    renderScan(data);
+  }
+
+  function copyAddress() {
+    navigator.clipboard.writeText(ADDRESS).then(() => {
+      const btn = document.getElementById('copy-addr-btn');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    });
+  }
+
+  function copyUrl() {
+    navigator.clipboard.writeText(`https://intmolt.org/scan/${ADDRESS}`);
+  }
+
+  loadFromServer().catch(err => {
+    document.getElementById('risk-badge').textContent = 'ERROR';
+    document.getElementById('factors-list').innerHTML = '<li>Failed to load scan data. <a href="/scan">Try again</a>.</li>';
+    console.error(err);
+  });
+</script>
+</body>
+</html>
