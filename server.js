@@ -27,6 +27,10 @@ const { initMonitor }        = require('./src/monitor/init');
 const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 const { lookupScamDb }       = require('./src/scam-db/lookup');
+const { createQuotaMiddleware, GLOBAL_DAILY_CAP } = require('./src/middleware/free-quota');
+// Initialized after db is required at line 7; db.db is the raw better-sqlite3 instance
+const _quotaMw = createQuotaMiddleware(db.db);
+const { checkFreeQuota, consumeFreeQuota, getQuotaStatus, isInternalCall } = _quotaMw;
 const { enrichScanResult, combineScores } = require('./src/enrichment');
 const { parseTokenExtensionsFromBuffer }  = require('./src/enrichment/token-extensions');
 const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
@@ -1168,16 +1172,20 @@ app.post('/email/capture', express.json(), (req, res) => {
 app.get('/stats',              async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
 app.get('/api/v1/stats',       async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
 app.get('/api/v2/stats',       async (req, res) => { try { res.json(await buildStatsResponse()); } catch { res.status(503).json({ error: 'Stats unavailable', total_scans: 0 }); } });
-app.get('/api/v1/quota', async (req, res) => {
-  const ip   = req.ip;
-  const used = await db.countFreeScansToday(ip).catch(() => 0);
+function handleQuotaRequest(req, res) {
+  const ip = req.ip;
+  const q  = getQuotaStatus(ip);
   res.json({
-    scans_used:      used,
-    scans_limit:     FREE_SCAN_LIMIT,
-    scans_remaining: Math.max(0, FREE_SCAN_LIMIT - used),
-    resets_at:       'midnight UTC',
+    scans_used:      q.used,
+    scans_limit:     q.limit,
+    scans_remaining: q.remaining,
+    resets_at:       q.resets_at,
+    global_used:     q.global_used,
+    global_limit:    q.global_limit,
   });
-});
+}
+app.get('/quota',        handleQuotaRequest);  // NGINX strips /api/v2/ prefix
+app.get('/api/v1/quota', handleQuotaRequest);  // direct access (bypasses NGINX redirect)
 app.get('/api/v1/stats/advisor', (req, res) => {
   try {
     const days  = Math.min(parseInt(req.query.days) || 30, 365);
@@ -1286,14 +1294,14 @@ app.post('/scan/iris', express.json(), async (req, res) => {
     return res.status(400).json({ error: 'Invalid Solana address format' });
   }
 
-  const isInternal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
-  if (!isInternal) {
-    const usedToday = await db.countFreeScansToday(ip).catch(() => 0);
-    if (usedToday >= FREE_SCAN_LIMIT) {
+  if (!isInternalCall(req)) {
+    const quota = getQuotaStatus(ip);
+    if (quota.remaining <= 0) {
       return res.status(429).json({
         error:       'Daily free scan limit reached',
-        limit:       FREE_SCAN_LIMIT,
-        used:        usedToday,
+        message:     `You've used ${quota.used}/${quota.limit} free scans today. Limit resets at midnight UTC.`,
+        used:        quota.used,
+        limit:       quota.limit,
         remaining:   0,
         resets_at:   'midnight UTC',
         upgrade_url: 'https://intmolt.org/scan',
@@ -1321,8 +1329,8 @@ app.post('/scan/iris', express.json(), async (req, res) => {
       );
     }
 
-    if (!isInternal) {
-      db.logEvent({ name: 'free_scan_used', resource: 'iris', ip }).catch(() => {});
+    if (!isInternalCall(req)) {
+      consumeFreeQuota(ip);
     }
 
     res.json({
@@ -3463,15 +3471,15 @@ app.get('/scan/captcha-challenge', (req, res) => {
   res.json({ question: `${a} + ${b}`, token });
 });
 
-// GET /scan/quota?ip=auto — vrátí zbývající free scany pro aktuální IP
-app.get('/scan/quota', async (req, res) => {
+// GET /scan/quota — vrátí zbývající free scany pro aktuální IP
+app.get('/scan/quota', (req, res) => {
   const ip = req.ip;
-  const used = await db.countFreeScansToday(ip).catch(() => 0);
+  const q  = getQuotaStatus(ip);
   res.json({
-    scans_used: used,
-    scans_limit: FREE_SCAN_LIMIT,
-    scans_remaining: Math.max(0, FREE_SCAN_LIMIT - used),
-    resets_at: 'midnight UTC'
+    scans_used:      q.used,
+    scans_limit:     q.limit,
+    scans_remaining: q.remaining,
+    resets_at:       q.resets_at,
   });
 });
 
@@ -3572,8 +3580,19 @@ app.post('/scan/free', express.json(), async (req, res) => {
     });
   }
 
-  const ip   = req.ip;
-  const used = await db.countFreeScansToday(ip).catch(() => FREE_SCAN_LIMIT);
+  const ip          = req.ip;
+  const quotaStatus = getQuotaStatus(ip);
+  const used        = quotaStatus.used;
+
+  if (quotaStatus.global_used >= GLOBAL_DAILY_CAP) {
+    return res.status(429).json({
+      error:        'Daily free scan capacity exhausted',
+      message:      'Free tier limit reached globally. Try again tomorrow or upgrade for unlimited scans.',
+      global_limit: GLOBAL_DAILY_CAP,
+      global_used:  quotaStatus.global_used,
+      upgrade_url:  'https://intmolt.org/scan',
+    });
+  }
 
   if (used >= FREE_SCAN_LIMIT) {
     // Spusť levný RPC-only scan (bez LLM) pro teaser v paywall UI
@@ -3617,15 +3636,15 @@ app.post('/scan/free', express.json(), async (req, res) => {
     console.log(`[scan/free] CACHE HIT address=${safeAddress} type=${type} — skipping pipeline`);
     return res.json({
       ...cached,
-      scans_used:      used,       // nespotřebovává kvótu
+      scans_used:      used,
       scans_remaining: Math.max(0, FREE_SCAN_LIMIT - used),
       scans_limit:     FREE_SCAN_LIMIT,
       cached:          true
     });
   }
 
-  // Log před spuštěním — zabrání souběžnému zneužití
-  await db.logEvent({ name: 'free_scan_used', resource: type, ip }).catch(() => {});
+  // Spotřebuj kvótu před spuštěním — zabrání souběžnému zneužití
+  consumeFreeQuota(ip);
 
   const newUsed = used + 1;
   const t0 = Date.now();

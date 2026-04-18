@@ -923,7 +923,7 @@
         >
         <button class="demo-btn" id="demoBtnEl" onclick="demoScan()">Scan Now — Free</button>
       </div>
-      <p class="demo-note">3 free scans per day • No signup required · <a href="#pricing">Want deeper analysis? Upgrade</a></p>
+      <p class="demo-note"><span id="demoQuotaNote">3 free scans per day</span> • No signup required · <a href="#pricing">Want deeper analysis? Upgrade</a></p>
       <div class="demo-result" id="demoResult"></div>
     </div>
   </div>
@@ -1494,6 +1494,22 @@
     });
   } catch(e) {}
 
+  async function loadQuota() {
+    try {
+      var q = await fetch('/api/v1/quota').then(function(r){ return r.json(); });
+      var note = document.getElementById('demoQuotaNote');
+      if (!note) return;
+      if (q.scans_remaining === 0) {
+        note.innerHTML = '<span style="color:var(--warn)">Daily limit reached — resets at midnight UTC</span>';
+        var btn = document.getElementById('demoBtnEl');
+        if (btn) { btn.disabled = true; btn.textContent = 'Limit reached — Upgrade'; }
+      } else {
+        note.textContent = q.scans_remaining + ' of 3 free scans remaining today';
+      }
+    } catch(e) { /* non-fatal */ }
+  }
+  loadQuota();
+
   // Demo scanner
   async function demoScan() {
     var input = document.getElementById('demoAddr');
@@ -1550,6 +1566,7 @@
 
         result.style.display = 'block';
         result.innerHTML = html;
+        loadQuota();
       }
     } catch(e) {
       result.style.display = 'block';
