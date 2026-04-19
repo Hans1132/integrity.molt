@@ -1452,6 +1452,25 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
   try {
     const _t0 = Date.now();
 
+    // 0. RPC existence check — non-existent → UNKNOWN immediately (no LLM cost)
+    const _accountCheck = await rpcPost({
+      jsonrpc: '2.0', id: 1, method: 'getAccountInfo',
+      params: [safeAddress, { encoding: 'base64', commitment: 'confirmed' }]
+    }).catch(() => null);
+    if (!_accountCheck?.result?.value) {
+      const msg = "This address doesn't exist on-chain yet. It may be invalid, not yet funded, or previously closed.";
+      return res.json({
+        status:       'address_not_found',
+        address:      safeAddress,
+        risk_score:   null,
+        risk_level:   'UNKNOWN',
+        iris:         { score: null, grade: 'UNKNOWN', breakdown: null },
+        message:      msg,
+        risk_factors: [],
+        timestamp:    new Date().toISOString()
+      });
+    }
+
     // 1. Shell skript + scam-db lookup + enrichment (paralelně)
     const [{ stdout }, scamDb, quickEnrichment] = await Promise.all([
       runScript('/root/scanner/quick-scan.sh', [safeAddress], 60000),
@@ -1652,6 +1671,13 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
     // IRIS full breakdown
     const irisResult = calculateIRIS(enrichmentData, scamDb);
 
+    // IRIS floor: pro staré/rugged tokeny shell vrací 0 ale IRIS zná DB signály.
+    // Worst-case wins — bereme vyšší ze dvou skóre.
+    if (typeof irisResult.score === 'number' && irisResult.score > (finalScore ?? 0)) {
+      finalScore = irisResult.score;
+      if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.grade.toLowerCase() };
+    }
+
     // IRIS sekce pro advisor kontext
     const irisSection = `\n${formatIrisForLLM(irisResult)}\n`;
 
@@ -1697,15 +1723,53 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(wa
 
   try {
     const _t0 = Date.now();
-    const { stdout } = await runScript('/root/scanner/wallet-deep-scan.sh', [safeAddress], 120000);
+
+    // Parallel: shell script + scamDb + RPC existence check + enrichment
+    const [{ stdout }, scamDb, accountRes, enrichmentData] = await Promise.all([
+      runScript('/root/scanner/wallet-deep-scan.sh', [safeAddress], 120000),
+      lookupScamDb(safeAddress).catch(() => ({ known_scam: null, rugcheck: null, db_match: false })),
+      rpcPost({ jsonrpc: '2.0', id: 1, method: 'getAccountInfo',
+        params: [safeAddress, { encoding: 'base64', commitment: 'confirmed' }] }).catch(() => null),
+      enrichScanResult(safeAddress).catch(() => null),
+    ]);
     console.log(`[scan/wallet] address=${safeAddress} script=${Date.now()-_t0}ms`);
+
+    // Non-existent address → UNKNOWN
+    const accountData = accountRes?.result?.value;
+    if (!accountData) {
+      return res.json({
+        status: 'address_not_found', address: safeAddress,
+        risk_score: null, risk_level: 'UNKNOWN',
+        message: "This address doesn't exist on-chain.",
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const slug = safeAddress.substring(0, 10).toLowerCase();
     let data = null;
     try { data = JSON.parse(stdout.trim()); } catch {}
     const { reportText, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, 'wallet-deep');
 
+    // IRIS scoring with whitelist isolation
+    const isWhitelisted   = _legitTokens.has(safeAddress);
+    const scamDbForIris   = isWhitelisted ? { ...scamDb, known_scam: null } : scamDb;
+    const irisResult      = calculateIRIS(enrichmentData, scamDbForIris);
+    let finalScore        = data?.risk_score ?? null;
+
+    if (isWhitelisted) {
+      // Whitelisted → IRIS wins as an upper bound (prevents false HIGH from wrong scan type)
+      if (typeof irisResult.score === 'number' && (finalScore === null || irisResult.score < finalScore)) {
+        finalScore = irisResult.score;
+        if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.grade.toLowerCase() };
+      }
+    } else if (typeof irisResult.score === 'number' && irisResult.score > (finalScore ?? 0)) {
+      // Non-whitelisted → IRIS floor: worst-case wins
+      finalScore = irisResult.score;
+      if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.grade.toLowerCase() };
+    }
+
     const advisorCtx = `Wallet profiling pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}`;
-    const adv = await runAdvisorIfGreyZone({ score: data?.risk_score, context: advisorCtx, scanType: 'wallet' });
+    const adv = await runAdvisorIfGreyZone({ score: finalScore, context: advisorCtx, scanType: 'wallet' });
 
     const signed = adv?.signed || (data?.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : shellSigned);
     res.json({
@@ -1736,15 +1800,53 @@ app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolSc
 
   try {
     const _t0 = Date.now();
-    const { stdout } = await runScript('/root/scanner/pool-deep-scan.sh', [safeAddress], 120000);
+
+    // Parallel: shell script + scamDb + RPC existence check + enrichment
+    const [{ stdout }, scamDb, accountRes, enrichmentData] = await Promise.all([
+      runScript('/root/scanner/pool-deep-scan.sh', [safeAddress], 120000),
+      lookupScamDb(safeAddress).catch(() => ({ known_scam: null, rugcheck: null, db_match: false })),
+      rpcPost({ jsonrpc: '2.0', id: 1, method: 'getAccountInfo',
+        params: [safeAddress, { encoding: 'base64', commitment: 'confirmed' }] }).catch(() => null),
+      enrichScanResult(safeAddress).catch(() => null),
+    ]);
     console.log(`[scan/pool] address=${safeAddress} script=${Date.now()-_t0}ms`);
+
+    // Non-existent address → UNKNOWN
+    const accountData = accountRes?.result?.value;
+    if (!accountData) {
+      return res.json({
+        status: 'address_not_found', address: safeAddress,
+        risk_score: null, risk_level: 'UNKNOWN',
+        message: "This address doesn't exist on-chain.",
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const slug = safeAddress.substring(0, 10).toLowerCase();
     let data = null;
     try { data = JSON.parse(stdout.trim()); } catch {}
     const { reportText, signedEnvelope: shellSigned } = loadLatestReport('/root/scanner/reports', slug, 'pool-deep');
 
+    // IRIS scoring with whitelist isolation
+    const isWhitelisted   = _legitTokens.has(safeAddress);
+    const scamDbForIris   = isWhitelisted ? { ...scamDb, known_scam: null } : scamDb;
+    const irisResult      = calculateIRIS(enrichmentData, scamDbForIris);
+    let finalScore        = data?.risk_score ?? null;
+
+    if (isWhitelisted) {
+      // Whitelisted → IRIS wins as an upper bound (prevents false HIGH from wrong scan type)
+      if (typeof irisResult.score === 'number' && (finalScore === null || irisResult.score < finalScore)) {
+        finalScore = irisResult.score;
+        if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.grade.toLowerCase() };
+      }
+    } else if (typeof irisResult.score === 'number' && irisResult.score > (finalScore ?? 0)) {
+      // Non-whitelisted → IRIS floor: worst-case wins
+      finalScore = irisResult.score;
+      if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.grade.toLowerCase() };
+    }
+
     const advisorCtx = `Pool scan pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}`;
-    const adv = await runAdvisorIfGreyZone({ score: data?.risk_score, context: advisorCtx, scanType: 'pool' });
+    const adv = await runAdvisorIfGreyZone({ score: finalScore, context: advisorCtx, scanType: 'pool' });
 
     const signed = adv?.signed || (data?.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : shellSigned);
     res.json({
