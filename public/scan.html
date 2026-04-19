@@ -12,9 +12,10 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Free Token Rug Pull Checker — Solana &amp; EVM | integrity.molt</title>
-  <meta name="description" content="Check any Solana or EVM token for rug pulls, honeypots, and insider risk. AI-powered on-chain analysis. First 3 scans free — no wallet required.">
-  <meta name="keywords" content="Solana address scanner, Solana token security check, free Solana audit, rug pull checker, Solana honeypot detector, meme coin risk, token safety">
+  <title>Scan — integrity.molt</title>
+  <meta name="description" content="Scan any Solana address for security risks. Free tier: 3 scans per day.">
+  <meta name="author" content="integrity.molt">
+  <meta name="theme-color" content="#0a0e1a">
   <link rel="canonical" href="https://intmolt.org/scan">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://intmolt.org/scan">
@@ -861,21 +862,25 @@
 <header>
   <div class="container">
     <div class="header-inner">
-      <div class="logo-wrap">
-        <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none">
-          <div class="logo-text">integrity<span>.</span>molt</div>
-        </a>
-        <span class="badge">v2.0</span>
-      </div>
+      <a href="/" class="logo-wrap" style="text-decoration:none;">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="#0c1117"/>
+          <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" stroke="#1a2332"/>
+          <path d="M16 4 L25 8 L25 17 Q25 24 16 28 Q7 24 7 17 L7 8 Z" stroke="#00ff88" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+          <path d="M12 16.5 L15 19.5 L21 13" stroke="#00ff88" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text"><span>integrity</span><span class="dot">.</span>molt</span>
+      </a>
       <nav>
         <a href="/">Home</a>
-        <a href="/scan" class="active">Scan</a>
-        <a href="/docs.html">Docs</a>
-        <a href="/compare.html">Compare</a>
-        <a href="/blog/benchmark.html">Benchmark</a>
-        <a href="/verify.html">Verify</a>
-        <a href="/#plans" style="color:var(--accent)">Subscribe</a>
+        <a href="/scan">Scan</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/docs">Docs</a>
       </nav>
+      <div class="header-actions">
+        <a href="https://github.com/Hans1132/integrity.molt" target="_blank" rel="noopener" class="nav-icon-link">GitHub</a>
+        <a href="https://x.com/HLo18147" target="_blank" rel="noopener" class="nav-icon-link">X</a>
+      </div>
     </div>
   </div>
 </header>
@@ -885,8 +890,8 @@
 
     <div class="page-hero">
       <div class="page-eyebrow">Security Scanner</div>
-      <h1>Is this token a rug pull?</h1>
-      <p>Paste any Solana or EVM token address to check for rug pulls, honeypots, and insider risk. <strong style="color:var(--text)">First 3 scans free</strong> — no wallet required.</p>
+      <h1>Scan a Solana address</h1>
+      <p>Paste any token mint, wallet, or pool address. Get an IRIS risk score in under 10 seconds.</p>
     </div>
 
     <div class="scan-section">
@@ -930,7 +935,7 @@
           <input
             type="text"
             id="addressInput"
-            placeholder="Paste Solana or EVM address…"
+            placeholder="e.g. EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
             autocomplete="off"
             spellcheck="false"
             autofocus
@@ -941,48 +946,28 @@
         <div class="form-row">
           <label>Scan Type</label>
           <div class="scan-type-grid" id="scanTypeGrid">
+
             <label class="type-card active" onclick="selectType('quick')">
               <input type="radio" name="scanType" value="quick" checked>
-              <span class="type-card-icon">⚡</span>
               <span class="type-card-name">Quick Scan</span>
-              <span class="type-card-desc">Account info, risk score, ~10s</span>
-              <span class="type-card-badge free">FREE</span>
+              <span class="type-card-price" style="color:var(--accent)">FREE</span>
+              <span class="type-card-desc">~10s · Scam DB check · On-chain state · IRIS scoring</span>
             </label>
-            <label class="type-card" onclick="selectType('token')">
-              <input type="radio" name="scanType" value="token">
-              <span class="type-card-icon">🪙</span>
-              <span class="type-card-name">Token Audit</span>
-              <span class="type-card-desc">Mint authority, holders, rug risk</span>
-              <span class="type-card-badge free">FREE</span>
-            </label>
-            <label class="type-card" onclick="selectType('evm-token')">
-              <input type="radio" name="scanType" value="evm-token">
-              <span class="type-card-icon">🔷</span>
-              <span class="type-card-name">EVM Token</span>
-              <span class="type-card-desc">Honeypot + source, Base/ETH/ARB</span>
-              <span class="type-card-badge free">FREE</span>
-            </label>
-            <label class="type-card" onclick="selectType('wallet')">
-              <input type="radio" name="scanType" value="wallet">
-              <span class="type-card-icon">👛</span>
-              <span class="type-card-name">Wallet Profile</span>
-              <span class="type-card-desc">Age, activity, DeFi exposure</span>
-              <span class="type-card-badge free">FREE</span>
-            </label>
-            <label class="type-card" onclick="selectType('pool')">
-              <input type="radio" name="scanType" value="pool">
-              <span class="type-card-icon">💧</span>
-              <span class="type-card-name">Pool Scan</span>
-              <span class="type-card-desc">LP distribution, liquidity depth</span>
-              <span class="type-card-badge free">FREE</span>
-            </label>
+
             <label class="type-card" onclick="selectType('deep')">
               <input type="radio" name="scanType" value="deep">
-              <span class="type-card-icon">🔬</span>
               <span class="type-card-name">Deep Audit</span>
-              <span class="type-card-desc">8 AI agents, full vulnerability report</span>
-              <span class="type-card-badge" id="deepBadge">$5.00</span>
+              <span class="type-card-price">5.00 USDC</span>
+              <span class="type-card-desc">~30s · Quick scan + holder analysis + LP breakdown + deployer history + signed PDF report</span>
             </label>
+
+            <label class="type-card" onclick="selectType('agent-token')">
+              <input type="radio" name="scanType" value="agent-token">
+              <span class="type-card-name">Agent Scan</span>
+              <span class="type-card-price">0.15 USDC via x402</span>
+              <span class="type-card-desc">~5s · Minimal signed output for programmatic agents. Requires x402-compatible client. <a href="/docs#agents">Learn more →</a></span>
+            </label>
+
           </div>
           <div class="scan-type-meta" style="margin-top:10px">
             <span id="typeDesc" style="color:var(--text-dim)">Fast on-chain check, results in ~10s</span>
@@ -1041,19 +1026,85 @@
     </div>
 
   </div>
+  <p style="font-size:12px;color:var(--text-faint);margin-top:20px;line-height:1.5;padding:0 24px 24px;">
+    IRIS scores are heuristic risk indicators based on on-chain signals. Reports are informational, not financial advice. <a href="/docs#methodology" style="color:var(--text-dim);">Read methodology →</a>
+  </p>
 </main>
+
+<!-- ── Risk levels explained ── -->
+<section style="padding:56px 0;border-top:1px solid var(--border);">
+  <div class="container" style="max-width:960px;margin:0 auto;padding:0 24px;">
+    <h2 style="font-size:24px;font-weight:700;color:var(--text);margin-bottom:8px;">What do the results mean?</h2>
+    <p style="font-size:14px;color:var(--text-dim);margin-bottom:32px;">IRIS score ranges and what to do for each level.</p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+
+      <div style="background:var(--bg-card);border:1px solid #00ff8833;border-radius:10px;padding:20px;">
+        <div style="font-size:11px;font-weight:700;color:#00ff88;letter-spacing:0.1em;margin-bottom:8px;">LOW (0–30)</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;">LOW Risk</div>
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.5;">No critical signals detected. Token/address passes core integrity checks. Still verify manually for high-value transactions.</p>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid #ffaa0033;border-radius:10px;padding:20px;">
+        <div style="font-size:11px;font-weight:700;color:#ffaa00;letter-spacing:0.1em;margin-bottom:8px;">MEDIUM (30–50)</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;">MEDIUM Risk</div>
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.5;">Some signals present that warrant attention. Review the specific risk factors before interacting.</p>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid #ff880033;border-radius:10px;padding:20px;">
+        <div style="font-size:11px;font-weight:700;color:#ff8800;letter-spacing:0.1em;margin-bottom:8px;">HIGH (50–75)</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;">HIGH Risk</div>
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.5;">Multiple significant risk factors detected. Strong caution advised.</p>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid #ff444433;border-radius:10px;padding:20px;">
+        <div style="font-size:11px;font-weight:700;color:#ff4444;letter-spacing:0.1em;margin-bottom:8px;">CRITICAL (75+)</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;">CRITICAL Risk</div>
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.5;">Matches known scam patterns or has multiple critical failures. Avoid interaction.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
 
 <footer>
   <div class="container">
-    <div class="footer-inner">
-      <div class="footer-brand">integrity<span>.</span>molt — AI-native Solana security scanner</div>
-      <div class="footer-links">
-        <a href="/">Home</a>
-        <a href="/docs.html">API Docs</a>
-        <a href="/openapi.json">OpenAPI</a>
-        <a href="/verify.html">Verify Report</a>
-        <a href="/.well-known/x402.json">x402</a>
+    <div class="footer-grid">
+      <div class="footer-col footer-col--brand">
+        <span class="logo-text">integrity<span class="dot">.</span>molt</span>
+        <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Continuous security monitoring for Solana.</p>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-top:12px;line-height:1.6;">Ed25519 verify key:<br>qzppeeRmbyQ4hE4BYOW+4VbQ5muyplTP4GP4uxIhVwY=</div>
+        <p style="font-size:11px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">
+          <a href="/verify" style="color:var(--accent-dim);">Verify reports online →</a>
+        </p>
       </div>
+      <div class="footer-col">
+        <h5>Product</h5>
+        <ul class="footer-links">
+          <li><a href="/scan">Scan</a></li>
+          <li><a href="/pricing">Pricing</a></li>
+          <li><a href="/verify">Verify a report</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Resources</h5>
+        <ul class="footer-links">
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="/docs#methodology">Methodology</a></li>
+          <li><a href="https://github.com/Hans1132/integrity.molt/releases" target="_blank" rel="noopener">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Connect</h5>
+        <ul class="footer-links">
+          <li><a href="https://github.com/Hans1132/integrity.molt" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://x.com/HLo18147" target="_blank" rel="noopener">X / Twitter</a></li>
+          <li><a href="/api/v2/health" target="_blank" rel="noopener">Status</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">integrity.molt — intmolt.org</div>
+      <div class="footer-copy">© 2026 integrity.molt. All reports are informational, not financial advice.</div>
     </div>
   </div>
 </footer>
