@@ -358,7 +358,7 @@ async function runScan() {
     if (res.status === 402) {
       el.innerHTML = `<div class="error-box">
         <strong>Payment required (0.50 USDC)</strong><br>
-        Use the x402 protocol with an <code>X-Payment</code> header, or get an API key at <a href="/subscribe/builder">intmolt.org/subscribe</a>.
+        Use the x402 protocol with an <code>X-Payment</code> header, or get an API key at <a href="/pricing">intmolt.org/pricing</a>.
         <pre style="margin-top:12px;font-size:11px;overflow-x:auto">${escHtml(JSON.stringify(data.accepts?.[0] || data, null, 2))}</pre>
       </div>`;
     } else {
