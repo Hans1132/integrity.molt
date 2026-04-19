@@ -39,6 +39,10 @@ function createQuotaMiddleware(db) {
     stmtConsumeGlobal.run(today);
   });
 
+  const stmtLogAbuse = db.prepare(`
+    INSERT INTO abuse_events (ip, event_type, details) VALUES (?, ?, ?)
+  `);
+
   function checkFreeQuota(req, res, next) {
     if (isInternalCall(req)) return next();
 
@@ -48,6 +52,7 @@ function createQuotaMiddleware(db) {
     const globalRow  = stmtGlobal.get(today);
     const globalUsed = globalRow ? globalRow.free_count : 0;
     if (globalUsed >= GLOBAL_DAILY_CAP) {
+      try { stmtLogAbuse.run(ip, 'global_cap_hit', JSON.stringify({ global_used: globalUsed })); } catch {}
       return res.status(429).json({
         error:        'Daily free scan capacity exhausted',
         message:      'Free tier limit reached globally. Try again tomorrow or upgrade for unlimited scans.',
@@ -60,6 +65,7 @@ function createQuotaMiddleware(db) {
     const ipRow = stmtIp.get(ip, today);
     const used  = ipRow ? ipRow.count : 0;
     if (used >= PER_IP_DAILY_LIMIT) {
+      try { stmtLogAbuse.run(ip, 'quota_exceeded', JSON.stringify({ used, limit: PER_IP_DAILY_LIMIT })); } catch {}
       return res.status(429).json({
         error:       'Daily free scan limit reached',
         message:     `You've used ${used}/${PER_IP_DAILY_LIMIT} free scans today. Limit resets at midnight UTC.`,
@@ -99,4 +105,53 @@ function createQuotaMiddleware(db) {
   return { checkFreeQuota, consumeFreeQuota, getQuotaStatus, getClientIp, isInternalCall };
 }
 
-module.exports = { createQuotaMiddleware, PER_IP_DAILY_LIMIT, GLOBAL_DAILY_CAP };
+function createBlacklistMiddleware(db) {
+  const stmtCheck = db.prepare(`
+    SELECT reason, expires_at FROM ip_blacklist
+    WHERE ip = ?
+      AND (expires_at IS NULL OR expires_at > datetime('now'))
+  `);
+  const stmtHit = db.prepare(`
+    UPDATE ip_blacklist SET hit_count = hit_count + 1 WHERE ip = ?
+  `);
+  const stmtInsert = db.prepare(`
+    INSERT INTO ip_blacklist (ip, reason, expires_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(ip) DO UPDATE SET
+      reason = excluded.reason,
+      expires_at = excluded.expires_at,
+      hit_count = hit_count + 1
+  `);
+  const stmtLogAbuse = db.prepare(`
+    INSERT INTO abuse_events (ip, event_type, details) VALUES (?, ?, ?)
+  `);
+
+  function checkBlacklist(req, res, next) {
+    const ip = getClientIp(req);
+    if (INTERNAL_IPS.has(ip)) return next();
+
+    const row = stmtCheck.get(ip);
+    if (row) {
+      try { stmtHit.run(ip); } catch {}
+      return res.status(403).json({
+        error:   'Access denied',
+        reason:  'rate_abuse_auto_blocked',
+        message: 'Your IP has been temporarily blocked due to abuse patterns. Contact support if you believe this is an error.',
+      });
+    }
+    next();
+  }
+
+  function logAbuseEvent(ip, eventType, details = {}) {
+    try { stmtLogAbuse.run(ip, eventType, JSON.stringify(details)); } catch {}
+  }
+
+  function addToBlacklist(ip, reason, durationHours = 24) {
+    const expiresAt = new Date(Date.now() + durationHours * 3600 * 1000).toISOString();
+    try { stmtInsert.run(ip, reason, expiresAt); } catch {}
+  }
+
+  return { checkBlacklist, logAbuseEvent, addToBlacklist };
+}
+
+module.exports = { createQuotaMiddleware, createBlacklistMiddleware, PER_IP_DAILY_LIMIT, GLOBAL_DAILY_CAP };

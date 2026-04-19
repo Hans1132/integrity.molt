@@ -27,10 +27,12 @@ const { initMonitor }        = require('./src/monitor/init');
 const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 const { lookupScamDb }       = require('./src/scam-db/lookup');
-const { createQuotaMiddleware, GLOBAL_DAILY_CAP } = require('./src/middleware/free-quota');
+const { createQuotaMiddleware, createBlacklistMiddleware, GLOBAL_DAILY_CAP } = require('./src/middleware/free-quota');
 // Initialized after db is required at line 7; db.db is the raw better-sqlite3 instance
 const _quotaMw = createQuotaMiddleware(db.db);
 const { checkFreeQuota, consumeFreeQuota, getQuotaStatus, isInternalCall } = _quotaMw;
+const _blacklistMw = createBlacklistMiddleware(db.db);
+const { checkBlacklist, logAbuseEvent, addToBlacklist } = _blacklistMw;
 const { enrichScanResult, combineScores } = require('./src/enrichment');
 const { parseTokenExtensionsFromBuffer }  = require('./src/enrichment/token-extensions');
 const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
@@ -1196,6 +1198,37 @@ app.get('/api/v1/stats/advisor', (req, res) => {
   }
 });
 
+// Abuse monitoring dashboard — requires ADMIN_TOKEN header
+app.get('/admin/abuse-stats', (req, res) => {
+  const token = req.headers['x-admin-token'] || req.query.token;
+  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const rawDb = db.db;
+  const globalToday = rawDb.prepare(
+    'SELECT free_count, paid_count FROM global_scan_stats WHERE stat_date = ?'
+  ).get(today) || { free_count: 0, paid_count: 0 };
+
+  res.json({
+    timestamp: new Date().toISOString(),
+    global_today:        globalToday,
+    cap_remaining:       GLOBAL_DAILY_CAP - globalToday.free_count,
+    top_ips_today:       rawDb.prepare(
+      'SELECT identifier as ip, count FROM free_scan_quota WHERE scan_date = ? ORDER BY count DESC LIMIT 20'
+    ).all(today),
+    blacklist_active:    rawDb.prepare(
+      "SELECT ip, reason, added_at, expires_at, hit_count FROM ip_blacklist WHERE expires_at > datetime('now') ORDER BY added_at DESC"
+    ).all(),
+    abuse_events_24h:    rawDb.prepare(
+      "SELECT event_type, COUNT(*) as count FROM abuse_events WHERE occurred_at > datetime('now', '-24 hours') GROUP BY event_type"
+    ).all(),
+    abuse_top_ips_24h:   rawDb.prepare(
+      "SELECT ip, event_type, COUNT(*) as count FROM abuse_events WHERE occurred_at > datetime('now', '-24 hours') GROUP BY ip, event_type ORDER BY count DESC LIMIT 10"
+    ).all(),
+  });
+});
+
 // Accuracy monitoring — internal, no auth (add auth if exposed externally)
 app.get('/api/v1/admin/accuracy', (req, res) => {
   try {
@@ -1274,7 +1307,7 @@ const _legitTokens = (() => {
     return new Set((raw.tokens || []).map(t => t.mint));
   } catch { return new Set(); }
 })();
-app.post('/scan/iris', express.json(), async (req, res) => {
+app.post('/scan/iris', express.json(), checkBlacklist, async (req, res) => {
   const ip = req.ip || '127.0.0.1';
   if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
     const now = Date.now();
@@ -1307,6 +1340,7 @@ app.post('/scan/iris', express.json(), async (req, res) => {
         upgrade_url: 'https://intmolt.org/scan',
       });
     }
+    consumeFreeQuota(ip);
   }
 
   try {
@@ -1327,10 +1361,6 @@ app.post('/scan/iris', express.json(), async (req, res) => {
         !f.toLowerCase().includes('rug') &&
         !f.toLowerCase().includes('suspicious')
       );
-    }
-
-    if (!isInternalCall(req)) {
-      consumeFreeQuota(ip);
     }
 
     res.json({
@@ -3501,7 +3531,7 @@ function verifyCaptcha(token, answer) {
   }
 }
 
-app.post('/scan/free', express.json(), async (req, res) => {
+app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
   const address = (req.body?.address || '').trim();
   const type    = (req.body?.type    || 'quick').trim();
   const chain   = (req.body?.chain   || 'base').trim().toLowerCase();
@@ -3514,6 +3544,7 @@ app.post('/scan/free', express.json(), async (req, res) => {
   const isInternalA2A = req.headers['x-a2a-caller'] === '1' && req.ip === '127.0.0.1';
   const captchaOk = isInternalA2A || verifyCaptcha(captchaToken, captchaAnswer);
   if (!captchaOk) {
+    logAbuseEvent(req.ip, 'captcha_failed', { reason: 'invalid_answer' });
     return res.status(403).json({ error: 'CAPTCHA verification failed', captcha_required: true });
   }
   if (!['quick', 'deep', 'token', 'wallet', 'pool', 'evm-token', 'contract'].includes(type)) {
