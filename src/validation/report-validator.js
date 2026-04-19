@@ -23,6 +23,11 @@ function validateReport(llmReport, rawOnChainData) {
   }
   const issues = [];
 
+  _checkAddressNotFound(llmReport, issues);
+  if (llmReport.status === 'address_not_found') {
+    return { valid: issues.length === 0, issues };
+  }
+
   _checkScoreBounds(llmReport, issues);
   _checkScoreLevelConsistency(llmReport, issues);
   _checkMintAuthorityConsistency(llmReport, rawOnChainData, issues);
@@ -33,6 +38,30 @@ function validateReport(llmReport, rawOnChainData) {
   _checkFabricatedAddresses(llmReport, rawOnChainData, issues);
 
   return { valid: issues.length === 0, issues };
+}
+
+// ── Check #0: Address not found — score must be null ─────────────────────────
+
+function _checkAddressNotFound(report, issues) {
+  if (report.status !== 'address_not_found') return;
+  if (report.risk_score !== null && report.risk_score !== undefined) {
+    issues.push({
+      check:           'address_not_found',
+      action:          'correct',
+      message:         `status is address_not_found but risk_score is ${report.risk_score} — must be null`,
+      corrected_field: 'risk_score',
+      corrected_value: null,
+    });
+  }
+  if (report.risk_level && report.risk_level !== 'UNKNOWN') {
+    issues.push({
+      check:           'address_not_found',
+      action:          'correct',
+      message:         `status is address_not_found but risk_level is "${report.risk_level}" — must be UNKNOWN`,
+      corrected_field: 'risk_level',
+      corrected_value: 'UNKNOWN',
+    });
+  }
 }
 
 // ── Check #1: Risk score bounds ───────────────────────────────────────────────

@@ -133,9 +133,18 @@
       padding: 5px 14px; border-radius: 6px; margin-bottom: 10px;
       background: rgba(77,166,255,.12); border: 1px solid rgba(77,166,255,.3); color: var(--accent);
     }
-    .risk-badge.risk-low    { background: rgba(63,185,80,.12);  border-color: rgba(63,185,80,.3);  color: var(--green);  }
-    .risk-badge.risk-medium { background: rgba(210,153,34,.12); border-color: rgba(210,153,34,.3); color: var(--yellow); }
-    .risk-badge.risk-high   { background: rgba(248,81,73,.12);  border-color: rgba(248,81,73,.3);  color: var(--red);    }
+    .risk-badge.risk-low     { background: rgba(63,185,80,.12);  border-color: rgba(63,185,80,.3);  color: var(--green);  }
+    .risk-badge.risk-medium  { background: rgba(210,153,34,.12); border-color: rgba(210,153,34,.3); color: var(--yellow); }
+    .risk-badge.risk-high    { background: rgba(248,81,73,.12);  border-color: rgba(248,81,73,.3);  color: var(--red);    }
+    .risk-badge.risk-unknown { background: rgba(106,116,144,.12); border-color: rgba(106,116,144,.3); color: var(--text-dim); }
+
+    .not-found-box {
+      display: none;
+      margin-top: 16px; padding: 16px 20px;
+      background: rgba(106,116,144,.08); border: 1px solid rgba(106,116,144,.25);
+      border-radius: 8px; font-size: 13px; color: var(--text-dim); line-height: 1.6;
+    }
+    .not-found-box strong { color: var(--text); display: block; margin-bottom: 4px; }
     .score-label { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
     .score-source { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
 
@@ -286,6 +295,11 @@
           <div class="score-label">IRIS Risk Score</div>
           <div class="score-source">empirical · 33k scam dataset</div>
           <div id="scam-pill-wrap" style="margin-top:10px"></div>
+          <div class="not-found-box" id="not-found-box">
+            <strong>Address not found on-chain</strong>
+            This address doesn't exist on-chain yet. It may be invalid, not yet funded, or previously closed.
+            Insufficient data for risk scoring.
+          </div>
         </div>
       </div>
     </div>
@@ -430,23 +444,41 @@
   }
 
   function renderScan(data) {
-    const score = typeof data.iris?.score === 'number' ? data.iris.score : (data.risk_score ?? 0);
+    const isNotFound = data.status === 'address_not_found';
     const grade = (data.iris?.grade || data.risk_level || 'UNKNOWN').toUpperCase();
+    const score = isNotFound || grade === 'UNKNOWN' ? null :
+      (typeof data.iris?.score === 'number' ? data.iris.score : (data.risk_score ?? 0));
 
-    // Score ring
-    const offset = CIRC - (score / 100) * CIRC;
-    const ring   = document.getElementById('ring-fill');
-    ring.style.strokeDashoffset = offset;
-    ring.className = 'ring-fill ' + riskClass(grade);
+    const ring = document.getElementById('ring-fill');
+    if (isNotFound || score === null) {
+      // No ring animation — dash stays hidden, show N/A
+      ring.style.strokeDashoffset = CIRC;
+      ring.className = 'ring-fill risk-unknown';
+      document.getElementById('score-number').textContent = '—';
+      document.querySelector('.score-denom').style.display = 'none';
+    } else {
+      ring.style.strokeDashoffset = CIRC - (score / 100) * CIRC;
+      ring.className = 'ring-fill ' + riskClass(grade);
+      document.getElementById('score-number').textContent = score;
+    }
 
-    // Score number + badge
-    document.getElementById('score-number').textContent = score;
     const badge = document.getElementById('risk-badge');
     badge.textContent = grade;
-    badge.className   = 'risk-badge ' + riskClass(grade);
+    badge.className   = 'risk-badge ' + (isNotFound ? 'risk-unknown' : riskClass(grade));
 
-    // Title sync
-    document.getElementById('page-title').textContent = grade + ' Risk — ' + score + '/100';
+    document.getElementById('page-title').textContent = isNotFound
+      ? 'Address Not Found'
+      : grade + ' Risk — ' + score + '/100';
+
+    if (isNotFound) {
+      document.getElementById('not-found-box').style.display = 'block';
+      document.getElementById('dims-grid').closest('.section').style.display = 'none';
+      document.getElementById('factors-list').closest('.section').style.display = 'none';
+      const shareUrl = `https://intmolt.org/scan/${ADDRESS}`;
+      document.getElementById('share-twitter').href =
+        `https://twitter.com/intent/tweet?text=${encodeURIComponent('Address not found on-chain: ' + ADDRESS.slice(0, 8) + '...')}&url=${encodeURIComponent(shareUrl)}`;
+      return;
+    }
 
     // Scam DB pill
     const sd = data.scam_db;
@@ -467,8 +499,8 @@
     renderDim('speed',    bd.speed);
 
     // Risk factors
-    const factors   = Array.isArray(data.risk_factors) ? data.risk_factors : [];
-    const factorEl  = document.getElementById('factors-list');
+    const factors  = Array.isArray(data.risk_factors) ? data.risk_factors : [];
+    const factorEl = document.getElementById('factors-list');
     if (factors.length === 0) {
       factorEl.innerHTML = '<li class="clean">No critical risk factors detected</li>';
     } else {

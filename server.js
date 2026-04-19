@@ -229,12 +229,19 @@ async function quickScanRpcOnly(address) {
   const scamDb      = scamDbRes.status === 'fulfilled' ? scamDbRes.value : { known_scam: null, rugcheck: null, db_match: false };
 
   if (!accountData) {
+    const notFoundMsg = "This address doesn't exist on-chain yet. It may be invalid, not yet funded, or previously closed. Insufficient data for risk scoring.";
     return {
-      risk_score: 80, risk_level: 'high',
-      summary: 'Address not found on-chain — possibly invalid, unfunded, or closed.',
-      checks: { account_status: { status: 'Not found on-chain', risk: 'high' } },
-      evidence: [], scan_type: 'quick-rpc', scan_ms: Date.now()-t0,
-      scam_db: scamDb
+      risk_score:   null,
+      risk_level:   'UNKNOWN',
+      status:       'address_not_found',
+      summary:      notFoundMsg,
+      message:      notFoundMsg,
+      risk_factors: [],
+      checks:       {},
+      evidence:     [],
+      scan_type:    'quick-rpc',
+      scan_ms:      Date.now()-t0,
+      scam_db:      scamDb
     };
   }
 
@@ -1344,10 +1351,30 @@ app.post('/scan/iris', express.json(), checkBlacklist, async (req, res) => {
   }
 
   try {
-    const [enrichment, scamDb] = await Promise.all([
+    const [enrichment, scamDb, accountRes] = await Promise.all([
       enrichScanResult(safeAddress).catch(() => null),
       lookupScamDb(safeAddress).catch(() => ({ known_scam: null, rugcheck: null, db_match: false })),
+      rpcPost({ jsonrpc: '2.0', id: 1, method: 'getAccountInfo',
+        params: [safeAddress, { encoding: 'base64', commitment: 'confirmed' }] }).catch(() => null),
     ]);
+
+    const accountData      = accountRes?.result?.value;
+    const noEnrichmentData = !enrichment ||
+      (!enrichment.external_sources?.rugcheck && !enrichment.external_sources?.solana_tracker);
+
+    if (!accountData && noEnrichmentData) {
+      return res.json({
+        status:       'address_not_found',
+        address:      safeAddress,
+        risk_score:   null,
+        risk_level:   'UNKNOWN',
+        iris:         { score: null, grade: 'UNKNOWN', breakdown: null },
+        message:      "This address doesn't exist on-chain yet. It may be invalid, not yet funded, or previously closed. Insufficient data for risk scoring.",
+        risk_factors: [],
+        timestamp:    new Date().toISOString(),
+      });
+    }
+
     const iris = calculateIRIS(enrichment, scamDb);
     const isWhitelisted = _legitTokens.has(safeAddress);
     const scamDbOut = isWhitelisted
@@ -3948,19 +3975,26 @@ app.get('/scan/:address', async (req, res) => {
     clearTimeout(timer);
     const irisData = await irisRes.json();
 
-    const score = typeof irisData.iris?.score === 'number' ? irisData.iris.score : (irisData.risk_score ?? '?');
     const grade = (irisData.iris?.grade || irisData.risk_level || 'UNKNOWN').toUpperCase();
+    const isNotFound = irisData.status === 'address_not_found';
+    const score = isNotFound ? null :
+      (typeof irisData.iris?.score === 'number' ? irisData.iris.score : (irisData.risk_score ?? '?'));
 
     const riskDescriptor =
+      isNotFound                                ? 'could not be found on-chain — address may be invalid, unfunded, or closed' :
       grade === 'LOW'    || grade === 'SAFE'    ? 'verified legitimate with no critical risk factors' :
       grade === 'MEDIUM' || grade === 'CAUTION' ? 'shows moderate risk signals that warrant attention' :
       grade === 'HIGH'                          ? 'contains significant red flags detected by IRIS methodology' :
       grade === 'CRITICAL' || grade === 'DANGER'? 'matches known scam patterns — avoid interaction' :
       'analyzed with IRIS methodology';
 
-    meta.TITLE          = `${grade} Risk (${score}/100) · Solana Token Security Scan | integrity.molt`;
-    meta.OG_TITLE       = `${grade} Risk — ${score}/100 · ${address.slice(0, 8)}...`;
-    meta.DESCRIPTION    = `Solana token ${address.slice(0, 8)}...${address.slice(-4)} ${riskDescriptor}. AI-native security analysis with Ed25519-signed report. Scan yours free at intmolt.org.`;
+    meta.TITLE          = isNotFound
+      ? `Address Not Found · Solana Security Scan | integrity.molt`
+      : `${grade} Risk (${score}/100) · Solana Token Security Scan | integrity.molt`;
+    meta.OG_TITLE       = isNotFound
+      ? `UNKNOWN — ${address.slice(0, 8)}... · Not found on-chain`
+      : `${grade} Risk — ${score}/100 · ${address.slice(0, 8)}...`;
+    meta.DESCRIPTION    = `Solana address ${address.slice(0, 8)}...${address.slice(-4)} ${riskDescriptor}. AI-native security analysis with Ed25519-signed report. Scan yours free at intmolt.org.`;
     meta.OG_DESCRIPTION = meta.DESCRIPTION;
     // Safe JSON injection — guard against </script> in values
     meta.IRIS_JSON      = JSON.stringify(irisData).replace(/<\//g, '<\\/');
