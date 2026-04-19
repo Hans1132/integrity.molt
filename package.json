@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/e2e/smoke.js && node tests/security/no-secrets.js"
+    "test": "node tests/e2e/smoke.js && node tests/security/no-secrets.js && node tests/payment/anti-replay.test.js",
+    "test:anti-replay": "node tests/payment/anti-replay.test.js",
+    "validate:openapi": "node scripts/validate-openapi-coverage.js"
   },
   "keywords": [],
   "author": "",

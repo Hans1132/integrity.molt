@@ -24,20 +24,10 @@ const PRICING = {
   adversarial:       4_000_000,   //  4.00 USDC (under AutoPilot 5 USDC per-tx limit)
 };
 
-// Human-readable USDC prices (for /info and documentation).
-const PRICING_DISPLAY = {
-  quick:           '0.50 USDC',
-  deep:            '5.00 USDC',
-  token:           '0.75 USDC',
-  wallet:          '0.75 USDC',
-  pool:            '0.75 USDC',
-  'evm-token':     '0.75 USDC',
-  'evm-scan':      '0.75 USDC',
-  contract:        '5.00 USDC',
-  'token-audit':   '0.75 USDC',
-  'agent-token':   '0.15 USDC',
-  delta:           '1.00 USDC',
-  adversarial:     '4.00 USDC',
-};
+// Human-readable USDC prices — derived from PRICING to prevent manual sync drift.
+// Each value is `(micro_units / 1_000_000).toFixed(2) + ' USDC'`.
+const PRICING_DISPLAY = Object.fromEntries(
+  Object.entries(PRICING).map(([k, micro]) => [k, `${(micro / 1_000_000).toFixed(2)} USDC`])
+);
 
 module.exports = { PRICING, PRICING_DISPLAY };

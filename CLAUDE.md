@@ -34,6 +34,7 @@ NGINX reverse proxy s TLS. systemd služba: integrity-x402.service.
 - BACKEND agent: src/middleware/*, src/payment/*, src/routes/api*, server.js, config/*
 - WEB agent: public/*, views/*, src/routes/web*, static/*
 - MONITOR agent: src/monitor/*, src/watchlist/*, src/delta/*, src/notifications/*
+- BOT agent: scripts/bot/* (Telegram bot bash skripty), intmolt-bot.service unit
 - TESTER agent: tests/*, scripts/test-*.sh
 - CONDUCTOR: tasks/*, agents/*.md, CLAUDE.md (pouze metadata, ne kód)
 - SDÍLENÉ (změna vyžaduje test-gate): package.json, .env.example
