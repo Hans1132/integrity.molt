@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXYD5E5NWE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WXYD5E5NWE');
+    gtag('config', 'AW-18061030609');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — integrity.molt</title>
+  <meta name="description" content="Subscription plans from $15/month. Pay-per-scan from 0.15 USDC. For Solana protocol teams and AI agents.">
+  <meta name="author" content="integrity.molt">
+  <meta name="theme-color" content="#0a0e1a">
+  <link rel="canonical" href="https://intmolt.org/pricing">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://intmolt.org/pricing">
+  <meta property="og:site_name" content="integrity.molt">
+  <meta property="og:title" content="Pricing — integrity.molt">
+  <meta property="og:description" content="Subscription plans from $15/month. Pay-per-scan from 0.15 USDC.">
+  <meta property="og:image" content="https://intmolt.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pricing — integrity.molt">
+  <meta name="twitter:description" content="Subscription plans from $15/month. Pay-per-scan from 0.15 USDC.">
+  <meta name="twitter:image" content="https://intmolt.org/og-image.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #070b0f;
+      --bg-card:   #0c1117;
+      --bg-alt:    #0f1520;
+      --border:    #1a2332;
+      --accent:    #00ff88;
+      --accent-dim:#00a855;
+      --accent-glow: rgba(0,255,136,.12);
+      --blue:      #4da6ff;
+      --text:      #c8d8e8;
+      --text-dim:  #607080;
+      --text-faint:#2a3a4a;
+      --danger:    #ff4444;
+      --warn:      #ffaa00;
+      --mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* Header */
+    header { border-bottom: 1px solid var(--border); padding: 20px 0; position: sticky; top: 0; background: var(--bg); z-index: 100; }
+    .header-inner { display: flex; align-items: center; gap: 24px; }
+    .logo-wrap { display: flex; align-items: center; gap: 10px; }
+    .logo-text { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--text); }
+    .logo-text .dot { color: var(--accent); }
+    nav { display: flex; gap: 24px; margin-left: auto; }
+    nav a { color: var(--text-dim); font-size: 14px; }
+    nav a:hover { color: var(--text); text-decoration: none; }
+    .header-actions { display: flex; gap: 12px; }
+    .nav-icon-link { color: var(--text-faint); font-size: 13px; }
+    .nav-icon-link:hover { color: var(--text); text-decoration: none; }
+
+    /* Page hero */
+    .page-hero { padding: 72px 0 56px; text-align: center; }
+    .page-hero h1 { font-size: 40px; font-weight: 700; color: var(--text); line-height: 1.2; margin-bottom: 16px; }
+    .page-hero p { font-size: 18px; color: var(--text-dim); max-width: 540px; margin: 0 auto; }
+
+    /* Subscription grid */
+    .pricing-section { padding: 0 0 72px; }
+    .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+    .plan-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 32px; display: flex; flex-direction: column; position: relative; }
+    .plan-card--featured { border-color: var(--accent); }
+    .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #000; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; white-space: nowrap; }
+    .plan-name { font-size: 14px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+    .plan-price { font-size: 48px; font-weight: 800; color: var(--text); line-height: 1; margin-bottom: 4px; }
+    .plan-price span { font-size: 16px; font-weight: 400; color: var(--text-dim); }
+    .plan-tagline { font-size: 13px; color: var(--text-dim); margin-bottom: 24px; }
+    .plan-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); margin: 16px 0 8px; }
+    .plan-features { list-style: none; margin-bottom: 16px; flex: 1; }
+    .plan-features li { font-size: 13px; color: var(--text-dim); padding: 4px 0; padding-left: 20px; position: relative; }
+    .plan-features li.included::before { content: '\2713'; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+    .plan-features li.excluded { color: var(--text-faint); }
+    .plan-features li.excluded::before { content: '\00d7'; position: absolute; left: 0; color: var(--text-faint); }
+    .plan-cta { display: block; width: 100%; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text); transition: all 0.15s; margin-top: auto; }
+    .plan-cta:hover { border-color: var(--text-dim); text-decoration: none; }
+    .plan-cta--accent { background: var(--accent); color: #000; border-color: var(--accent); }
+    .plan-cta--accent:hover { opacity: 0.9; }
+    .plan-cta:disabled { opacity: 0.5; cursor: not-allowed; }
+    .plan-note { text-align: center; font-size: 12px; color: var(--text-faint); }
+
+    /* Pay-per-scan */
+    .pps-section { padding: 72px 0; border-top: 1px solid var(--border); }
+    .section-title { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .section-sub { font-size: 15px; color: var(--text-dim); margin-bottom: 40px; }
+    .pps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .pps-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
+    .pps-name { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .pps-price { font-size: 32px; font-weight: 800; color: var(--accent); margin-bottom: 4px; font-family: var(--mono); }
+    .pps-time { font-size: 12px; color: var(--text-faint); font-family: var(--mono); margin-bottom: 16px; }
+    .pps-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin-bottom: 20px; }
+    .pps-cta { display: inline-block; padding: 10px 20px; border-radius: 7px; border: 1px solid var(--border); color: var(--text); font-size: 13px; font-weight: 600; }
+    .pps-cta:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+
+    /* FAQ */
+    .faq-section { padding: 72px 0; border-top: 1px solid var(--border); }
+    .faq-item { border-bottom: 1px solid var(--border); padding: 20px 0; }
+    .faq-q { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .faq-a { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--border); padding: 56px 0 32px; margin-top: 40px; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+    .footer-col h5 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); margin-bottom: 16px; }
+    .footer-links { list-style: none; }
+    .footer-links li { margin-bottom: 8px; }
+    .footer-links a { color: var(--text-dim); font-size: 13px; }
+    .footer-links a:hover { color: var(--text); text-decoration: none; }
+    .footer-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 24px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
+    .footer-copy { font-size: 12px; color: var(--text-faint); }
+
+    @media (max-width: 900px) {
+      .plan-grid { grid-template-columns: 1fr; max-width: 480px; margin-left: auto; margin-right: auto; }
+      .pps-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      nav { display: none; }
+      .page-hero h1 { font-size: 28px; }
+      .footer-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <a href="/" class="logo-wrap" style="text-decoration:none;">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="#0c1117"/>
+          <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" stroke="#1a2332"/>
+          <path d="M16 4 L25 8 L25 17 Q25 24 16 28 Q7 24 7 17 L7 8 Z" stroke="#00ff88" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+          <path d="M12 16.5 L15 19.5 L21 13" stroke="#00ff88" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text"><span>integrity</span><span class="dot">.</span>molt</span>
+      </a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/scan">Scan</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/docs">Docs</a>
+      </nav>
+      <div class="header-actions">
+        <a href="https://github.com/Hans1132/integrity.molt" target="_blank" rel="noopener" class="nav-icon-link">GitHub</a>
+        <a href="https://x.com/HLo18147" target="_blank" rel="noopener" class="nav-icon-link">X</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="page-hero">
+  <div class="container">
+    <h1>Simple pricing for teams and agents</h1>
+    <p>Subscribe for continuous monitoring. Or pay per scan, no account required.</p>
+  </div>
+</div>
+
+<!-- SUBSCRIPTION PLANS -->
+<section class="pricing-section">
+  <div class="container">
+    <div class="plan-grid">
+
+      <!-- Starter -->
+      <div class="plan-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">$15<span> / month</span></div>
+        <div class="plan-tagline">For solo developers and small protocols</div>
+        <div class="plan-section-label">INCLUDED</div>
+        <ul class="plan-features">
+          <li class="included">50 Quick Scans per month</li>
+          <li class="included">Real-time watchlist (up to 5 addresses)</li>
+          <li class="included">Email alerts when thresholds crossed</li>
+          <li class="included">API access (5,000 requests/month)</li>
+          <li class="included">Historical scan archive (30 days)</li>
+        </ul>
+        <div class="plan-section-label">NOT INCLUDED</div>
+        <ul class="plan-features">
+          <li class="excluded">Deep Audits</li>
+          <li class="excluded">Webhook integrations</li>
+          <li class="excluded">Signed PDF reports</li>
+        </ul>
+        <button onclick="startCheckout('pro_trader')" class="plan-cta">Get started</button>
+      </div>
+
+      <!-- Team — FEATURED -->
+      <div class="plan-card plan-card--featured">
+        <div class="plan-badge">MOST POPULAR</div>
+        <div class="plan-name">Team</div>
+        <div class="plan-price">$49<span> / month</span></div>
+        <div class="plan-tagline">For growing protocols managing multiple assets</div>
+        <div class="plan-section-label">INCLUDED</div>
+        <ul class="plan-features">
+          <li class="included">250 Quick Scans per month</li>
+          <li class="included">5 Deep Audits per month</li>
+          <li class="included">Watchlist (up to 25 addresses)</li>
+          <li class="included">Email + webhook alerts (Slack/Discord)</li>
+          <li class="included">API access (50,000 requests/month)</li>
+          <li class="included">Signed PDF reports</li>
+          <li class="included">Historical scan archive (unlimited)</li>
+        </ul>
+        <button onclick="startCheckout('builder')" class="plan-cta plan-cta--accent">Get started</button>
+      </div>
+
+      <!-- Protocol -->
+      <div class="plan-card">
+        <div class="plan-name">Protocol</div>
+        <div class="plan-price" style="font-size:32px;">Custom pricing</div>
+        <div class="plan-tagline">For large protocols, institutions, and custom integrations</div>
+        <div class="plan-section-label">INCLUDED</div>
+        <ul class="plan-features">
+          <li class="included">Unlimited scans</li>
+          <li class="included">Custom webhook integrations</li>
+          <li class="included">SLA + dedicated support</li>
+          <li class="included">On-chain Ed25519 attestations for your users</li>
+          <li class="included">Custom risk thresholds</li>
+          <li class="included">Priority roadmap influence</li>
+          <li class="included">Compliance reports</li>
+        </ul>
+        <a href="mailto:info@intmolt.org" class="plan-cta">Contact us</a>
+      </div>
+
+    </div>
+    <p class="plan-note">All plans include Solana network coverage. Additional chains in Q3 2026.<br>Prices in USD. Pay via Stripe (card) or USDC (on-chain).</p>
+  </div>
+</section>
+
+<!-- PAY PER SCAN -->
+<section class="pps-section">
+  <div class="container">
+    <h2 class="section-title">Pay per scan</h2>
+    <p class="section-sub">No subscription required. Pay with USDC via x402 micropayments.</p>
+    <div class="pps-grid">
+
+      <div class="pps-card">
+        <div class="pps-name">Quick Scan</div>
+        <div class="pps-price">0.50 USDC</div>
+        <div class="pps-time">~10 seconds</div>
+        <div class="pps-desc">Scam DB check · On-chain state · IRIS scoring</div>
+        <a href="/scan" class="pps-cta">Run scan →</a>
+      </div>
+
+      <div class="pps-card">
+        <div class="pps-name">Deep Audit</div>
+        <div class="pps-price">5.00 USDC</div>
+        <div class="pps-time">~30 seconds</div>
+        <div class="pps-desc">Everything in Quick Scan, plus: holder distribution analysis · LP breakdown · deployer history · signed PDF report</div>
+        <a href="/scan" class="pps-cta">Run scan →</a>
+      </div>
+
+      <div class="pps-card">
+        <div class="pps-name">Agent Scan (x402)</div>
+        <div class="pps-price">0.15 USDC</div>
+        <div class="pps-time">~5 seconds</div>
+        <div class="pps-desc">Minimal output optimized for programmatic agents. Requires x402-compatible client.</div>
+        <a href="/docs#agents" class="pps-cta">See API docs →</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <div class="container">
+    <h2 class="section-title">Frequently asked questions</h2>
+
+    <div class="faq-item">
+      <div class="faq-q">How does the free tier work?</div>
+      <div class="faq-a">Every visitor gets 3 Quick Scans per day, tracked by IP address. Resets at 00:00 UTC. No signup required.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What's the difference between Quick Scan and Deep Audit?</div>
+      <div class="faq-a">Quick Scan checks the scam database, on-chain state, and produces an IRIS risk score in about 10 seconds. Deep Audit adds holder concentration analysis, LP breakdown, deployer history, and produces a signed PDF report suitable for compliance documentation.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">How are payments secured?</div>
+      <div class="faq-a">Card payments via Stripe. On-chain payments via x402/USDC micropayments on Solana. No credit card data is stored on our servers.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What happens if I exceed my monthly quota?</div>
+      <div class="faq-a">You can upgrade mid-month (prorated), or scans fall back to pay-per-scan rates (0.50 USDC Quick, 5.00 USDC Deep). You won't be cut off — no surprise bills either.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I cancel anytime?</div>
+      <div class="faq-a">Yes. Cancellation is immediate, no questions asked. You keep access until the end of your current billing period.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Do you offer discounts?</div>
+      <div class="faq-a">Annual plans get 2 months free. We also offer free Protocol-tier access to public goods projects (open-source, no token, TVL &gt;$10M). Email <a href="mailto:info@intmolt.org">info@intmolt.org</a> with details.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col footer-col--brand">
+        <span class="logo-text">integrity<span class="dot">.</span>molt</span>
+        <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Continuous security monitoring for Solana.</p>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-top:12px;line-height:1.6;">Ed25519 verify key:<br>qzppeeRmbyQ4hE4BYOW+4VbQ5muyplTP4GP4uxIhVwY=</div>
+        <p style="font-size:11px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">
+          <a href="/verify" style="color:var(--accent-dim);">Verify reports online →</a>
+        </p>
+      </div>
+      <div class="footer-col">
+        <h5>Product</h5>
+        <ul class="footer-links">
+          <li><a href="/scan">Scan</a></li>
+          <li><a href="/pricing">Pricing</a></li>
+          <li><a href="/verify">Verify a report</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Resources</h5>
+        <ul class="footer-links">
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="/docs#methodology">Methodology</a></li>
+          <li><a href="https://github.com/Hans1132/integrity.molt/releases" target="_blank" rel="noopener">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Connect</h5>
+        <ul class="footer-links">
+          <li><a href="https://github.com/Hans1132/integrity.molt" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://x.com/HLo18147" target="_blank" rel="noopener">X / Twitter</a></li>
+          <li><a href="/api/v2/health" target="_blank" rel="noopener">Status</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">integrity.molt — intmolt.org</div>
+      <div class="footer-copy">© 2026 integrity.molt. All reports are informational, not financial advice.</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  async function startCheckout(tier) {
+    const btn = document.querySelector(`button[onclick="startCheckout('${tier}')"]`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Loading\u2026'; }
+    try {
+      const resp = await fetch('/api/v1/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: tier })
+      });
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert('Checkout error: ' + (data.error || 'Unknown error'));
+        if (btn) { btn.disabled = false; btn.textContent = 'Get started'; }
+      }
+    } catch (e) {
+      alert('Network error. Please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Get started'; }
+    }
+  }
+
+  try {
+    fetch('/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: location.pathname, referrer: document.referrer || '' }),
+      keepalive: true
+    });
+  } catch(e) {}
+</script>
+
+</body>
+</html>
