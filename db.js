@@ -372,10 +372,16 @@ async function isAlreadyUsed(sig) {
 
 // Anti-replay: mark a signature as used immediately after successful on-chain verification.
 // INSERT OR IGNORE prevents errors if two concurrent requests race on the same sig.
+//
+// Returns TRUE only for the caller whose INSERT actually created the row — this is the
+// atomic "claim". All other racers (duplicates) get FALSE because SQLite's UNIQUE PRIMARY
+// KEY deduplicates under a single writer lock. Callers MUST check the return value and
+// reject the request when it is FALSE to prevent double-spend via parallel replays.
 function markSignatureUsed(sig) {
-  db.prepare(
+  const r = db.prepare(
     'INSERT OR IGNORE INTO used_signatures (sig) VALUES (?)'
   ).run(sig);
+  return r.changes === 1; // true = atomic claim won, false = another racer beat us
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
