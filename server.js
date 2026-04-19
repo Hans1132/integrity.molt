@@ -581,11 +581,29 @@ async function verifyPayment(xPaymentHeader, requiredMicroUsdc, resource) {
 
   const verified = transferredMicroUsdc >= requiredMicroUsdc;
 
-  // Anti-replay: INSERT immediately after successful on-chain verification.
-  // This must happen before returning ok:true to close the race window between
-  // isAlreadyUsed() check and the caller's logPayment().
+  // Anti-replay (atomic claim): INSERT immediately after successful on-chain verification
+  // and check the return value. The earlier isAlreadyUsed() call is only a fast-path
+  // optimization — it is NOT safe against TOCTOU because the RPC round-trip between
+  // that read and this insert gives parallel requests a wide window to all pass the
+  // pre-check with the same sig. SQLite's INSERT OR IGNORE on a PRIMARY KEY is
+  // serialized under a single writer lock, so exactly one caller sees r.changes === 1
+  // and all concurrent racers see 0 → must be rejected.
   if (verified) {
-    db.markSignatureUsed(sig);
+    const reserved = db.markSignatureUsed(sig);
+    if (!reserved) {
+      console.warn('[anti-replay] race-rejected', JSON.stringify({
+        sig, resource, action: 'race-rejected'
+      }));
+      return {
+        ok: false,
+        reason: 'transaction already used (race)',
+        signature: sig,
+        microUsdc: transferredMicroUsdc
+      };
+    }
+    console.log('[anti-replay] reserved', JSON.stringify({
+      sig, resource, action: 'reserved'
+    }));
   }
 
   return {
@@ -1011,13 +1029,27 @@ const agentTokenPaymentAccepts = [{
 // Logo - free
 app.get('/logo.svg', (req, res) => { res.sendFile('/root/x402-ecosystem-submission/logo.svg'); });
 
-// OpenAPI spec - free
-app.get('/openapi.json', (req, res) => { res.sendFile('/root/x402-server/openapi.json'); });
+// OpenAPI spec - runtime generated (single source of truth: config/pricing.js + src/docs/endpoint-spec.js)
+const { generateOpenApi }         = require('./src/docs/generate-openapi');
+const { generateX402Discovery }   = require('./src/docs/generate-x402-discovery');
 
-// x402 discovery - free
+app.get('/openapi.json', (req, res) => {
+  try {
+    res.json(generateOpenApi(USDC_ATA));
+  } catch (e) {
+    console.error('[openapi] generation failed:', e.message);
+    res.status(500).json({ error: 'Failed to generate OpenAPI spec' });
+  }
+});
+
+// x402 discovery - runtime generated
 app.get('/.well-known/x402.json', (req, res) => {
-  const discovery = require('./x402-discovery.json');
-  res.json(discovery);
+  try {
+    res.json(generateX402Discovery(USDC_ATA));
+  } catch (e) {
+    console.error('[x402-discovery] generation failed:', e.message);
+    res.status(500).json({ error: 'Failed to generate x402 discovery document' });
+  }
 });
 
 // ── A2A (Agent-to-Agent) protocol — Google A2A spec ──────────────────────────
@@ -1375,8 +1407,12 @@ app.post('/scan/iris', express.json(), checkBlacklist, async (req, res) => {
       });
     }
 
-    const iris = calculateIRIS(enrichment, scamDb);
     const isWhitelisted = _legitTokens.has(safeAddress);
+    // Whitelist přepíše false positive known_scam záznamy před scoring
+    const scamDbForIris = isWhitelisted
+      ? { ...scamDb, known_scam: null }
+      : scamDb;
+    const iris = calculateIRIS(enrichment, scamDbForIris);
     const scamDbOut = isWhitelisted
       ? { known_scam: false, whitelisted: true, note: 'Verified legitimate token', db_match: false }
       : { known_scam: scamDb.known_scam, rugcheck: scamDb.rugcheck, db_match: scamDb.db_match };

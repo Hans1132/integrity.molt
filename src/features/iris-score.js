@@ -385,17 +385,48 @@ function calculateIRIS(enrichmentData, scamDbData) {
   const enrichment = enrichmentData || {};
   const scamDb     = scamDbData     || {};
 
-  const inflowsResult  = scoreInflows(enrichment);
-  const rightsResult   = scoreRights(enrichment);
+  const inflowsResult   = scoreInflows(enrichment);
+  const rightsResult    = scoreRights(enrichment);
   const imbalanceResult = scoreImbalance(enrichment, scamDb);
-  const speedResult    = scoreSpeed(enrichment);
+  const speedResult     = scoreSpeed(enrichment);
 
-  const total = inflowsResult.score + rightsResult.score + imbalanceResult.score + speedResult.score;
+  let total = inflowsResult.score + rightsResult.score + imbalanceResult.score + speedResult.score;
+
+  // ── Score floors pro confirmed scamy ─────────────────────────────────────────
+  // Externé API nemusí mít data pro staré/rugged tokeny — scamDb je ground truth.
+  // Thresholds: confidence >= 0.8 pro CRITICAL, >= 0.75 pro HIGH floor.
+  // Nízká confidence (< 0.75) nesupluje floory — může jít o false positive v DB.
+  const knownScam  = scamDb.known_scam;
+  const rcRisk     = scamDb.rugcheck;
+  const confidence = knownScam?.confidence_score ?? knownScam?.confidence ?? 0;
+  const isRcDanger = rcRisk?.risk_level === 'danger' && (rcRisk?.score_norm ?? 0) >= 75;
+
+  // Confirmed rug pull v naší DB (confidence ≥ 0.8) → CRITICAL floor
+  if (knownScam?.scam_type === 'rug_pull' && confidence >= 0.8) {
+    total = Math.max(total, 76);
+  // known_scam (confidence ≥ 0.75) + RugCheck danger → CRITICAL floor
+  } else if (knownScam != null && confidence >= 0.75 && isRcDanger) {
+    total = Math.max(total, 76);
+  // RugCheck danger (risk_level=danger + score_norm≥75) bez known_scam → HIGH floor
+  } else if (isRcDanger && knownScam == null) {
+    total = Math.max(total, 51);
+  // known_scam s dobrou confidence ale bez RC potvrzení → HIGH floor
+  } else if (knownScam != null && confidence >= 0.75) {
+    total = Math.max(total, 51);
+  }
 
   const grade =
     total >= 75 ? 'CRITICAL' :
     total >= 50 ? 'HIGH'     :
     total >= 25 ? 'MEDIUM'   : 'LOW';
+
+  // Aggregate risk_factors ze všech breakdown details
+  const risk_factors = [
+    ...inflowsResult.details,
+    ...rightsResult.details,
+    ...imbalanceResult.details,
+    ...speedResult.details,
+  ];
 
   return {
     score: total,
@@ -406,6 +437,7 @@ function calculateIRIS(enrichmentData, scamDbData) {
       imbalance: { score: imbalanceResult.score, max: 25, details: imbalanceResult.details },
       speed:     { score: speedResult.score,     max: 25, details: speedResult.details     }
     },
+    risk_factors,
     methodology: 'IRIS v1.0 — intmolt.org/iris'
   };
 }
