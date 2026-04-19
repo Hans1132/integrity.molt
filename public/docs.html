@@ -12,8 +12,10 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Solana Security Scanner API — integrity.molt Developer Docs</title>
-  <meta name="description" content="integrity.molt REST API documentation. Scan Solana tokens, wallets, and pools programmatically. Python, TypeScript, curl examples. x402 micropayments and API key access.">
+  <title>Documentation — integrity.molt API</title>
+  <meta name="description" content="API reference for integrity.molt — Solana security scanner with x402 micropayments.">
+  <meta name="author" content="integrity.molt">
+  <meta name="theme-color" content="#0a0e1a">
   <meta name="keywords" content="Solana security API, Solana scanner API, blockchain security REST API, token audit API, x402 micropayments API, Solana developer tools">
   <link rel="canonical" href="https://intmolt.org/docs">
   <meta property="og:type" content="website">
@@ -180,15 +182,27 @@
 <body>
 
 <header>
-  <div class="container" style="max-width:100%;padding:0 24px;">
+  <div class="container">
     <div class="header-inner">
-      <a href="/" class="logo-text">integrity<span>.molt</span></a>
-      <nav style="display:flex;gap:20px;align-items:center;">
-        <a href="/" style="color:var(--text-dim);font-size:13px;">Home</a>
-        <a href="/verify.html" style="color:var(--text-dim);font-size:13px;">Verify</a>
-        <a href="/compare.html" style="color:var(--text-dim);font-size:13px;">Compare</a>
-        <a href="/openapi.json" style="color:var(--text-dim);font-size:13px;" target="_blank" rel="noopener">OpenAPI JSON</a>
+      <a href="/" class="logo-wrap" style="text-decoration:none;">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="#0c1117"/>
+          <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" stroke="#1a2332"/>
+          <path d="M16 4 L25 8 L25 17 Q25 24 16 28 Q7 24 7 17 L7 8 Z" stroke="#00ff88" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+          <path d="M12 16.5 L15 19.5 L21 13" stroke="#00ff88" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text"><span>integrity</span><span class="dot">.</span>molt</span>
+      </a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/scan">Scan</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/docs">Docs</a>
       </nav>
+      <div class="header-actions">
+        <a href="https://github.com/Hans1132/integrity.molt" target="_blank" rel="noopener" class="nav-icon-link">GitHub</a>
+        <a href="https://x.com/HLo18147" target="_blank" rel="noopener" class="nav-icon-link">X</a>
+      </div>
     </div>
   </div>
 </header>
@@ -234,11 +248,11 @@
 
     <!-- Overview -->
     <section id="overview">
-      <h1>integrity.molt API</h1>
-      <p>AI-native Solana security scanner with Ed25519 signed reports and x402 micropayments. No account required for pay-per-scan — send USDC via x402 and receive a cryptographically verifiable security report.</p>
+      <h1 style="font-size:36px;font-weight:700;color:var(--text);margin-bottom:12px;">Developer documentation</h1>
+      <p style="font-size:17px;color:var(--text-dim);max-width:600px;">RESTful API + x402 micropayments. Production-ready for AI agents, bots, and protocol integrations.</p>
 
       <div class="info-box">
-        <strong>Base URL:</strong> <code>https://intmolt.org/api/v2</code><br>
+        <strong>Base URL:</strong> <code>https://intmolt.org</code><br>
         <strong>Protocol:</strong> x402 (HTTP 402 + X-PAYMENT header) or Bearer API key<br>
         <strong>Payment asset:</strong> USDC on Solana mainnet (<code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code>)
       </div>
@@ -279,7 +293,7 @@
       </div>
       <div id="x402-curl" class="tab-content active">
 <pre># 1. Probe — get payment requirements
-curl -s -X POST https://intmolt.org/api/v2/scan/quick \
+curl -s -X POST https://intmolt.org/scan/quick \
   -H "Content-Type: application/json" \
   -d '{"address":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"}'
 # → HTTP 402 with accepts array
@@ -289,7 +303,7 @@ curl -s -X POST https://intmolt.org/api/v2/scan/quick \
 
 # 3. Build payment envelope and scan
 ENVELOPE=$(echo '{"transaction":"4kVs7...abc"}' | base64 -w0)
-curl -s -X POST https://intmolt.org/api/v2/scan/quick \
+curl -s -X POST https://intmolt.org/scan/quick \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: $ENVELOPE" \
   -d '{"address":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"}'</pre>
@@ -300,7 +314,7 @@ from solders.keypair import Keypair
 from solders.pubkey import Pubkey
 # pip install solders spl-token-py requests
 
-INTMOLT = "https://intmolt.org/api/v2"
+INTMOLT = "https://intmolt.org"
 TARGET  = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
 # 1. Probe
@@ -335,7 +349,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction } from "@solana/spl-token";
 import nacl from "tweetnacl";
 
-const INTMOLT  = "https://intmolt.org/api/v2";
+const INTMOLT  = "https://intmolt.org";
 const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const TARGET    = "So11111111111111111111111111111111111111112";
 
@@ -378,7 +392,7 @@ async function securityCheck(address: string) {
         <button class="tab-btn" onclick="switchTab(this,'apikey-python')">Python</button>
       </div>
       <div id="apikey-curl" class="tab-content active">
-<pre>curl -s -X POST https://intmolt.org/api/v2/scan/quick \
+<pre>curl -s -X POST https://intmolt.org/scan/quick \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer im_your_key_here" \
   -d '{"address":"So11111111111111111111111111111111111111112"}'</pre>
@@ -387,7 +401,7 @@ async function securityCheck(address: string) {
 <pre>import requests
 
 result = requests.post(
-    "https://intmolt.org/api/v2/scan/quick",
+    "https://intmolt.org/scan/quick",
     json={"address": "So11111111111111111111111111111111111111112"},
     headers={"Authorization": "Bearer im_your_key_here"}
 )
@@ -431,7 +445,7 @@ print(result.json()["report"])</pre>
       </div>
       <div id="qs-curl" class="tab-content active">
 <pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
-curl -s -X POST https://intmolt.org/api/v2/scan/quick \
+curl -s -X POST https://intmolt.org/scan/quick \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: $ENVELOPE" \
   -d '{"address":"So11111111111111111111111111111111111111112"}'</pre>
@@ -439,7 +453,7 @@ curl -s -X POST https://intmolt.org/api/v2/scan/quick \
       <div id="qs-python" class="tab-content">
 <pre>envelope = base64.b64encode(json.dumps({"transaction": tx_sig}).encode()).decode()
 r = requests.post(
-    "https://intmolt.org/api/v2/scan/quick",
+    "https://intmolt.org/scan/quick",
     json={"address": "So11111111111111111111111111111111111111112"},
     headers={"X-PAYMENT": envelope}
 )
@@ -477,14 +491,14 @@ print(r.json())</pre>
       </div>
       <div id="ta-curl" class="tab-content active">
 <pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
-curl -s -X POST https://intmolt.org/api/v2/scan/token \
+curl -s -X POST https://intmolt.org/scan/token \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: $ENVELOPE" \
   -d '{"address":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"}'</pre>
       </div>
       <div id="ta-python" class="tab-content">
 <pre>r = requests.post(
-    "https://intmolt.org/api/v2/scan/token",
+    "https://intmolt.org/scan/token",
     json={"address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
     headers={"X-PAYMENT": envelope, "Authorization": "Bearer im_key"}
 )
@@ -506,7 +520,7 @@ print(r.json()["report"])</pre>
       </div>
       <div id="wp-curl" class="tab-content active">
 <pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
-curl -s -X POST https://intmolt.org/api/v2/scan/wallet \
+curl -s -X POST https://intmolt.org/scan/wallet \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: $ENVELOPE" \
   -d '{"address":"WALLET_ADDRESS_HERE"}'</pre>
@@ -527,7 +541,7 @@ curl -s -X POST https://intmolt.org/api/v2/scan/wallet \
       </div>
       <div id="ps-curl" class="tab-content active">
 <pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
-curl -s -X POST https://intmolt.org/api/v2/scan/pool \
+curl -s -X POST https://intmolt.org/scan/pool \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: $ENVELOPE" \
   -d '{"address":"POOL_ADDRESS_HERE"}'</pre>
@@ -550,14 +564,14 @@ curl -s -X POST https://intmolt.org/api/v2/scan/pool \
       </div>
       <div id="da-curl" class="tab-content active">
 <pre>ENVELOPE=$(echo '{"transaction":"YOUR_TX_SIG"}' | base64 -w0)
-curl -s -X POST https://intmolt.org/api/v2/scan/deep \
+curl -s -X POST https://intmolt.org/scan/deep \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: $ENVELOPE" \
   -d '{"address":"TARGET_ADDRESS"}' | jq '{decision,aggregate_score,report}'</pre>
       </div>
       <div id="da-python" class="tab-content">
 <pre>r = requests.post(
-    "https://intmolt.org/api/v2/scan/deep",
+    "https://intmolt.org/scan/deep",
     json={"address": target},
     headers={"X-PAYMENT": envelope},
     timeout=130
@@ -567,7 +581,7 @@ print(f"Decision: {data['decision']}  Score: {data['aggregate_score']}/100")
 print(data["report"])</pre>
       </div>
       <div id="da-ts" class="tab-content">
-<pre>const res = await fetch("https://intmolt.org/api/v2/scan/deep", {
+<pre>const res = await fetch("https://intmolt.org/scan/deep", {
   method: "POST",
   headers: { "Content-Type": "application/json", "X-PAYMENT": envelope },
   body: JSON.stringify({ address: target }),
@@ -751,13 +765,44 @@ curl -s -X DELETE https://intmolt.org/api/v2/api-keys/1 \
 </div>
 
 <footer>
-  <div class="container" style="max-width:100%;padding:0 24px;">
-    <div class="footer-inner">
-      <a href="/">integrity.molt</a> ·
-      <a href="/openapi.json">OpenAPI JSON</a> ·
-      <a href="/verify.html">Verify report</a> ·
-      <a href="/compare.html">Compare</a> ·
-      <a href="https://t.me/intmolt_bot" target="_blank" rel="noopener">Telegram bot</a>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col footer-col--brand">
+        <span class="logo-text">integrity<span class="dot">.</span>molt</span>
+        <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Continuous security monitoring for Solana.</p>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-top:12px;line-height:1.6;">Ed25519 verify key:<br>qzppeeRmbyQ4hE4BYOW+4VbQ5muyplTP4GP4uxIhVwY=</div>
+        <p style="font-size:11px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">
+          <a href="/verify" style="color:var(--accent-dim);">Verify reports online →</a>
+        </p>
+      </div>
+      <div class="footer-col">
+        <h5>Product</h5>
+        <ul class="footer-links">
+          <li><a href="/scan">Scan</a></li>
+          <li><a href="/pricing">Pricing</a></li>
+          <li><a href="/verify">Verify a report</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Resources</h5>
+        <ul class="footer-links">
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="/docs#methodology">Methodology</a></li>
+          <li><a href="https://github.com/Hans1132/integrity.molt/releases" target="_blank" rel="noopener">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Connect</h5>
+        <ul class="footer-links">
+          <li><a href="https://github.com/Hans1132/integrity.molt" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://x.com/HLo18147" target="_blank" rel="noopener">X / Twitter</a></li>
+          <li><a href="/api/v2/health" target="_blank" rel="noopener">Status</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">integrity.molt — intmolt.org</div>
+      <div class="footer-copy">© 2026 integrity.molt. All reports are informational, not financial advice.</div>
     </div>
   </div>
 </footer>
