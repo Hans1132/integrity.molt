@@ -18,6 +18,7 @@ const { configureSession, setupStrategies, registerAuthRoutes } = authModule;
 const { initUsersSchema } = db;
 const { runWeeklyDigests, sendWelcomeEmail } = require('./mailer');
 const { saveSnapshot, getLatestSnapshot, getSnapshotByTimestamp, getSnapshotHistory } = require('./src/delta/store');
+const { isEvmAddress, isSolanaAddress } = require('./src/validation/address');
 const { computeDelta } = require('./src/delta/diff');
 const { signDeltaReport } = require('./src/delta/signing');
 const { runAdversarialSim }  = require('./src/adversarial/runner');
@@ -1346,7 +1347,27 @@ const _legitTokens = (() => {
     return new Set((raw.tokens || []).map(t => t.mint));
   } catch { return new Set(); }
 })();
-app.post('/scan/iris', express.json(), checkBlacklist, async (req, res) => {
+const validateSolanaAddress = (req, res, next) => {
+  const address = (req.body?.address || req.body?.mint || req.body?.wallet || req.body?.pool || req.body?.target || req.params?.address || '').trim();
+  if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
+  if (isEvmAddress(address)) {
+    return res.status(400).json({
+      error: 'evm_not_supported_on_solana_endpoint',
+      message: 'This endpoint supports Solana only. For EVM tokens use POST /scan/evm-token or GET /scan/evm/:address',
+      detected_chain: 'evm',
+      supported_chains: ['ethereum', 'base', 'bsc', 'polygon', 'arbitrum'],
+    });
+  }
+  if (!isSolanaAddress(address)) {
+    return res.status(400).json({
+      error: 'invalid_solana_address',
+      message: 'Address does not match Solana base58 format (32-44 chars)',
+    });
+  }
+  next();
+};
+
+app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, async (req, res) => {
   const ip = req.ip || '127.0.0.1';
   if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
     const now = Date.now();
@@ -1360,11 +1381,7 @@ app.post('/scan/iris', express.json(), checkBlacklist, async (req, res) => {
   }
 
   const address = req.body?.address || req.body?.target;
-  if (!address) return res.status(400).json({ error: 'Missing address field' });
-  const safeAddress = address.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
-  if (!safeAddress || safeAddress.length < 32 || safeAddress.length > 44) {
-    return res.status(400).json({ error: 'Invalid Solana address format' });
-  }
+  const safeAddress = address; // validated by validateSolanaAddress middleware
 
   if (!isInternalCall(req)) {
     const quota = getQuotaStatus(ip);
@@ -1440,14 +1457,9 @@ app.post('/scan/iris', express.json(), checkBlacklist, async (req, res) => {
 });
 
 // Quick Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
-app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quickPaymentAccepts, PRICING.quick), express.json(), async (req, res) => {
-  const address = req.body.address || req.body.target;
-  if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
-
-  const safeAddress = address.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
-  if (!safeAddress || safeAddress.length < 32 || safeAddress.length > 44) {
-    return res.status(400).json({ error: 'Invalid Solana address format' });
-  }
+app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), validateSolanaAddress, requirePayment(quickPaymentAccepts, PRICING.quick), async (req, res) => {
+  const address = (req.body.address || req.body.target || '').trim();
+  const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
     const _t0 = Date.now();
@@ -1560,14 +1572,9 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, requirePayment(quic
 
 // Deep Audit - paid endpoint (5.00 USDC = 5000000 micro-USDC)
 // Volá multi-agent swarm orchestrator (scanner → analyst → reputation → meta-scorecard)
-app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPaymentAccepts, PRICING.deep), express.json(), async (req, res) => {
-  const address = req.body.address || req.body.target;
-  if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
-
-  const safeAddress = address.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
-  if (!safeAddress || safeAddress.length < 32 || safeAddress.length > 44) {
-    return res.status(400).json({ error: 'Invalid Solana address format' });
-  }
+app.post('/scan/deep', trackFunnel('deep'), requireApiKey, express.json(), validateSolanaAddress, requirePayment(deepPaymentAccepts, PRICING.deep), async (req, res) => {
+  const address = (req.body.address || req.body.target || '').trim();
+  const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
     const _t0 = Date.now();
@@ -1635,14 +1642,9 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, requirePayment(deepPa
 });
 
 // Token Audit - paid endpoint (0.75 USDC = 750000 micro-USDC)
-app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(tokenAuditPaymentAccepts, PRICING.token), express.json(), async (req, res) => {
-  const address = req.body.address || req.body.mint || req.body.target;
-  if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
-
-  const safeAddress = address.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
-  if (!safeAddress || safeAddress.length < 32 || safeAddress.length > 44) {
-    return res.status(400).json({ error: 'Invalid Solana address format' });
-  }
+app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), validateSolanaAddress, requirePayment(tokenAuditPaymentAccepts, PRICING.token), async (req, res) => {
+  const address = (req.body.address || req.body.mint || req.body.target || '').trim();
+  const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
     const _t0 = Date.now();
@@ -1712,14 +1714,9 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, requirePayment(toke
 });
 
 // Wallet Deep Scan - paid endpoint (0.75 USDC = 750000 micro-USDC)
-app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(walletProfilePaymentAccepts, PRICING.wallet), express.json(), async (req, res) => {
-  const address = req.body.address || req.body.wallet || req.body.target;
-  if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
-
-  const safeAddress = address.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
-  if (!safeAddress || safeAddress.length < 32 || safeAddress.length > 44) {
-    return res.status(400).json({ error: 'Invalid Solana address format' });
-  }
+app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, express.json(), validateSolanaAddress, requirePayment(walletProfilePaymentAccepts, PRICING.wallet), async (req, res) => {
+  const address = (req.body.address || req.body.wallet || req.body.target || '').trim();
+  const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
     const _t0 = Date.now();
@@ -1789,14 +1786,9 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, requirePayment(wa
 });
 
 // Pool Deep Scan - paid endpoint (0.75 USDC = 750000 micro-USDC)
-app.post('/scan/pool', trackFunnel('pool'), requireApiKey, requirePayment(poolScanPaymentAccepts, PRICING.pool), express.json(), async (req, res) => {
-  const address = req.body.address || req.body.pool || req.body.target;
-  if (!address) return res.status(400).json({ error: 'Missing address field in request body' });
-
-  const safeAddress = address.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
-  if (!safeAddress || safeAddress.length < 32 || safeAddress.length > 44) {
-    return res.status(400).json({ error: 'Invalid Solana address format' });
-  }
+app.post('/scan/pool', trackFunnel('pool'), requireApiKey, express.json(), validateSolanaAddress, requirePayment(poolScanPaymentAccepts, PRICING.pool), async (req, res) => {
+  const address = (req.body.address || req.body.pool || req.body.target || '').trim();
+  const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
     const _t0 = Date.now();

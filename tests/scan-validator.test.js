@@ -165,6 +165,81 @@ test('clean adversarial result has no llm_validation_flags added', () => {
   assert.ok(!result.llm_validation_flags || result.llm_validation_flags.length === 0);
 });
 
+// ── address validation ────────────────────────────────────────────────────────
+// Note: valid EVM address = 0x + exactly 40 hex chars. The address
+// "0x833589fCD6eDb6E8f4c7C32D4f71b54bdA2913" in the bug report has only 38 hex
+// chars (truncated). Real USDC on Base = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913.
+// Both truncated and valid EVM addresses are rejected with HTTP 400 before payment.
+const { isEvmAddress, isSolanaAddress, detectChain } = require('../src/validation/address');
+
+const EVM_VALID   = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // 40 hex chars
+const EVM_SPEC    = '0x833589fCD6eDb6E8f4c7C32D4f71b54bdA2913';  // 38 hex chars (bug-report addr)
+const SOL_USDC    = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+const SOL_WRAPPED = 'So11111111111111111111111111111111111111112';
+
+test('isEvmAddress — valid 40-char EVM address', () => {
+  assert.strictEqual(isEvmAddress(EVM_VALID), true);
+});
+
+test('isEvmAddress — lowercase hex', () => {
+  assert.strictEqual(isEvmAddress('0xabcdef1234567890abcdef1234567890abcdef12'), true);
+});
+
+test('isEvmAddress — Solana USDC address is NOT EVM', () => {
+  assert.strictEqual(isEvmAddress(SOL_USDC), false);
+});
+
+test('isEvmAddress — truncated 0x address (38 hex) is not valid EVM', () => {
+  assert.strictEqual(isEvmAddress(EVM_SPEC), false);
+});
+
+test('isSolanaAddress — USDC mint is valid Solana', () => {
+  assert.strictEqual(isSolanaAddress(SOL_USDC), true);
+});
+
+test('isSolanaAddress — wrapped SOL is valid Solana', () => {
+  assert.strictEqual(isSolanaAddress(SOL_WRAPPED), true);
+});
+
+test('isSolanaAddress — valid EVM address is NOT Solana', () => {
+  assert.strictEqual(isSolanaAddress(EVM_VALID), false);
+});
+
+test('isSolanaAddress — truncated 0x address is NOT Solana (0 not in base58)', () => {
+  assert.strictEqual(isSolanaAddress(EVM_SPEC), false);
+});
+
+test('isSolanaAddress — sanitized EVM string (old regex bug) is NOT Solana', () => {
+  // Old code: address.replace(/[^1-9A-HJ-NP-Za-km-z]/g,'') on EVM_SPEC
+  // removes '0', keeps 'x' → resulting string has 39 chars but fails PublicKey
+  const sanitized = EVM_SPEC.replace(/[^1-9A-HJ-NP-Za-km-z]/g, '');
+  assert.strictEqual(isSolanaAddress(sanitized), false, `sanitized EVM "${sanitized}" must NOT pass`);
+});
+
+test('isSolanaAddress — too short', () => {
+  assert.strictEqual(isSolanaAddress('abc123'), false);
+});
+
+test('isSolanaAddress — empty string', () => {
+  assert.strictEqual(isSolanaAddress(''), false);
+});
+
+test('detectChain — valid EVM', () => {
+  assert.strictEqual(detectChain(EVM_VALID), 'evm');
+});
+
+test('detectChain — Solana', () => {
+  assert.strictEqual(detectChain(SOL_USDC), 'solana');
+});
+
+test('detectChain — garbage → unknown', () => {
+  assert.strictEqual(detectChain('notanaddress'), 'unknown');
+});
+
+test('detectChain — truncated 0x → unknown (not valid EVM, not Solana)', () => {
+  assert.strictEqual(detectChain(EVM_SPEC), 'unknown');
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
