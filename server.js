@@ -1058,10 +1058,36 @@ app.get('/.well-known/x402.json', (req, res) => {
 const { handleA2ARequest, handleA2ASubscribe, buildAgentCard } = require('./src/a2a/handler');
 
 // Agent card — machine-readable capability description for A2A discovery
-app.get('/.well-known/agent.json', (req, res) => {
-  // Preferuj APP_URL (produkce) před req.protocol/host (za NGINX proxy vrací http://127.0.0.1)
+// Three paths: canonical (A2A 0.4+), legacy alias (A2A 0.2), root alias (ElizaOS/MCP discovery)
+const _buildAgentCardResponse = (req) => {
   const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-  res.json(buildAgentCard(baseUrl));
+  return buildAgentCard(baseUrl);
+};
+app.get('/.well-known/agent.json',      (req, res) => res.json(_buildAgentCardResponse(req)));
+app.get('/.well-known/agent-card.json', (req, res) => res.json(_buildAgentCardResponse(req)));
+app.get('/agent.json',                  (req, res) => res.json(_buildAgentCardResponse(req)));
+
+// JWKS endpoint — Ed25519 public key in JWK Set format (RFC 8037)
+const _b64url = (buf) => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+app.get('/.well-known/jwks.json', (req, res) => {
+  try {
+    const keyBytes = fs.readFileSync(VERIFY_KEY_PATH);
+    res.set('Content-Type', 'application/jwk-set+json');
+    res.set('Cache-Control', 'public, max-age=3600, must-revalidate');
+    res.json({
+      keys: [{
+        kty: 'OKP',
+        crv: 'Ed25519',
+        use: 'sig',
+        alg: 'EdDSA',
+        kid: 'integrity-molt-primary-2026',
+        x:   _b64url(keyBytes)
+      }]
+    });
+  } catch (e) {
+    console.error('[jwks] failed to read verify key:', e.message);
+    res.status(500).json({ error: 'JWKS unavailable' });
+  }
 });
 
 // A2A JSON-RPC 2.0 endpoint — tasks/send, tasks/get, tasks/cancel

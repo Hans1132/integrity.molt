@@ -1,4 +1,9 @@
 'use strict';
+const fs = require('fs');
+const _VERIFY_KEY_PATH = process.env.VERIFY_KEY_PATH || '/root/.secrets/verify_key.bin';
+function _getVerifyKeyBase64() {
+  try { return fs.readFileSync(_VERIFY_KEY_PATH).toString('base64'); } catch { return null; }
+}
 // src/a2a/handler.js — Google A2A (Agent-to-Agent) protocol implementation
 // Spec: https://google.github.io/A2A/specification
 // Exposes integrity.molt scan capabilities to AI agents via JSON-RPC 2.0.
@@ -625,7 +630,12 @@ function buildAgentCard(baseUrl) {
           }
         }
       ]
-    }))
+    })),
+    verifyKey: _getVerifyKeyBase64(),
+    reportSigning: {
+      algorithm:   'Ed25519',
+      description: 'All scan reports are signed. Verify with any NaCl Ed25519 library using the verifyKey above.'
+    }
   };
 }
 
