@@ -566,6 +566,195 @@ async function testFeedEndpoint() {
   }
 }
 
+// ── Helper: raw HTTP request to arbitrary base URL (for 5a bare-server test) ──
+function rawRequest(baseUrl, method, urlPath, body) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(baseUrl + urlPath);
+    const opts = {
+      hostname: url.hostname,
+      port:     Number(url.port),
+      path:     url.pathname + (url.search || ''),
+      method,
+      headers:  {},
+    };
+    if (body !== undefined) {
+      const bodyStr = JSON.stringify(body);
+      opts.headers['Content-Type']   = 'application/json';
+      opts.headers['Content-Length'] = Buffer.byteLength(bodyStr);
+    }
+    const req = http.request(opts, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        let parsed;
+        try { parsed = JSON.parse(data); } catch { parsed = data; }
+        resolve({ status: res.statusCode, body: parsed });
+      });
+    });
+    req.setTimeout(10_000, () => req.destroy(new Error('Request timeout')));
+    req.on('error', reject);
+    if (body !== undefined) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+// ── Suite 5: Adversarial edge cases ──────────────────────────────────────────
+async function testAdversarial() {
+  console.log('\n── Suite 5: Adversarial edge cases ─────────────────────────────────────────\n');
+
+  // 5a. Governance WITHOUT paymentVerified flag → must return 402 (defense-in-depth guard).
+  // Spin up a fresh app with NO payment simulation middleware to hit the guard directly.
+  {
+    const bareApp = express();
+    bareApp.use(express.json());
+    bareApp.use(router); // no req.paymentVerified = true
+    let bareBase;
+    const bareServer = await new Promise(resolve => {
+      const s = http.createServer(bareApp);
+      s.listen(0, '127.0.0.1', () => {
+        bareBase = `http://127.0.0.1:${s.address().port}`;
+        resolve(s);
+      });
+    });
+    try {
+      const res = await rawRequest(bareBase, 'POST', '/monitor/v1/governance-change', {
+        program_id: 'GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPiCXLf',
+      });
+      ok('5a governance without payment → 402', res.status === 402, 'got ' + res.status);
+      ok('5a error = payment_required', res.body.error === 'payment_required',
+         'got ' + res.body.error);
+    } finally {
+      await new Promise(r => bareServer.close(r));
+    }
+  }
+
+  // 5b. Tampered payload (change field AFTER signing) → invalid_signature.
+  // Different from 1e which tampers the signature bytes; here the payload changes.
+  {
+    const originalPayload = { address: 'So11111111111111111111111111111111111111112', score: 42 };
+    const env = testSign(_canonicalJSON(originalPayload));
+    const tamperedPayload = { ...originalPayload, score: 999 }; // same key, changed value
+    const res = await request('POST', '/verify/v1/signed-receipt', {
+      envelope: { payload: tamperedPayload, ...env },
+    });
+    ok('5b tampered payload → valid:false', res.status === 200 && res.body.valid === false);
+    ok('5b reason = invalid_signature', res.body.reason === 'invalid_signature',
+       'got ' + res.body.reason);
+    ok('5b mathematically_valid:false', res.body.mathematically_valid === false);
+  }
+
+  // 5c. null signature → valid:false (falsy check catches null)
+  {
+    const goodPub = Buffer.alloc(32).toString('base64');
+    const res = await request('POST', '/verify/v1/signed-receipt', {
+      envelope: { payload: { x: 1 }, signature: null, verify_key: goodPub },
+    });
+    ok('5c null signature → valid:false', res.status === 200 && res.body.valid === false);
+  }
+
+  // 5d. null verify_key → valid:false (falsy check catches null)
+  {
+    const goodSig = Buffer.alloc(64).toString('base64');
+    const res = await request('POST', '/verify/v1/signed-receipt', {
+      envelope: { payload: { x: 1 }, signature: goodSig, verify_key: null },
+    });
+    ok('5d null verify_key → valid:false', res.status === 200 && res.body.valid === false);
+  }
+
+  // 5e. Path traversal characters in scan address → 400 (not a valid Solana base58 address)
+  {
+    const res = await request('GET', '/scan/v1/' + encodeURIComponent('../../../etc/passwd'));
+    ok('5e path traversal addr → 400', res.status === 400, 'got ' + res.status);
+  }
+
+  // 5f. Envelope contains only metadata fields (no report data) → no_verifiable_payload
+  {
+    const res = await request('POST', '/verify/v1/signed-receipt', {
+      envelope: {
+        signature:  Buffer.alloc(64).toString('base64'),
+        verify_key: Buffer.alloc(32).toString('base64'),
+        signed_at:  new Date().toISOString(),
+        signer:     'test',
+        algorithm:  'Ed25519',
+      },
+    });
+    ok('5f metadata-only → valid:false', res.status === 200 && res.body.valid === false);
+    ok('5f reason = no_verifiable_payload', res.body.reason === 'no_verifiable_payload',
+       'got ' + res.body.reason);
+  }
+
+  // 5g. Integer verify_key (type coercion attack) → valid:false (Buffer.from throws, caught)
+  {
+    const res = await request('POST', '/verify/v1/signed-receipt', {
+      envelope: {
+        payload:    { x: 1 },
+        signature:  Buffer.alloc(64).toString('base64'),
+        verify_key: 12345,
+      },
+    });
+    ok('5g integer verify_key → valid:false', res.status === 200 && res.body.valid === false);
+  }
+
+  // 5h. Replay: submit the exact same envelope twice → consistent result (oracle is idempotent)
+  {
+    const payload = { address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', score: 77 };
+    const env = testSign(_canonicalJSON(payload));
+    const body = { envelope: { payload, ...env } };
+    const res1 = await request('POST', '/verify/v1/signed-receipt', body);
+    const res2 = await request('POST', '/verify/v1/signed-receipt', body);
+    ok('5h replay → same HTTP status', res1.status === res2.status);
+    ok('5h replay → same valid field',  res1.body.valid  === res2.body.valid);
+    ok('5h replay → same reason',       res1.body.reason === res2.body.reason);
+  }
+
+  // 5i. Scan: iris_score is a number in the valid range [0, 100]
+  {
+    const res = await request('GET', '/scan/v1/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+    ok('5i iris_score >= 0', res.status === 200 &&
+       typeof res.body.iris_score === 'number' && res.body.iris_score >= 0);
+    ok('5i iris_score <= 100', res.body.iris_score <= 100, 'got ' + res.body.iris_score);
+  }
+
+  // 5j. signed_at far in past → oracle still reports mathematically_valid (no time-bound check)
+  {
+    const payload = { data: 'ancient', ts: '2020-01-01' };
+    const env = testSign(_canonicalJSON(payload));
+    const staleEnv = { ...env, signed_at: '2020-01-01T00:00:00.000Z' };
+    const res = await request('POST', '/verify/v1/signed-receipt', {
+      envelope: { payload, ...staleEnv },
+    });
+    ok('5j stale signed_at → still mathematically_valid',
+       res.status === 200 && res.body.mathematically_valid === true,
+       'got ' + res.body.mathematically_valid);
+  }
+
+  // 5k. Governance with integer program_id (type injection) → 400 or error
+  {
+    const res = await request('POST', '/monitor/v1/governance-change', {
+      program_id: 99999,
+    });
+    ok('5k integer program_id → 400', res.status === 400, 'got ' + res.status);
+  }
+
+  // 5l. Feed response includes signed_at (ISO-format string) and signature field
+  {
+    const res = await request('GET', '/feed/v1/new-spl-tokens');
+    ok('5l feed signed_at is string', res.status === 200 && typeof res.body.signed_at === 'string');
+    ok('5l feed signature type is string or null',
+       typeof res.body.signature === 'string' || res.body.signature === null);
+  }
+
+  // 5m. Governance: extra unknown fields in body → 200 (unknown fields silently ignored)
+  {
+    const res = await request('POST', '/monitor/v1/governance-change', {
+      program_id:     'GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPiCXLf',
+      unknown_field:  'ignored',
+      another_extra:  12345,
+    });
+    ok('5m extra body fields → 200', res.status === 200, 'got ' + res.status);
+  }
+}
+
 // ── Main runner ───────────────────────────────────────────────────────────────
 async function run() {
   const t0 = Date.now();
@@ -580,6 +769,7 @@ async function run() {
     await testScanEndpoint();
     await testGovernanceEndpoint();
     await testFeedEndpoint();
+    await testAdversarial();
   } finally {
     await stopServer();
   }
