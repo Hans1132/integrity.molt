@@ -1,184 +1,275 @@
 # integrity.molt
 
-**Autonomous AI Security Agent for Solana**
+**Solana A2A Security Oracle**
 
-On-chain risk intelligence with cryptographically verifiable reports and x402 micropayments.
-
----
-
-## Features
-
-- **Smart contract security scanning** — Anchor/native Rust programs, token mints, DeFi pools, wallets
-- **Ed25519 signed reports** — every report is cryptographically signed and independently verifiable
-- **x402 pay-per-scan** — no accounts, no subscriptions required; pay per query with USDC
-- **Verified Delta Reports** — cryptographically signed diffs between two scans of the same address
-- **Adversarial Simulation** — AI agent forks on-chain state and systematically probes exploit paths
-- **Agent-to-agent commerce ready** — machine-readable API, x402 discovery, OpenAPI spec
+Solana-first A2A security oracle issuing Ed25519-signed, server-verifiable risk receipts for agents and small protocols.
 
 ---
 
-## API
+## What it does
 
-**Base URL:** `https://intmolt.org`
+integrity.molt lets an on-chain agent or a sub-$10M TVL Solana protocol ask:
 
-### Scan endpoints (x402 micropayments)
+- **"Is this address safe to interact with?"** → signed IRIS risk score, instantly
+- **"Has this program's governance changed?"** → signed verdict with per-transaction findings
+- **"What new tokens minted recently?"** → signed pull-feed, no subscription required
+- **"Is this receipt genuine?"** → server-side Ed25519 key-pinned verification
 
-| Endpoint | Method | Price | Description |
-|----------|--------|-------|-------------|
-| `/api/v2/scan/quick` | POST | 1.00 USDC | Fast RPC-only risk assessment |
-| `/api/v2/scan/deep` | POST | 5.00 USDC | Full multi-agent security audit |
-| `/api/v2/scan/token` | POST | 1.00 USDC | Token security audit (mint/freeze authority, supply) |
-| `/api/v2/scan/wallet` | POST | 1.00 USDC | Wallet profiling and risk classification |
-| `/api/v2/scan/pool` | POST | 1.00 USDC | DeFi pool safety scan |
-| `/api/v2/scan/evm-token` | POST | 1.00 USDC | EVM token honeypot + source analysis |
-| `/api/v1/scan/token-audit` | POST | 0.75 USDC | Deep token security audit with LLM analysis |
+Every answer is an **Ed25519-signed portable envelope**, verifiable offline against the published JWKS. The oracle is A2A-discoverable via `/.well-known/agent-card.json` and payable per-call via the x402 protocol.
 
-### Delta & history endpoints
+## Why it's not just a retail scanner
 
-| Endpoint | Method | Price | Description |
-|----------|--------|-------|-------------|
-| `/api/v1/history/:address` | GET | Free | Snapshot history for an address |
-| `/api/v1/delta/:address` | GET | 0.50 USDC | Signed diff: latest vs. baseline snapshot |
-| `/api/v1/delta/:address/:ts1/:ts2` | GET | 0.50 USDC | Signed diff between two specific snapshots |
+Most security tools return human-readable HTML or PDF. integrity.molt returns structured JSON envelopes that an agent can sign-check, forward, cache, and chain — without a human in the loop. The receipt carries the oracle's public key fingerprint; a downstream agent can verify authenticity without calling home.
 
-### Adversarial simulation
+---
 
-| Endpoint | Method | Price | Description |
-|----------|--------|-------|-------------|
-| `/api/v1/adversarial/playbooks` | GET | Free | List all attack playbooks |
-| `/api/v1/adversarial/simulate` | POST | 5.00 USDC | Full adversarial simulation against a program |
+## Quickstart
 
-### Discovery endpoints (free)
+```bash
+# Free scan — returns signed envelope
+curl https://intmolt.org/scan/v1/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
+
+# Verify the receipt you just got
+curl -X POST https://intmolt.org/verify/v1/signed-receipt \
+  -H "Content-Type: application/json" \
+  -d '{"envelope": <paste scan response here>}'
+
+# Pull new SPL token mints (last 24h)
+curl "https://intmolt.org/feed/v1/new-spl-tokens"
+
+# Governance change detection — paid (0.15 USDC via x402)
+curl -X POST https://intmolt.org/monitor/v1/governance-change \
+  -H "Content-Type: application/json" \
+  -H "X-Payment: <x402-envelope>" \
+  -d '{"program_id": "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPiCXLf"}'
+```
+
+---
+
+## A2A Oracle Endpoints
+
+### Free discovery tier
 
 | Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Service health check |
-| `GET /services` | Full service catalog with pricing |
-| `GET /openapi.json` | OpenAPI 3.0 specification |
-| `GET /.well-known/x402.json` | x402 protocol discovery |
-| `GET /stats` | Public reputation statistics |
+|---|---|
+| `GET /scan/v1/:address` | IRIS risk scan, signed envelope |
+| `GET /feed/v1/new-spl-tokens` | Pull-feed of new SPL mint events, signed |
+| `GET /.well-known/agent-card.json` | A2A skill + pricing discovery |
+| `GET /.well-known/jwks.json` | Ed25519 public key (RFC 8037 JWK) |
+| `GET /.well-known/receipts-schema.json` | JSON Schema for signed envelopes |
+
+### Attestation tier (0.15 USDC via x402)
+
+| Endpoint | Description |
+|---|---|
+| `POST /monitor/v1/governance-change` | Signed verdict on program governance events |
+
+### Verification (free, no paywall)
+
+| Endpoint | Description |
+|---|---|
+| `POST /verify/v1/signed-receipt` | Server-side Ed25519 receipt verification with key pinning |
+
+### Legacy deep-scan tier (existing endpoints)
+
+| Endpoint | Price |
+|---|---|
+| `POST /api/v1/scan/quick` | 1.00 USDC |
+| `POST /api/v1/scan/deep` | 5.00 USDC |
+| `POST /api/v1/scan/token` | 1.00 USDC |
+| `POST /api/v1/adversarial/simulate` | 5.00 USDC |
+| `POST /api/v1/delta/:address` | 0.50 USDC |
 
 ---
 
-## x402 Payment Flow
+## Signed Receipt Flow
 
-```bash
-# 1. Check what payment is required
-curl -X POST https://intmolt.org/api/v1/scan/token-audit \
-  -H "Content-Type: application/json" \
-  -d '{"token_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"}'
-# → 402 with payment instructions
+Every oracle response is a **flat signed envelope**:
 
-# 2. Send USDC on Solana mainnet, include tx sig as X-Payment header
-curl -X POST https://intmolt.org/api/v1/scan/token-audit \
-  -H "Content-Type: application/json" \
-  -H "X-Payment: <base64-encoded-payment-envelope>" \
-  -d '{"token_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"}'
+```json
+{
+  "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "iris_score": 94,
+  "risk_level": "low",
+  "risk_factors": [],
+  "signed_at": "2026-04-24T10:00:00.000Z",
+  "signature": "<base64 Ed25519 sig>",
+  "verify_key": "<base64 raw 32-byte public key>",
+  "key_id": "<first 16 chars of verify_key>",
+  "signer": "integrity.molt",
+  "algorithm": "Ed25519"
+}
 ```
 
-API key subscribers skip the payment step entirely:
+**To verify a receipt:**
+
 ```bash
-curl -X POST https://intmolt.org/api/v1/scan/token-audit \
-  -H "Authorization: Bearer im_yourkey" \
+curl -X POST https://intmolt.org/verify/v1/signed-receipt \
   -H "Content-Type: application/json" \
-  -d '{"token_mint": "..."}'
+  -d '{"envelope": <envelope json>}'
 ```
 
----
+```json
+{
+  "valid": true,
+  "key_pinned": true,
+  "mathematically_valid": true,
+  "reason": "signature_valid",
+  "key_id": "...",
+  "signed_at": "...",
+  "issuer": "integrity.molt"
+}
+```
 
-## Verify Reports
+`valid: true` requires **both** correct Ed25519 math AND the key matching the server's JWKS. A self-signed envelope with a foreign key returns `valid: false, reason: key_not_pinned, mathematically_valid: true` — so downstream agents can distinguish oracle attestation from arbitrary Ed25519 proofs.
 
-Every report is signed with Ed25519. Three ways to verify:
+**Offline verification** (Python, no HTTP call):
 
-**Browser:** `https://intmolt.org/verify` — paste any `.signed.json` or delta report
-
-**Python:**
 ```python
 import json, base64, nacl.signing
 
-with open('report.signed.json') as f:
-    env = json.load(f)
-
-vk = nacl.signing.VerifyKey(base64.b64decode(env['verify_key']))
-vk.verify(env['report'].encode(), base64.b64decode(env['signature']))
+receipt = json.load(open('receipt.json'))
+vk = nacl.signing.VerifyKey(base64.b64decode(receipt['verify_key']))
+payload = {k: v for k, v in receipt.items()
+           if k not in {'signature','verify_key','key_id','signed_at','signer','algorithm','report'}}
+canonical = json.dumps(payload, sort_keys=True, separators=(',', ':'))
+vk.verify(canonical.encode(), base64.b64decode(receipt['signature']))
 print("✓ Valid")
 ```
 
-**CLI:** `python3 verify-report.py report.signed.json`
-
-The public verify key is published at `GET /services` → `reportSigning.verifyKey`.
-
 ---
 
-## Adversarial Simulation
+## Agent Discovery
 
 ```bash
-curl -X POST https://intmolt.org/api/v1/adversarial/simulate \
-  -H "Authorization: Bearer im_yourkey" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
-    "skip_fork": false
-  }'
+curl https://intmolt.org/.well-known/agent-card.json
 ```
 
-Attack playbooks: `authority_takeover`, `oracle_manipulation`, `missing_signer_check`,
-`account_confusion`, `drain_vault`, `reentrancy_cpi`, `integer_overflow`.
-
-Results are signed with Ed25519 and include CWE mappings, LLM-generated exploit paths, and remediation recommendations.
+Returns skills list with endpoint paths, pricing tiers, and example inputs — compatible with A2A agent registries and ElizaOS plugin discovery.
 
 ---
 
-## Self-hosted setup
+## x402 Payment Protocol
+
+Paid endpoints return `402` with payment instructions. No account required.
 
 ```bash
-git clone git@github.com:Hans1132/integrity.molt.git
-cd integrity.molt
-cp .env.example .env
-# Fill in .env values (see .env.example for documentation)
+# 1. Get payment instructions
+curl -X POST https://intmolt.org/monitor/v1/governance-change \
+  -d '{"program_id": "..."}' -H "Content-Type: application/json"
+# → 402 { "accepts": [{ "scheme": "exact", "asset": "USDC", ... }] }
 
+# 2. Send USDC on Solana, include tx sig
+curl -X POST https://intmolt.org/monitor/v1/governance-change \
+  -H "X-Payment: <base64-x402-envelope>" \
+  -H "Content-Type: application/json" \
+  -d '{"program_id": "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPiCXLf"}'
+```
+
+---
+
+## Smoke Test
+
+```bash
+# Unit tests (no server required)
+npm run test:a2a
+
+# E2E smoke against live server
+API_URL=https://intmolt.org bash scripts/smoke-a2a.sh
+```
+
+---
+
+## Demo Flow (3 min)
+
+```bash
+# 1. Free scan — agent discovers risk score
+curl https://intmolt.org/scan/v1/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA \
+  | tee /tmp/receipt.json | jq '{address, iris_score, risk_level, signature}'
+
+# 2. Verify the receipt — no secret, no trust-me
+curl -X POST https://intmolt.org/verify/v1/signed-receipt \
+  -H "Content-Type: application/json" \
+  -d "{\"envelope\": $(cat /tmp/receipt.json)}" \
+  | jq '{valid, key_pinned, reason}'
+
+# 3. Pull feed of new tokens
+curl "https://intmolt.org/feed/v1/new-spl-tokens?since=$(date -u -d '1 hour ago' +%FT%TZ)" \
+  | jq '{count, since}'
+
+# 4. Agent-card discovery
+curl https://intmolt.org/.well-known/agent-card.json | jq '.skills[].id'
+```
+
+---
+
+## Security Properties
+
+- Ed25519 signatures over `canonicalJSON` (sorted-key, no pretty-print ambiguity)
+- Key pinning on `/verify/v1/signed-receipt` — oracle key vs. foreign key is explicit
+- Anti-replay: USDC transaction signatures stored in SQLite with atomic `INSERT OR IGNORE`
+- x402 payment enforced by middleware; governance handler asserts `req.paymentVerified` as defense-in-depth
+- Rate limiting on free endpoints (10 req/min scan, 20 req/min feed per IP)
+- Subprocess concurrency bounded (`SIGN_CONCURRENCY=8`)
+
+---
+
+## Known Limitations
+
+- Governance endpoint uses Helius Enhanced Transactions API; falls back to mock verdict if `HELIUS_API_KEY` is not set (response includes `data_source: "mock"`)
+- Transparency log / Merkle anchoring not yet implemented — receipts are atomic, not chained
+- Solana-only oracle surface; EVM scanner exists but is a separate legacy endpoint
+- `sign-report.py` subprocess dependency (Python + PyNaCl) — migrating to native Node.js Ed25519 is planned
+
+---
+
+## Self-hosted Setup
+
+```bash
+git clone <repo>
+cp .env.example .env
+# Fill in: HELIUS_API_KEY, OPENROUTER_API_KEY, USDC_ATA, SOLANA_WALLET_ADDRESS
 npm install
 node server.js
 ```
 
-**Required secrets** (stored in `/root/.secrets/`, never committed):
-- `signing_key.bin` — Ed25519 private key (generate: `python3 -c "import nacl.signing, open; k=nacl.signing.SigningKey.generate(); open('.secrets/signing_key.bin','wb').write(bytes(k))"`)
+Required secrets in `/root/.secrets/` (never committed):
+- `signing_key.bin` — Ed25519 private key (32 bytes raw)
 - `verify_key.bin` — corresponding public key
-- `openrouter_api_key` — OpenRouter API key for LLM analysis
-- `alchemy_api_key` — Alchemy RPC key (optional, improves reliability)
-- `etherscan_api_key` — Etherscan API key (for EVM scanning)
-
-**Required services:**
-- PostgreSQL (schema auto-created on first start)
-- NGINX reverse proxy (see `nginx.conf.example`)
-- systemd service (see `intmolt.service.example`)
 
 ---
 
 ## Architecture
 
 ```
-server.js              — Express app, x402 payment middleware, API routing
-scanners/
-  token-audit.js       — SPL token security audit (web3.js + LLM)
-  evm-token.js         — EVM token analysis (Etherscan + Alchemy)
+server.js                   Express monolit, x402 middleware, všechny mount body
 src/
+  a2a/
+    handler.js              JSON-RPC 2.0 + SSE + buildAgentCard()
+    autopilot.js            AutoPilot PDA co-signing
+  routes/
+    a2a-oracle.js           4 A2A oracle endpointy (verify, scan, monitor, feed)
+  crypto/
+    sign.js                 asyncSign(), canonicalJSON(), semaphore
+  monitor/
+    alerts.js               Detection engine (authority change, program upgrade, …)
+    webhook-receiver.js     Helius webhook ingestion → events.jsonl
+  features/
+    iris-score.js           IRIS scoring (free discovery layer)
   delta/
-    store.js           — Snapshot filesystem storage
-    diff.js            — Structured diff engine with LLM explanations
-    signing.js         — Ed25519 delta report signing
-  adversarial/
-    fork.js            — solana-test-validator fork + account discovery
-    playbooks.js       — Attack playbook definitions (7 playbooks, CWE-mapped)
-    executor.js        — @solana/web3.js transaction-level exploit executor
-    runner.js          — AI orchestrator: fork → analyze → simulate → sign
-report-generator.js    — Puppeteer PDF/PNG generation
-auth.js                — Passport.js (Google/GitHub/Twitter/local)
-db.js                  — PostgreSQL (users, API keys, payments, events)
+    signing.js              Delta report signing
+  payment/
+    verify-pda.js           Metaplex Asset Signer PDA derivation
+config/
+  pricing.js                Single source of truth pro ceny
+tests/
+  a2a-oracle.test.js        70 unit tests (350 ms)
+scripts/
+  smoke-a2a.sh              E2E smoke skript
 ```
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT
