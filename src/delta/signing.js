@@ -2,7 +2,7 @@
 // src/delta/signing.js — Ed25519 signing for Delta Reports
 // Uses the shared async signing utility (src/crypto/sign.js) — no execSync.
 
-const { asyncSign } = require('../crypto/sign');
+const { asyncSign, canonicalJSON } = require('../crypto/sign');
 
 /**
  * Sign a delta report object with the integrity.molt Ed25519 key.
@@ -15,7 +15,7 @@ const { asyncSign } = require('../crypto/sign');
  * @returns {Promise<object>}   deltaReport extended with signature and verify_key fields
  */
 async function signDeltaReport(deltaReport) {
-  const payload = JSON.stringify(deltaReport, null, 2);
+  const payload = canonicalJSON(deltaReport);
 
   let envelope;
   try {

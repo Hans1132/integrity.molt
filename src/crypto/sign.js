@@ -50,4 +50,27 @@ function asyncSign(reportText) {
   });
 }
 
-module.exports = { asyncSign, SIGN_SCRIPT };
+/**
+ * canonicalJSON — deterministic JSON serialization with sorted keys.
+ * Both sign and verify sides must use this to ensure byte-identical output
+ * regardless of key insertion order or consumer language.
+ *
+ * @param {*} obj  Any JSON-serializable value
+ * @returns {string}
+ */
+function canonicalJSON(obj) {
+  if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+    return JSON.stringify(obj);
+  }
+  const sorted = Object.keys(obj).sort().reduce((acc, k) => {
+    acc[k] = obj[k];
+    return acc;
+  }, {});
+  // Recurse into values (shallow sort is enough for 1-level report payloads,
+  // but full recursion prevents future footguns from nested objects)
+  return '{' + Object.keys(sorted).map(k =>
+    JSON.stringify(k) + ':' + canonicalJSON(sorted[k])
+  ).join(',') + '}';
+}
+
+module.exports = { asyncSign, canonicalJSON, SIGN_SCRIPT };

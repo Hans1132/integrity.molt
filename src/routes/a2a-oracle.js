@@ -18,7 +18,7 @@ const crypto = require('crypto');
 
 const router = express.Router();
 
-const { asyncSign } = require('../crypto/sign');
+const { asyncSign, canonicalJSON } = require('../crypto/sign');
 const { isSolanaAddress } = require('../validation/address');
 const { calculateIRIS } = require('../features/iris-score');
 const { enrichScanResult } = require('../enrichment');
@@ -185,8 +185,10 @@ router.post('/verify/v1/signed-receipt', express.json({ limit: '128kb' }), _veri
     }
   }
 
-  // Reconstruct canonical signed text: JSON.stringify of payload (same as asyncSign caller)
-  const canonicalText = JSON.stringify(payloadObj);
+  // Reconstruct canonical signed text using sorted-key deterministic JSON.
+  // Both sign side (asyncSign callers) and verify side must use canonicalJSON to ensure
+  // byte-identical output regardless of key insertion order or consumer language.
+  const canonicalText = canonicalJSON(payloadObj);
 
   // Decode key and signature
   let keyBytes, sigBytes;
@@ -238,13 +240,20 @@ router.post('/verify/v1/signed-receipt', express.json({ limit: '128kb' }), _veri
     return res.json({ valid: false, reason: 'verification_error', detail: e.message.slice(0, 100) });
   }
 
+  // `valid: true` requires both correct Ed25519 math AND the key being ours.
+  // A self-signed envelope with a foreign key returns valid:false, reason:'key_not_pinned'.
+  // `mathematically_valid` exposes the raw math check for callers who explicitly want it.
+  const attested = valid && keyPinned;
   return res.json({
-    valid,
-    key_id:     key_id || expectedKeyId,
-    signed_at:  signed_at || null,
-    issuer:     signer || null,
-    key_pinned: keyPinned,
-    reason:     valid ? 'signature_valid' : 'invalid_signature',
+    valid:                attested,
+    key_pinned:           keyPinned,
+    mathematically_valid: valid,
+    key_id:               key_id || expectedKeyId,
+    signed_at:            signed_at || null,
+    issuer:               signer || null,
+    reason:               !valid ? 'invalid_signature'
+                          : !keyPinned ? 'key_not_pinned'
+                          : 'signature_valid',
   });
 });
 
@@ -274,7 +283,7 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
     // Sign the report payload (canonical JSON string)
     let envelope;
     try {
-      envelope = await asyncSign(JSON.stringify(reportPayload));
+      envelope = await asyncSign(canonicalJSON(reportPayload));
     } catch (e) {
       console.error('[a2a-oracle] asyncSign failed for scan:', e.message);
       envelope = {};
