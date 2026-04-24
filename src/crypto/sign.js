@@ -16,6 +16,25 @@ const { spawn } = require('child_process');
 
 const SIGN_SCRIPT = '/root/scanner/sign-report.py';
 const SIGN_TIMEOUT_MS = 10_000;
+const SIGN_CONCURRENCY = 8; // max concurrent python3 processes
+
+// Simple counting semaphore to bound concurrent subprocesses.
+let _active = 0;
+const _queue = [];
+function _acquireSemaphore() {
+  if (_active < SIGN_CONCURRENCY) {
+    _active++;
+    return Promise.resolve();
+  }
+  return new Promise(resolve => _queue.push(resolve));
+}
+function _releaseSemaphore() {
+  _active--;
+  if (_queue.length > 0) {
+    _active++;
+    _queue.shift()();
+  }
+}
 
 /**
  * asyncSign — pass reportText via stdin to sign-report.py, return parsed JSON envelope.
@@ -26,8 +45,10 @@ const SIGN_TIMEOUT_MS = 10_000;
  * @returns {Promise<object>}  Envelope from sign-report.py:
  *   { report, signature, verify_key, key_id, signed_at, signer, algorithm }
  */
-function asyncSign(reportText) {
+async function asyncSign(reportText) {
+  await _acquireSemaphore();
   return new Promise((resolve, reject) => {
+    const done = (fn, val) => { _releaseSemaphore(); fn(val); };
     const proc = spawn('python3', [SIGN_SCRIPT], { timeout: SIGN_TIMEOUT_MS });
     let stdout = '';
     let stderr = '';
@@ -36,15 +57,16 @@ function asyncSign(reportText) {
     proc.on('close', code => {
       if (code === 0) {
         try {
-          resolve(JSON.parse(stdout.trim()));
+          done(resolve, JSON.parse(stdout.trim()));
         } catch (e) {
-          reject(new Error('sign-report.py invalid JSON: ' + stdout.slice(0, 200)));
+          done(reject, new Error('sign-report.py invalid JSON: ' + stdout.slice(0, 200)));
         }
       } else {
-        reject(new Error('sign-report.py exited ' + code + ': ' + stderr.slice(0, 200)));
+        done(reject, new Error('sign-report.py exited ' + code + ': ' + stderr.slice(0, 200)));
       }
     });
-    proc.on('error', reject);
+    proc.on('error', e => done(reject, e));
+    proc.stdin.on('error', e => done(reject, e)); // EPIPE if sign-report.py dies before reading stdin
     proc.stdin.write(reportText);
     proc.stdin.end();
   });

@@ -672,7 +672,10 @@ async function requireApiKey(req, res, next) {
 function requirePayment(accepts, requiredMicroUsdc = 0) {
   return async (req, res, next) => {
     // Subscribers s platným API klíčem přeskočí x402 platební bránu
-    if (req.apiKey) return next();
+    if (req.apiKey) {
+      req.paymentVerified = true;
+      return next();
+    }
 
     const resource = accepts[0]?.resource;
     const xPayment = req.headers['x-payment'];
@@ -708,6 +711,7 @@ function requirePayment(accepts, requiredMicroUsdc = 0) {
     console.log(`[payment] VERIFIED: sig=${result.signature} micro_usdc=${result.microUsdc}`);
     db.logEvent({ name: 'payment_success', resource, ip: req.ip, meta: { micro_usdc: result.microUsdc } })
       .catch(e => console.error('[db] logEvent error:', e.message));
+    req.paymentVerified = true;
     next();
   };
 }

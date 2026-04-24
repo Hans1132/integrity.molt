@@ -313,8 +313,11 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
  * Falls back to a deterministic mock verdict if HELIUS_API_KEY is not set.
  */
 router.post('/monitor/v1/governance-change', express.json({ limit: '8kb' }), async (req, res) => {
-  // Payment is enforced by the requirePayment middleware registered in server.js.
-  // We trust that it ran. (This route is mounted after middleware in server.js.)
+  // Defense-in-depth: requirePayment in server.js sets req.paymentVerified before mounting
+  // this router. Assert it here so any future mount-order refactor fails loudly, not silently.
+  if (!req.paymentVerified) {
+    return res.status(402).json({ error: 'payment_required', message: 'x402 payment required' });
+  }
   const { program_id, window_slots } = req.body || {};
 
   if (!program_id || typeof program_id !== 'string') {
@@ -428,31 +431,34 @@ router.get('/feed/v1/new-spl-tokens', _feedRL, async (req, res) => {
 
   try {
     if (fs.existsSync(EVENTS_FILE)) {
-      const raw = fs.readFileSync(EVENTS_FILE, 'utf-8');
-      const lines = raw.split('\n').filter(Boolean);
-
-      for (const line of lines) {
-        let entry;
-        try { entry = JSON.parse(line); } catch { continue; }
-
-        // Filter by type
-        if (!MINT_TYPES.has(entry.type)) continue;
-
-        // Filter by timestamp
-        const entryTs = entry.ts || 0;
-        if (entryTs < sinceTs) continue;
-
-        // Extract mint address: first account that looks like a mint (or first account)
-        const mintAddr = (entry.accounts || [])[0] || null;
-        if (!mintAddr) continue;
-
-        mints.push({
-          mint:       mintAddr,
-          created_at: new Date(entryTs).toISOString(),
-          slot:       entry.slot || null,
-          tx_sig:     entry.sig  || null,
+      // Stream line-by-line to avoid loading the entire file into memory.
+      // events.jsonl can grow unbounded from Helius webhook deliveries.
+      await new Promise((resolve, reject) => {
+        const rl = require('readline').createInterface({
+          input: fs.createReadStream(EVENTS_FILE, { encoding: 'utf-8' }),
+          crlfDelay: Infinity,
         });
-      }
+        rl.on('line', (line) => {
+          if (!line) return;
+          let entry;
+          try { entry = JSON.parse(line); } catch { return; }
+
+          if (!MINT_TYPES.has(entry.type)) return;
+          const entryTs = entry.ts || 0;
+          if (entryTs < sinceTs) return;
+          const mintAddr = (entry.accounts || [])[0] || null;
+          if (!mintAddr) return;
+
+          mints.push({
+            mint:       mintAddr,
+            created_at: new Date(entryTs).toISOString(),
+            slot:       entry.slot || null,
+            tx_sig:     entry.sig  || null,
+          });
+        });
+        rl.on('close', resolve);
+        rl.on('error', reject);
+      });
     }
   } catch (readErr) {
     console.error('[a2a-oracle] feed events.jsonl read error:', readErr.message);

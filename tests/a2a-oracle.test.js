@@ -139,6 +139,9 @@ const express = require('express');
 const router  = require(BASE + '/src/routes/a2a-oracle');
 
 const app = express();
+// In unit tests there is no requirePayment middleware, so we simulate payment verified
+// for the governance endpoint (which asserts req.paymentVerified as defense-in-depth).
+app.use('/monitor', (req, res, next) => { req.paymentVerified = true; next(); });
 app.use(router);
 
 // ── Start HTTP server on ephemeral port ──────────────────────────────────────
