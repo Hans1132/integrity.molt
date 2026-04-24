@@ -1,11 +1,12 @@
 {
   "name": "x402-server",
-  "version": "1.0.0",
+  "version": "0.5.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/e2e/smoke.js && node tests/security/no-secrets.js && node tests/payment/anti-replay.test.js",
+    "test": "node tests/e2e/smoke.js && node tests/security/no-secrets.js && node tests/payment/anti-replay.test.js && node tests/a2a-oracle.test.js",
     "test:anti-replay": "node tests/payment/anti-replay.test.js",
+    "test:a2a": "node tests/a2a-oracle.test.js",
     "validate:openapi": "node scripts/validate-openapi-coverage.js"
   },
   "keywords": [],

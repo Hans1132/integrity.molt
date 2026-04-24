@@ -3,6 +3,47 @@
 All notable changes to integrity.molt are documented here.
 Format: `## [vX.Y.Z] — YYYY-MM-DD`
 
+## [v0.5.0-a2a-oracle] — 2026-04-24
+
+### A2A Security Oracle MVP
+
+First release positioning integrity.molt as a Solana-first A2A security oracle
+with signed, server-verifiable receipts and agent-discoverable endpoints.
+
+#### New endpoints
+- `POST /verify/v1/signed-receipt` — server-side Ed25519 receipt verification with key pinning; free
+- `GET /scan/v1/:address` — IRIS free discovery scan for any Solana address; signed envelope
+- `POST /monitor/v1/governance-change` — paid (0.15 USDC) signed verdict on program governance events
+- `GET /feed/v1/new-spl-tokens` — public pull-feed of new SPL mint creation events; signed snapshot
+
+#### Trust layer
+- `/.well-known/agent-card.json` — A2A-discoverable skills, pricing tiers, examples (v0.5.0)
+- `/.well-known/jwks.json` — Ed25519 public key in RFC 8037 JWK format
+- `/.well-known/receipts-schema.json` — JSON Schema for signed envelope format
+
+#### Security fixes (post-audit)
+- Key pinning enforced: `valid:true` requires correct Ed25519 math AND key matching the server JWKS; foreign-signed envelopes return `valid:false, reason:key_not_pinned, mathematically_valid:true`
+- `canonicalJSON()` — sorted-key deterministic JSON on both sign and verify sides; eliminates key-order-dependent canonicalization across consumers
+- `src/delta/signing.js` — was pretty-printed `JSON.stringify(obj, null, 2)`; now `canonicalJSON()`, consistent with oracle verify path
+- `requirePayment` sets `req.paymentVerified=true`; governance handler asserts it as defense-in-depth against mount-order regressions
+
+#### Performance / reliability
+- `events.jsonl` feed reads via `readline` streaming (was `fs.readFileSync` — DoS on large files)
+- `asyncSign` subprocess bounded by semaphore (`SIGN_CONCURRENCY=8`)
+- `proc.stdin.on('error')` handler catches EPIPE on early subprocess exit
+
+#### Tests
+- `tests/a2a-oracle.test.js` — 70 unit tests; 350 ms
+- `scripts/smoke-a2a.sh` — E2E smoke for live server
+- `npm test` now includes A2A oracle suite
+
+#### Pricing model
+| Tier | Price | Endpoints |
+|---|---|---|
+| discovery | free | `/scan/v1/:address`, `/feed/v1/new-spl-tokens`, `/.well-known/*` |
+| attestation | 0.15 USDC | `/monitor/v1/governance-change` |
+| forensic | existing prices | `/api/v1/scan/deep`, `/api/v1/scan/adversarial` |
+
 ---
 
 ## [v0.5.0] — 2026-04-13
