@@ -12,9 +12,9 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>integrity.molt — Continuous Security Monitoring for Solana</title>
-  <meta name="description" content="Real-time detection of on-chain security signals for Solana protocols. Catch the patterns traditional audits miss. From $15/month.">
-  <meta name="keywords" content="Solana security monitoring, Solana risk alerts, Solana watchlist, rug pull detection, real-time Solana alerts, Ed25519 signed reports, x402 agent, integrity.molt">
+  <title>integrity.molt — Solana A2A Security Oracle</title>
+  <meta name="description" content="Solana-first A2A security oracle issuing Ed25519-signed, server-verifiable risk receipts for agents and small protocols. Free discovery tier, x402 pay-per-call.">
+  <meta name="keywords" content="Solana security oracle, A2A security, Ed25519 signed receipts, x402 payments, agent security, Solana risk score, integrity.molt">
   <meta name="author" content="integrity.molt">
   <meta name="theme-color" content="#0a0e1a">
   <link rel="canonical" href="https://intmolt.org">
@@ -22,13 +22,13 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://intmolt.org">
   <meta property="og:site_name" content="integrity.molt">
-  <meta property="og:title" content="integrity.molt — Continuous Security Monitoring for Solana">
-  <meta property="og:description" content="Real-time detection of on-chain security signals for Solana protocols. From $15/month.">
+  <meta property="og:title" content="integrity.molt — Solana A2A Security Oracle">
+  <meta property="og:description" content="Ed25519-signed risk receipts for agents and small Solana protocols. Free discovery, x402 pay-per-call attestation.">
   <meta property="og:image" content="https://intmolt.org/og-image.png">
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="integrity.molt — Continuous Security Monitoring for Solana">
-  <meta name="twitter:description" content="Real-time detection of on-chain security signals for Solana protocols. From $15/month.">
+  <meta name="twitter:title" content="integrity.molt — Solana A2A Security Oracle">
+  <meta name="twitter:description" content="Ed25519-signed risk receipts for agents and small Solana protocols. Free discovery, x402 pay-per-call attestation.">
   <meta name="twitter:image" content="https://intmolt.org/og-image.png">
   <!-- JSON-LD: SoftwareApplication -->
   <script type="application/ld+json">
@@ -884,7 +884,7 @@
       <nav>
         <a href="/">Home</a>
         <a href="/scan">Scan</a>
-        <a href="/pricing">Pricing</a>
+        <a href="/.well-known/agent-card.json" target="_blank" rel="noopener">Agent Card</a>
         <a href="/docs">Docs</a>
       </nav>
       <div class="header-actions">
@@ -898,173 +898,256 @@
 <!-- ── Hero ── -->
 <div class="hero">
   <div class="container">
-    <p class="hero-tag">integrity.molt</p>
-    <h1>Continuous security monitoring<br><span class="highlight">for Solana protocols</span></h1>
-    <p class="tagline">Real-time detection of the on-chain signals that traditional audits miss — governance changes, fake collateral, pre-signed transactions, wallet clustering.</p>
+    <p class="hero-tag">Solana A2A Security Oracle</p>
+    <h1>integrity<span style="color:var(--accent)">.</span>molt</h1>
+    <p class="tagline" style="max-width:640px;">Ed25519-signed, server-verifiable risk receipts for agents and small Solana protocols. Free discovery. x402 pay-per-call attestation. No account required.</p>
     <div class="hero-ctas">
-      <a href="/scan" class="btn-primary">Scan an address →</a>
-      <a href="/pricing" class="btn-outline">View pricing →</a>
+      <a href="#how-it-works" class="btn-primary">See how it works →</a>
+      <a href="/.well-known/agent-card.json" target="_blank" rel="noopener" class="btn-outline">Agent Card</a>
+      <a href="https://github.com/Hans1132/integrity.molt" target="_blank" rel="noopener" class="btn-outline">GitHub</a>
     </div>
-    <p style="font-size:13px;color:var(--text-faint);margin-top:12px;">Free tier: 3 scans per day · No signup required</p>
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-top:16px;">
+      curl https://intmolt.org/scan/v1/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
+    </p>
   </div>
 </div>
-
-<!-- ── Why monitoring ── -->
-<section id="why-monitoring">
-  <div class="container">
-    <h2>Audits catch bugs. Monitoring catches attacks.</h2>
-    <p class="section-sub">The largest DeFi exploit of 2026 wasn't a smart contract bug.</p>
-    <div style="max-width:680px;color:var(--text-dim);font-size:15px;line-height:1.7;">
-      <p>The $285M Drift hack combined five on-chain signals that were observable for weeks before execution — a fake collateral token manufactured with $500 of seeded liquidity, a zero-timelock governance migration, pre-signed admin transactions sitting dormant in nonce accounts, a weak 2-of-5 multisig, and three weeks of attacker staging from a Tornado Cash withdrawal.</p>
-      <p style="margin-top:16px;">None of these were covered by traditional audits. No commercial scanner monitors them in combination. We built integrity.molt to close that gap.</p>
-    </div>
-    <p style="margin-top:24px;"><a href="https://x.com/HLo18147" target="_blank" rel="noopener" class="btn-outline" style="display:inline-block;padding:10px 20px;border-radius:7px;border:1px solid var(--border);font-size:14px;">Read the Drift post-mortem →</a></p>
-  </div>
-</section>
-
-<!-- ── What we monitor ── -->
-<section id="what-we-monitor">
-  <div class="container">
-    <h2>Five signal categories. One risk score.</h2>
-    <p class="section-sub">The IRIS methodology scores addresses across four dimensions — Inflows, Rights, Imbalance, Speed — trained on 33,359 scam pools from the SolRPDS dataset.</p>
-    <div class="signal-grid">
-      <div class="signal-card">
-        <h3>Governance signals</h3>
-        <p>Timelock changes, multisig threshold migrations, admin key rotations, and DAO parameter updates on protocols with $10M+ TVL.</p>
-      </div>
-      <div class="signal-card">
-        <h3>Token provenance</h3>
-        <p>Mint/freeze authority, holder concentration, deployer history, liquidity depth, and cross-chain bridge patterns.</p>
-      </div>
-      <div class="signal-card">
-        <h3>Wallet behavior</h3>
-        <p>Transaction clustering, dormant address activation, pre-signed nonce accounts, and patterns matching known attacker infrastructure.</p>
-      </div>
-      <div class="signal-card">
-        <h3>Pool dynamics</h3>
-        <p>LP distribution, wash trading signals, oracle manipulation risk, and collateral onboarding anomalies.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── Built for who ── -->
-<section id="built-for">
-  <div class="container">
-    <h2>Built for protocol teams and AI agents</h2>
-    <div class="audience-grid">
-      <div class="audience-card">
-        <h3>Protocol teams</h3>
-        <p>Monitor your treasury, governance, and integrated tokens in real time. Get alerts before signals become incidents.</p>
-        <a href="/pricing" style="font-size:14px;color:var(--accent);">See pricing →</a>
-      </div>
-      <div class="audience-card">
-        <h3>AI agents</h3>
-        <p>Pay-per-scan via x402. Ed25519-signed reports your agent can cryptographically verify before executing trades.</p>
-        <a href="/docs#agents" style="font-size:14px;color:var(--accent);">Read agent docs →</a>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- ── How it works ── -->
 <section id="how-it-works">
   <div class="container">
+    <div class="section-tag">A2A Oracle Flow</div>
     <h2>How it works</h2>
+    <p class="section-sub">Four steps. No account. No SDK. Any HTTP client with a Solana wallet.</p>
     <div class="steps-grid">
       <div class="step">
-        <div class="step-num">1</div>
-        <h3>Add addresses to watchlist</h3>
-        <p>Submit token mints, wallets, or program IDs via dashboard or API.</p>
+        <div class="step-num">STEP 01</div>
+        <div class="step-title">Agent calls scan</div>
+        <div class="step-desc">Free. Returns signed IRIS risk score for any Solana address.</div>
+        <div class="step-code">GET /scan/v1/:address</div>
       </div>
       <div class="step">
-        <div class="step-num">2</div>
-        <h3>Continuous monitoring</h3>
-        <p>We scan continuously, combining 33k-token scam database, IRIS scoring, and on-chain state monitoring.</p>
+        <div class="step-num">STEP 02</div>
+        <div class="step-title">Oracle returns signed receipt</div>
+        <div class="step-desc">JSON envelope with Ed25519 signature, verify_key, and key_id. Portable — forward it to any counterparty.</div>
+        <div class="step-code">{ iris_score, risk_level,<br>  signature, verify_key }</div>
       </div>
       <div class="step">
-        <div class="step-num">3</div>
-        <h3>Signed alerts</h3>
-        <p>When signals cross thresholds, you get alerts — email, webhook, or on-chain attestation. Every report is Ed25519-signed.</p>
+        <div class="step-num">STEP 03</div>
+        <div class="step-title">Agent verifies receipt</div>
+        <div class="step-desc">Server-side key-pinned verification — or offline against the JWKS. No trust-me required.</div>
+        <div class="step-code">POST /verify/v1/signed-receipt<br>→ { valid: true, key_pinned: true }</div>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 04</div>
+        <div class="step-title">Paid governance check</div>
+        <div class="step-desc">0.15 USDC via x402. Signed verdict on program governance events — authority changes, program upgrades.</div>
+        <div class="step-code">POST /monitor/v1/governance-change<br>→ { verdict, findings, signature }</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Pricing snapshot ── -->
+<!-- ── Why not just a scanner ── -->
+<section id="why-oracle">
+  <div class="container">
+    <div class="section-tag">Oracle vs Scanner</div>
+    <h2>Why not just a scanner?</h2>
+    <p class="section-sub">Most security tools return human-readable output. integrity.molt returns composable signed envelopes.</p>
+    <div class="signal-grid">
+      <div class="signal-card">
+        <h3>Composable receipts</h3>
+        <p>A signed envelope is portable JSON. An agent can forward it, chain it into a decision, cache it, or hand it to an auditor — without re-fetching.</p>
+      </div>
+      <div class="signal-card">
+        <h3>Server-verifiable signatures</h3>
+        <p><code style="font-family:var(--mono);font-size:12px;color:var(--accent)">valid:true</code> requires both correct Ed25519 math AND the key matching the oracle's JWKS. Foreign-signed envelopes are explicitly flagged as <code style="font-family:var(--mono);font-size:12px;color:var(--warn)">key_not_pinned</code>.</p>
+      </div>
+      <div class="signal-card">
+        <h3>A2A JSON-first API</h3>
+        <p>Every response is structured JSON — no PDF, no dashboard, no scraping required. Discoverable via <code style="font-family:var(--mono);font-size:12px;color:var(--accent)">/.well-known/agent-card.json</code>.</p>
+      </div>
+      <div class="signal-card">
+        <h3>x402 pay-per-call</h3>
+        <p>No subscription, no API key negotiation. Send USDC on Solana, include the tx sig as <code style="font-family:var(--mono);font-size:12px;color:var(--accent)">X-Payment</code> header. Anti-replay enforced atomically.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Live endpoints ── -->
+<section id="live-endpoints">
+  <div class="container">
+    <div class="section-tag">Live on intmolt.org</div>
+    <h2>Live endpoints</h2>
+    <p class="section-sub">All endpoints are live on mainnet. No waitlist.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:760px;">
+
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px 24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
+        <div style="flex-shrink:0;min-width:200px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--accent-dim);margin-bottom:4px;">FREE DISCOVERY</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--accent);">GET /scan/v1/:address</div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:13px;color:var(--text-dim);">IRIS risk score for any Solana address. Signed Ed25519 envelope. Rate-limited, no auth required.</div>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-faint);">→ { iris_score, risk_level, risk_factors, signature, verify_key }</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px 24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
+        <div style="flex-shrink:0;min-width:200px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--accent-dim);margin-bottom:4px;">FREE VERIFICATION</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--accent);">POST /verify/v1/signed-receipt</div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:13px;color:var(--text-dim);">Server-side Ed25519 verification with key pinning. Pass any oracle envelope, get back trust verdict.</div>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-faint);">→ { valid, key_pinned, mathematically_valid, reason }</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px 24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
+        <div style="flex-shrink:0;min-width:200px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--warn);margin-bottom:4px;">0.15 USDC · x402</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--accent);">POST /monitor/v1/governance-change</div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:13px;color:var(--text-dim);">Signed verdict on governance events for a Solana program. Authority changes, program upgrades, last 50 txs.</div>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-faint);">→ { verdict, findings[], signature, verify_key }</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px 24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
+        <div style="flex-shrink:0;min-width:200px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--accent-dim);margin-bottom:4px;">FREE DISCOVERY</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--accent);">GET /.well-known/agent-card.json</div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:13px;color:var(--text-dim);">A2A agent-card with skills, pricing tiers, example inputs. Compatible with agent registries and ElizaOS.</div>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-faint);">→ { skills[], pricing_tiers, endpoints[], examples[] }</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Public Goods ── -->
+<section id="public-goods">
+  <div class="container">
+    <div class="section-tag">Public Goods</div>
+    <h2>Open by design</h2>
+    <p class="section-sub">The trust layer is public. The verification endpoint is free. Receipts are offline-verifiable.</p>
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num">OPEN</div>
+        <div class="step-title">Free verification</div>
+        <div class="step-desc">POST /verify/v1/signed-receipt has no paywall. Any agent can verify any receipt without calling a paid API.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">OPEN</div>
+        <div class="step-title">Published JWKS</div>
+        <div class="step-desc">Ed25519 public key at /.well-known/jwks.json (RFC 8037). Verify receipts offline in Python, Go, or TypeScript without contacting the server.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">OPEN</div>
+        <div class="step-title">Agent-discoverable</div>
+        <div class="step-desc">/.well-known/agent-card.json lists all skills, endpoints, and pricing tiers. No docs required for integration.</div>
+      </div>
+    </div>
+    <div style="margin-top:32px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px 24px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-bottom:10px;">Offline Python verify — no HTTP call:</div>
+      <pre style="font-family:var(--mono);font-size:12px;color:var(--text-dim);line-height:1.7;white-space:pre-wrap;margin:0;">import json, base64, nacl.signing
+receipt = json.load(open('receipt.json'))
+vk = nacl.signing.VerifyKey(base64.b64decode(receipt['verify_key']))
+payload = {k: v for k, v in receipt.items()
+           if k not in {'signature','verify_key','key_id','signed_at','signer','algorithm','report'}}
+canonical = json.dumps(payload, sort_keys=True, separators=(',', ':'))
+vk.verify(canonical.encode(), base64.b64decode(receipt['signature']))
+print("✓ Valid")</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ── Pricing tiers ── -->
 <section id="pricing">
   <div class="container">
-    <h2>Simple, transparent pricing</h2>
+    <div class="section-tag">Pricing</div>
+    <h2>Three tiers. No surprise bills.</h2>
+    <p class="section-sub">Pay per call via x402. No account, no subscription required for agent use cases.</p>
     <div class="pricing-snap-grid">
 
       <div class="snap-card">
-        <div class="snap-name">Starter</div>
-        <div class="snap-price">$15<span>/month</span></div>
-        <div class="snap-tagline">For solo devs and small protocols</div>
+        <div class="snap-name">Discovery</div>
+        <div class="snap-price">Free</div>
+        <div class="snap-tagline">For agents, builders, and exploration</div>
         <ul class="snap-features">
-          <li>50 scans/month</li>
-          <li>Watchlist (5 addresses)</li>
-          <li>Email alerts</li>
-          <li>API access</li>
+          <li>GET /scan/v1/:address</li>
+          <li>POST /verify/v1/signed-receipt</li>
+          <li>GET /feed/v1/new-spl-tokens</li>
+          <li>/.well-known/* discovery endpoints</li>
         </ul>
-        <button onclick="startCheckout('pro_trader')" class="snap-cta-btn">Get started →</button>
+        <a href="#how-it-works" class="snap-cta-link">See flow →</a>
       </div>
 
       <div class="snap-card snap-card--featured">
-        <div class="snap-name">Team</div>
-        <div class="snap-price">$49<span>/month</span></div>
-        <div class="snap-tagline">For growing protocols</div>
+        <div class="snap-name">Attestation</div>
+        <div class="snap-price">0.15<span> USDC/call</span></div>
+        <div class="snap-tagline">x402 pay-per-call, no subscription</div>
         <ul class="snap-features">
-          <li>250 scans/month + 5 deep audits</li>
-          <li>Watchlist (25 addresses)</li>
-          <li>Email + webhook alerts</li>
-          <li>API access (50k req/mo)</li>
-          <li>Signed PDF reports</li>
+          <li>POST /monitor/v1/governance-change</li>
+          <li>Signed verdict with findings</li>
+          <li>Anti-replay enforced</li>
+          <li>No account required</li>
         </ul>
-        <button onclick="startCheckout('builder')" class="snap-cta-btn snap-cta-btn--accent">Get started →</button>
+        <a href="/.well-known/agent-card.json" target="_blank" rel="noopener" class="snap-cta-link snap-cta-btn--accent" style="background:var(--accent);color:#000;border-color:var(--accent);">Agent Card →</a>
       </div>
 
       <div class="snap-card">
-        <div class="snap-name">Protocol</div>
-        <div class="snap-price" style="font-size:24px;">Custom</div>
-        <div class="snap-tagline">For large protocols and institutions</div>
+        <div class="snap-name">Forensic</div>
+        <div class="snap-price">1–5<span> USDC/call</span></div>
+        <div class="snap-tagline">Deep analysis, adversarial simulation</div>
         <ul class="snap-features">
-          <li>Unlimited scans</li>
-          <li>Slack/Discord webhooks</li>
-          <li>SLA + dedicated support</li>
-          <li>On-chain attestations</li>
+          <li>POST /api/v1/scan/deep</li>
+          <li>POST /api/v1/adversarial/simulate</li>
+          <li>POST /api/v1/delta/:address</li>
+          <li>LLM-generated signed reports</li>
         </ul>
-        <a href="mailto:info@intmolt.org" class="snap-cta-link">Contact us →</a>
+        <a href="/pricing" class="snap-cta-link">View all pricing →</a>
       </div>
 
     </div>
-    <p class="snap-footnote">Or pay per scan: 0.50 USDC per Quick Scan, 5.00 USDC per Deep Audit. No subscription required. <a href="/pricing">View all pricing →</a></p>
+    <p class="snap-footnote">Subscription plans also available for continuous monitoring. <a href="/pricing">See full pricing →</a></p>
   </div>
 </section>
 
-<!-- ── Credibility ── -->
+<!-- ── Properties bar ── -->
 <div class="cred-bar">
   <div class="container">
     <div class="cred-grid">
       <div class="cred-item">
-        <span class="cred-value">33,359</span>
-        <div class="cred-label">Scam pools in training data (SolRPDS)</div>
-      </div>
-      <div class="cred-item">
         <span class="cred-value">Ed25519</span>
-        <div class="cred-label">Every report cryptographically signed</div>
+        <div class="cred-label">Every oracle response cryptographically signed</div>
       </div>
       <div class="cred-item">
-        <span class="cred-value">x402-native</span>
-        <div class="cred-label">First scanner for agent economy</div>
+        <span class="cred-value">key_pinned</span>
+        <div class="cred-label">Server verifies own JWKS — not just any Ed25519 key</div>
+      </div>
+      <div class="cred-item">
+        <span class="cred-value">x402</span>
+        <div class="cred-label">Pay-per-call via Solana USDC — no account required</div>
+      </div>
+      <div class="cred-item">
+        <span class="cred-value">A2A</span>
+        <div class="cred-label">Agent-card discoverable, JSON-first, no dashboard dependency</div>
       </div>
     </div>
     <p style="text-align:center;margin-top:24px;font-size:13px;color:var(--text-faint);">
-      <a href="/docs#methodology" style="color:var(--text-dim);">Read methodology →</a>
+      <a href="/.well-known/jwks.json" target="_blank" rel="noopener" style="color:var(--text-dim);">JWKS →</a>
+      &nbsp;&nbsp;·&nbsp;&nbsp;
+      <a href="/.well-known/receipts-schema.json" target="_blank" rel="noopener" style="color:var(--text-dim);">Receipt schema →</a>
+      &nbsp;&nbsp;·&nbsp;&nbsp;
+      <a href="/.well-known/agent-card.json" target="_blank" rel="noopener" style="color:var(--text-dim);">Agent card →</a>
       &nbsp;&nbsp;·&nbsp;&nbsp;
       <a href="/verify" style="color:var(--text-dim);">Verify a report →</a>
-      &nbsp;&nbsp;·&nbsp;&nbsp;
-      <a href="/docs#agents" style="color:var(--text-dim);">Agent docs →</a>
     </p>
   </div>
 </div>
@@ -1072,11 +1155,16 @@
 <!-- ── Final CTA ── -->
 <section class="final-cta">
   <div class="container">
-    <h2>Start monitoring today</h2>
-    <p>Scan any address for free. Subscribe when you need continuous coverage.</p>
+    <h2>Try the oracle now</h2>
+    <p>Free discovery. 0.15 USDC governance attestation. No account.</p>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--text-faint);margin-bottom:28px;max-width:560px;margin-left:auto;margin-right:auto;text-align:left;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:14px 18px;line-height:1.8;">
+      curl https://intmolt.org/scan/v1/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA<br>
+      <span style="color:var(--text-faint)"># → { iris_score, risk_level, signature, verify_key, … }</span>
+    </div>
     <div class="cta-pair">
-      <a href="/scan" class="btn-primary">Try a free scan →</a>
-      <a href="/pricing" class="btn-outline">View pricing →</a>
+      <a href="/.well-known/agent-card.json" target="_blank" rel="noopener" class="btn-primary">Agent Card →</a>
+      <a href="https://github.com/Hans1132/integrity.molt" target="_blank" rel="noopener" class="btn-outline">GitHub →</a>
+      <a href="/scan" class="btn-outline">Browser scan →</a>
     </div>
   </div>
 </section>
@@ -1087,7 +1175,7 @@
     <div class="footer-grid">
       <div class="footer-col footer-col--brand">
         <span class="logo-text">integrity<span class="dot">.</span>molt</span>
-        <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Continuous security monitoring for Solana.</p>
+        <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Solana A2A security oracle. Signed risk receipts for agents and small protocols.</p>
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-top:12px;line-height:1.6;">Ed25519 verify key:<br>qzppeeRmbyQ4hE4BYOW+4VbQ5muyplTP4GP4uxIhVwY=</div>
         <p style="font-size:11px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">
           <a href="/verify" style="color:var(--accent-dim);">Verify reports online →</a>
@@ -1102,10 +1190,12 @@
         </ul>
       </div>
       <div class="footer-col">
-        <h5>Resources</h5>
+        <h5>Oracle</h5>
         <ul class="footer-links">
+          <li><a href="/.well-known/agent-card.json" target="_blank" rel="noopener">Agent Card</a></li>
+          <li><a href="/.well-known/jwks.json" target="_blank" rel="noopener">JWKS</a></li>
+          <li><a href="/.well-known/receipts-schema.json" target="_blank" rel="noopener">Receipt Schema</a></li>
           <li><a href="/docs">Documentation</a></li>
-          <li><a href="/docs#methodology">Methodology</a></li>
           <li><a href="https://github.com/Hans1132/integrity.molt/releases" target="_blank" rel="noopener">Changelog</a></li>
         </ul>
       </div>
