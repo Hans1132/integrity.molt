@@ -12,6 +12,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "overrides": {
+    "axios": "^1.15.0"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
     "@cheapay/x402": "^0.4.8",
@@ -27,7 +30,7 @@
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
-    "passport-twitter": "^1.0.4",
+    "passport-twitter": "^0.1.5",
     "puppeteer": "^24.40.0",
     "stripe": "^21.0.1"
   }
