@@ -89,6 +89,40 @@ const SKILLS = {
     priceUSDC:    4.00,    // config/pricing.js: adversarial = 4_000_000 (under AutoPilot 5 USDC limit)
     tags:        ['solana', 'program', 'security', 'simulation'],
   },
+
+  // ── A2A Oracle MVP skills ──────────────────────────────────────────────────
+  'verify_receipt': {
+    name:        'Verify Signed Receipt',
+    description: 'Verify Ed25519 signed oracle receipt. Accepts { envelope: { payload, signature, verify_key, ... } }. Free.',
+    inputModes:  ['application/json'],
+    outputModes: ['application/json'],
+    priceUSDC:   0,
+    tags:        ['oracle', 'verification', 'free'],
+  },
+  'scan_address': {
+    name:        'Scan Address (Oracle)',
+    description: 'Quick Solana address risk scan via IRIS scoring engine. Returns signed { iris_score, risk_level, risk_factors }. Free, rate-limited.',
+    inputModes:  ['text/plain'],
+    outputModes: ['application/json'],
+    priceUSDC:   0,
+    tags:        ['solana', 'oracle', 'security', 'free'],
+  },
+  'governance_change': {
+    name:        'Governance Change Detection',
+    description: 'Detect governance changes (authority_change, program_upgrade) in a Solana program using Helius enhanced transactions. Returns signed verdict.',
+    inputModes:  ['application/json'],
+    outputModes: ['application/json'],
+    priceUSDC:   0.15,     // config/pricing.js: governance-change = 150_000
+    tags:        ['solana', 'oracle', 'governance', 'monitoring'],
+  },
+  'new_spl_feed': {
+    name:        'New SPL Token Feed',
+    description: 'Pull feed of new SPL token mint creation events. Filter by ?since=ISO8601. Free.',
+    inputModes:  ['text/plain'],
+    outputModes: ['application/json'],
+    priceUSDC:   0,
+    tags:        ['solana', 'oracle', 'spl', 'feed', 'free'],
+  },
 };
 
 // ── Artifact helper — flatten scan result for A2A callers ────────────────────
@@ -586,12 +620,13 @@ async function handleA2ARequest(req, res) {
 // ── Agent card ────────────────────────────────────────────────────────────────
 
 function buildAgentCard(baseUrl) {
+  const base = baseUrl || 'https://intmolt.org';
   return {
     name:        'integrity.molt — Solana Security Scanner',
-    description: 'AI-powered Solana security scanner and adversarial simulator. Provides on-chain program analysis, token audits, wallet profiling, and adversarial attack simulation via the x402 payment protocol.',
-    url:         baseUrl || 'https://intmolt.org',
-    iconUrl:     `${baseUrl || 'https://intmolt.org'}/favicon.ico`,
-    version:     '0.4.1',
+    description: 'AI-powered Solana security scanner and adversarial simulator. Provides on-chain program analysis, token audits, wallet profiling, adversarial attack simulation, and A2A oracle endpoints via the x402 payment protocol.',
+    url:         base,
+    iconUrl:     `${base}/favicon.ico`,
+    version:     '0.5.0',
     documentationUrl: 'https://intmolt.org',
     provider: {
       organization: 'integrity.molt',
@@ -603,8 +638,8 @@ function buildAgentCard(baseUrl) {
       stateTransitionHistory: true,
     },
     authentication: {
-      schemes: ['x402'],
-      description: 'Paid skills require x402 USDC micropayment. Include payment in x402-payment header. quick_scan is free.',
+      schemes: ['x402', 'none'],
+      description: 'Free skills (verify_receipt, scan_address, new_spl_feed, quick_scan) require no payment. Paid skills require x402 USDC micropayment in x402-payment header.',
     },
     defaultInputModes:  ['text/plain', 'application/json'],
     defaultOutputModes: ['application/json'],
@@ -631,10 +666,44 @@ function buildAgentCard(baseUrl) {
         }
       ]
     })),
+    // Canonical endpoint list for A2A oracle callers
+    endpoints: [
+      { path: '/verify/v1/signed-receipt',     method: 'POST', auth: 'none',  description: 'Server-side Ed25519 receipt verification' },
+      { path: '/scan/v1/:address',             method: 'GET',  auth: 'none',  description: 'Quick Solana address IRIS risk scan (free)' },
+      { path: '/monitor/v1/governance-change', method: 'POST', auth: 'x402',  description: 'Detect governance changes in Solana program (0.15 USDC)' },
+      { path: '/feed/v1/new-spl-tokens',       method: 'GET',  auth: 'none',  description: 'Pull feed of new SPL token mints (free)' },
+      { path: '/a2a',                          method: 'POST', auth: 'x402',  description: 'A2A JSON-RPC 2.0 — tasks/send, tasks/get, tasks/cancel' },
+      { path: '/a2a/subscribe',                method: 'POST', auth: 'x402',  description: 'A2A SSE streaming subscription' },
+    ],
+    // Pricing tiers for discovery
+    pricing_tiers: {
+      discovery: {
+        price: 'free',
+        endpoints: ['/scan/v1/:address', '/feed/v1/new-spl-tokens', '/.well-known/*'],
+      },
+      attestation: {
+        price: '0.10-0.25 USDC',
+        endpoints: ['/monitor/v1/governance-change'],
+      },
+      forensic: {
+        price: 'existing deep scan prices',
+        endpoints: ['/api/v1/scan/deep', '/api/v1/adversarial/simulate'],
+      },
+    },
+    // Live usage example
+    examples: [
+      {
+        description: 'Scan known SPL Token program',
+        input: { address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
+        endpoint: 'GET /scan/v1/:address',
+      }
+    ],
     verifyKey: _getVerifyKeyBase64(),
     reportSigning: {
       algorithm:   'Ed25519',
-      description: 'All scan reports are signed. Verify with any NaCl Ed25519 library using the verifyKey above.'
+      description: 'All scan reports are signed. Verify receipts via POST /verify/v1/signed-receipt or with any NaCl Ed25519 library using the verifyKey above.',
+      receiptsSchema: `${base}/.well-known/receipts-schema.json`,
+      jwks:           `${base}/.well-known/jwks.json`,
     }
   };
 }

@@ -48,29 +48,9 @@ const {
 const https = require('https');
 const nodemailer = require('nodemailer');
 
-// ── Async Ed25519 signer — neblokující náhrada za execSync sign-report.py ────
-// Předá reportText přes stdin, přečte JSON envelope ze stdout.
-// Nepoužívá shell — žádné command injection riziko.
-function asyncSign(reportText) {
-  return new Promise((resolve, reject) => {
-    const proc = spawn('python3', ['/root/scanner/sign-report.py'], { timeout: 10000 });
-    let stdout = '';
-    let stderr = '';
-    proc.stdout.on('data', d => { stdout += d; });
-    proc.stderr.on('data', d => { stderr += d; });
-    proc.on('close', code => {
-      if (code === 0) {
-        try { resolve(JSON.parse(stdout.trim())); }
-        catch (e) { reject(new Error('sign-report.py invalid JSON: ' + stdout.slice(0, 200))); }
-      } else {
-        reject(new Error('sign-report.py exited ' + code + ': ' + stderr.slice(0, 200)));
-      }
-    });
-    proc.on('error', reject);
-    proc.stdin.write(reportText);
-    proc.stdin.end();
-  });
-}
+// ── Async Ed25519 signer — shared utility (src/crypto/sign.js) ───────────────
+// Neblokuje event loop. Použij asyncSign() všude místo execSync sign-report.py.
+const { asyncSign } = require('./src/crypto/sign');
 
 // ── Async scan runner — nahrazuje execSync, neblokuje event loop ──────────────
 // Spustí shell skript jako child_process, vrátí Promise<{ stdout, stderr }>.
@@ -1110,6 +1090,148 @@ app.post('/a2a', express.json({ limit: '64kb' }), _a2aRLMiddleware, handleA2AReq
 // Body: { skill, address, sessionId?, metadata? }
 // Response: text/event-stream with events: task_created, task_working, task_completed, task_failed
 app.post('/a2a/subscribe', express.json({ limit: '16kb' }), handleA2ASubscribe);
+
+// ── A2A Oracle MVP endpoints ──────────────────────────────────────────────────
+// POST /verify/v1/signed-receipt   — free, Ed25519 receipt verification
+// GET  /scan/v1/:address           — free, IRIS signed risk scan
+// POST /monitor/v1/governance-change — 0.15 USDC, paid via x402
+// GET  /feed/v1/new-spl-tokens     — free, pull feed of new SPL mints
+const a2aOracleRouter = require('./src/routes/a2a-oracle');
+
+// Governance endpoint payment accepts (0.15 USDC = 150_000 micro-USDC)
+const governancePaymentAccepts = [{
+  scheme:            'exact',
+  network:           'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+  maxAmountRequired: String(PRICING['governance-change'] || 150_000),
+  resource:          'https://intmolt.org/monitor/v1/governance-change',
+  asset:             'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  payTo:             USDC_ATA,
+  description:       'Governance Change Detection — Ed25519-signed program audit over Helius transactions',
+  mimeType:          'application/json',
+  maxTimeoutSeconds: 60,
+}];
+
+// Apply payment middleware ONLY to the paid governance endpoint before mounting the router
+app.post(
+  '/monitor/v1/governance-change',
+  requireApiKey,
+  requirePayment(governancePaymentAccepts, PRICING['governance-change'] || 150_000)
+);
+
+// Mount oracle router — free routes handled by router's own rate limits
+app.use(a2aOracleRouter);
+
+// /.well-known/receipts-schema.json — static JSON Schema for oracle envelope format
+app.get('/.well-known/receipts-schema.json', (req, res) => {
+  res.set('Content-Type', 'application/schema+json');
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.json({
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    '$id': 'https://intmolt.org/.well-known/receipts-schema.json',
+    title: 'integrity.molt Oracle Envelope (Flat Format)',
+    description: [
+      'Ed25519-signed oracle report in flat envelope format.',
+      'All report fields and signing metadata appear at the top level of the response object.',
+      'The signature covers UTF-8 bytes of JSON.stringify(reportData),',
+      'where reportData = all response fields EXCEPT: signature, verify_key, key_id, signed_at, signer, algorithm, report.',
+      'Verify using POST /verify/v1/signed-receipt — the server supports both flat and wrapped envelope formats.',
+    ].join(' '),
+    type: 'object',
+    required: ['signature', 'verify_key', 'key_id', 'signed_at', 'signer', 'algorithm'],
+    properties: {
+      // ── Signing metadata (always present) ──────────────────────────────────
+      signature: {
+        type: 'string',
+        description: 'Base64-encoded Ed25519 signature (64 bytes) over UTF-8 bytes of JSON.stringify(report data).'
+      },
+      verify_key: {
+        type: 'string',
+        description: 'Base64-encoded Ed25519 public key (32 bytes). Verify against /.well-known/jwks.json kid=integrity-molt-primary-2026.'
+      },
+      key_id: {
+        type: 'string',
+        description: 'First 16 characters of the base64-encoded verify_key. Key fingerprint.'
+      },
+      signed_at: {
+        type: 'string',
+        format: 'date-time',
+        description: 'ISO8601 UTC timestamp when the signature was created.'
+      },
+      signer: {
+        type: 'string',
+        description: 'Signer identity string, e.g. "integrity.molt".'
+      },
+      algorithm: {
+        type: 'string',
+        enum: ['Ed25519'],
+        description: 'Signing algorithm.'
+      },
+      // ── Typical report fields (endpoint-dependent, all included in signed bytes) ─
+      address: {
+        type: 'string',
+        description: 'Solana or EVM address that was scanned (present on scan endpoints).'
+      },
+      iris_score: {
+        type: 'number',
+        description: 'IRIS risk score 0-100 (present on /scan/v1/:address).'
+      },
+      risk_level: {
+        type: 'string',
+        description: 'Risk classification: low | medium | high | critical (present on scan endpoints).'
+      },
+      risk_factors: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'List of detected risk factors.'
+      },
+      mints: {
+        type: 'array',
+        description: 'New SPL token mint events (present on /feed/v1/new-spl-tokens).'
+      },
+      findings: {
+        type: 'array',
+        description: 'Governance change findings (present on /monitor/v1/governance-change).'
+      },
+      verdict: {
+        type: 'string',
+        description: 'Governance verdict: clean | suspicious | critical.'
+      }
+    },
+    examples: [
+      {
+        description: 'GET /scan/v1/:address response',
+        value: {
+          address:      'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+          iris_score:   12,
+          risk_level:   'low',
+          risk_factors: [],
+          signed_at:    '2026-04-24T12:00:00Z',
+          signature:    '<base64_64_bytes>',
+          verify_key:   '<base64_32_bytes>',
+          key_id:       '<first_16_chars>',
+          signer:       'integrity.molt',
+          algorithm:    'Ed25519',
+        }
+      },
+      {
+        description: 'POST /verify/v1/signed-receipt — flat envelope input',
+        value: {
+          envelope: {
+            address:    'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+            iris_score: 12,
+            risk_level: 'low',
+            signature:  '<base64_64_bytes>',
+            verify_key: '<base64_32_bytes>',
+            key_id:     '<first_16_chars>',
+            signed_at:  '2026-04-24T12:00:00Z',
+            signer:     'integrity.molt',
+            algorithm:  'Ed25519',
+          }
+        }
+      }
+    ]
+  });
+});
 
 // Health check - free
 app.get('/health', (req, res) => {
@@ -2574,7 +2696,7 @@ async function buildDeltaReport(oldSnap, newSnap) {
     generated_at: new Date().toISOString()
   };
 
-  return signDeltaReport(report);
+  return await signDeltaReport(report);
 }
 
 // GET /api/v1/history/:address — free, returns snapshot metadata list
