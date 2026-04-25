@@ -37,6 +37,7 @@ const { checkBlacklist, logAbuseEvent, addToBlacklist } = _blacklistMw;
 const { enrichScanResult, combineScores } = require('./src/enrichment');
 const { parseTokenExtensionsFromBuffer }  = require('./src/enrichment/token-extensions');
 const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
+const { getVerificationStatus }           = require('./src/lib/ottersec');
 const {
   validateReport,
   applyCorrectionsToAuditResult,
@@ -1730,11 +1731,12 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, express.json(), valid
 
   try {
     const _t0 = Date.now();
-    // Swarm orchestrator + enrichment + scam-db in parallel (IRIS post-processing)
-    const [swarmOut, deepEnrichment, deepScamDb] = await Promise.allSettled([
+    // Swarm orchestrator + enrichment + scam-db + OtterSec in parallel (IRIS post-processing)
+    const [swarmOut, deepEnrichment, deepScamDb, osecResult] = await Promise.allSettled([
       runScript('/root/swarm/orchestrator/orchestrator.sh', [safeAddress], 120000),
       enrichScanResult(safeAddress),
-      lookupScamDb(safeAddress)
+      lookupScamDb(safeAddress),
+      getVerificationStatus(safeAddress).catch(err => ({ is_verified: null, source: 'ottersec_error', fetch_error: err.message }))
     ]);
     const scriptMs = Date.now() - _t0;
     console.log(`[scan/deep] address=${safeAddress} script=${scriptMs}ms`);
@@ -1742,6 +1744,7 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, express.json(), valid
     const { stdout } = swarmOut.status === 'fulfilled' ? swarmOut.value : { stdout: '' };
     const deepEnrichmentData = deepEnrichment.status === 'fulfilled' ? deepEnrichment.value : null;
     const deepScamDbData = deepScamDb.status === 'fulfilled' ? deepScamDb.value : { known_scam: null, rugcheck: null, db_match: false };
+    const osecData = osecResult.status === 'fulfilled' ? osecResult.value : { is_verified: null, source: 'ottersec_error' };
 
     let swarmResult = null;
     try { swarmResult = JSON.parse(stdout); } catch {}
@@ -1767,6 +1770,24 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, express.json(), valid
     // IRIS full breakdown + raw enrichment pro deep audit
     const irisResult = calculateIRIS(deepEnrichmentData, deepScamDbData);
 
+    // OtterSec enrichment: unverified bytecode is a medium risk signal
+    if (osecData.is_verified === false) {
+      if (!Array.isArray(irisResult.risk_factors)) irisResult.risk_factors = [];
+      irisResult.risk_factors.push({
+        type:        'unverified_source',
+        severity:    'medium',
+        description: 'Program bytecode does not match a verified public repository (per OtterSec verify.osec.io)',
+        source:      'ottersec',
+      });
+    }
+
+    const ottersecEnrichment = {
+      is_verified:      osecData.is_verified,
+      repo_url:         osecData.repo_url         ?? null,
+      last_verified_at: osecData.last_verified_at ?? null,
+      source:           osecData.source,
+    };
+
     db.logScanToHistory({
       email: req.apiKey?.email || null, address: safeAddress, scan_type: 'deep-audit',
       risk_score: swarmResult?.aggregate_score ?? null,
@@ -1783,6 +1804,7 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, express.json(), valid
       rug_override:    swarmResult?.rug_override    || false,
       agents:          swarmResult?.agents          || null,
       iris:            irisResult,
+      ottersec:        ottersecEnrichment,
       enrichment:      deepEnrichmentData || null,
       report:          reportText || stdout,
       signed:          signedEnvelope,

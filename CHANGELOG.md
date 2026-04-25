@@ -3,6 +3,21 @@
 All notable changes to integrity.molt are documented here.
 Format: `## [vX.Y.Z] — YYYY-MM-DD`
 
+## [v0.5.1-ottersec] — 2026-04-25
+
+### Added
+- New free skill `program_verification_status` — cross-references OtterSec verify.osec.io for Solana program build attestation; returns signed Ed25519 envelope via A2A tasks/send
+- SQLite cache layer for OtterSec API responses (`ottersec_verifications` table, 1h TTL)
+- Circuit breaker in `src/lib/ottersec.js` — opens after 5 failures within 60s, resets after 5 min cooldown; returns `source: ottersec_circuit_open` so callers degrade gracefully
+- Enrichment field `ottersec` in `/scan/deep` response — `{is_verified, repo_url, last_verified_at, source}`
+- `unverified_source` risk factor injected into `iris.risk_factors` when `ottersec.is_verified === false`
+- 22 new test assertions in `tests/ottersec.test.js` covering happy path, cache, 404, timeout, circuit breaker, invalid input, SQL injection
+
+### Changed
+- Skill count in agent.json: 10 → 11
+- `src/a2a/handler.js`: imports `asyncSign`/`canonicalJSON` + `getVerificationStatus`; new `program_verification_status` case in `executeSkill`
+- `server.js`: `getVerificationStatus` added to parallel `Promise.allSettled` in `/scan/deep`
+
 ## [v0.5.0-a2a-oracle] — 2026-04-24
 
 ### A2A Security Oracle MVP

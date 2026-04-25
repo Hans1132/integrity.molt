@@ -33,6 +33,10 @@ const {
 const { canAutoSign, logAutoSignDecision, getAgentDailySpending } = require('./autopilot');
 const { enrichPaymentContextWithPDA } = require('../payment/verify-pda');
 
+// ── OtterSec + signing (program_verification_status skill) ───────────────────
+const { getVerificationStatus }   = require('../lib/ottersec');
+const { asyncSign, canonicalJSON } = require('../crypto/sign');
+
 // TTL cleanup job — every 10 minutes
 const _cleanupInterval = setInterval(deleteExpiredTasks, 10 * 60 * 1000);
 if (_cleanupInterval.unref) _cleanupInterval.unref();
@@ -123,6 +127,14 @@ const SKILLS = {
     priceUSDC:   0,
     tags:        ['solana', 'oracle', 'spl', 'feed', 'free'],
   },
+  'program_verification_status': {
+    name:        'Program Verification Status',
+    description: 'Cross-references OtterSec verify.osec.io for Solana program build attestation. Returns whether deployed bytecode matches a verified source repository. Free, cached 1h.',
+    inputModes:  ['text/plain', 'application/json'],
+    outputModes: ['application/json'],
+    priceUSDC:   0,
+    tags:        ['solana', 'verification', 'ottersec', 'free', 'oracle'],
+  },
 };
 
 // ── Artifact helper — flatten scan result for A2A callers ────────────────────
@@ -191,6 +203,38 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
         skipFork:  options.skipFork !== false,  // analysis-only via A2A by default
         ...options,
       }, paymentHeader, 300_000);
+
+    case 'program_verification_status': {
+      const osec = await getVerificationStatus(address);
+      const payload = {
+        skill:      'program_verification_status',
+        target:     address,
+        is_verified:      osec.is_verified,
+        on_chain_hash:    osec.on_chain_hash,
+        executable_hash:  osec.executable_hash,
+        repo_url:         osec.repo_url,
+        last_verified_at: osec.last_verified_at,
+        source:           osec.source,
+        cache_age_s:      osec.cache_age_s,
+        issuer:   'integrity.molt',
+        issuer_kid: 'integrity-molt-primary-2026',
+      };
+      let envelope = {};
+      try {
+        envelope = await asyncSign(canonicalJSON(payload));
+      } catch (e) {
+        console.error('[a2a] program_verification_status asyncSign failed:', e.message);
+      }
+      return {
+        ...payload,
+        signed_at:  envelope.signed_at  || new Date().toISOString(),
+        signature:  envelope.signature  || null,
+        verify_key: envelope.verify_key || null,
+        key_id:     envelope.key_id     || null,
+        signer:     envelope.signer     || 'integrity.molt',
+        algorithm:  envelope.algorithm  || 'Ed25519',
+      };
+    }
 
     default:
       throw new Error(`Unknown skill: ${skillId}`);

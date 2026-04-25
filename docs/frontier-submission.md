@@ -53,6 +53,7 @@ All of the following are live on `https://intmolt.org`:
 2. **Canonical JSON signing** — sorted-key deterministic serialization on both sign and verify sides; interoperable across Go, Python, TypeScript consumers
 3. **Composable receipts** — flat JSON envelope passable between agents without unwrapping/re-signing
 4. **x402 + A2A native** — no SDK required; any HTTP client with a Solana wallet can call the oracle
+5. **Ecosystem composability** — integrity.molt composes with OtterSec's verify.osec.io — the canonical Solana program verification API maintained by Solana's leading auditor — to surface build attestation in real-time alongside our IRIS risk scoring. Verification status flows into Ed25519-signed receipts, making source-verifiability a portable, machine-checkable claim.
 
 ## Target users
 - On-chain agent frameworks (ElizaOS, SendAI, Olas)

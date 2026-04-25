@@ -221,6 +221,8 @@ curl https://intmolt.org/.well-known/agent-card.json | jq '.skills[].id'
 - Solana-only oracle surface; EVM scanner exists but is a separate legacy endpoint
 - `sign-report.py` subprocess dependency (Python + PyNaCl) — migrating to native Node.js Ed25519 is planned
 
+integrity.molt cross-references OtterSec's verify.osec.io API as zero-cost trust signal enrichment for program-level skills.
+
 ---
 
 ## Self-hosted Setup
