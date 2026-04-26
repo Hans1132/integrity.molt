@@ -17,6 +17,7 @@
 const fs   = require('fs');
 const { PRICING, PRICING_DISPLAY } = require('../../config/pricing');
 const { ENDPOINT_SPEC }            = require('./endpoint-spec');
+const { METAPLEX_REGISTRY_BLOCK }  = require('../config/agent-identity');
 
 const VERIFY_KEY_PATH = process.env.VERIFY_KEY_PATH || '/root/.secrets/verify_key.bin';
 function _getVerifyKeyBase64() {
@@ -215,6 +216,7 @@ function generateX402Discovery(usdcAta) {
         subscribe_url:         'https://intmolt.org/subscribe/team'
       }
     ],
+    metaplex_registry: METAPLEX_REGISTRY_BLOCK,
     services: buildServices(usdcAta)
   };
 }

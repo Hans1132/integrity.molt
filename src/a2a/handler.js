@@ -37,6 +37,9 @@ const { enrichPaymentContextWithPDA } = require('../payment/verify-pda');
 const { getVerificationStatus }   = require('../lib/ottersec');
 const { asyncSign, canonicalJSON } = require('../crypto/sign');
 
+// ── Agent identity (Metaplex registry cross-reference) ───────────────────────
+const { METAPLEX_ASSET, METAPLEX_URL, METAPLEX_REGISTRY_BLOCK } = require('../config/agent-identity');
+
 // TTL cleanup job — every 10 minutes
 const _cleanupInterval = setInterval(deleteExpiredTasks, 10 * 60 * 1000);
 if (_cleanupInterval.unref) _cleanupInterval.unref();
@@ -216,8 +219,10 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
         last_verified_at: osec.last_verified_at,
         source:           osec.source,
         cache_age_s:      osec.cache_age_s,
-        issuer:   'integrity.molt',
-        issuer_kid: 'integrity-molt-primary-2026',
+        issuer:                'integrity.molt',
+        issuer_kid:            'integrity-molt-primary-2026',
+        issuer_metaplex_asset: METAPLEX_ASSET,
+        issuer_metaplex_url:   METAPLEX_URL,
       };
       let envelope = {};
       try {
@@ -742,6 +747,7 @@ function buildAgentCard(baseUrl) {
         endpoint: 'GET /scan/v1/:address',
       }
     ],
+    metaplex_registry: METAPLEX_REGISTRY_BLOCK,
     verifyKey: _getVerifyKeyBase64(),
     reportSigning: {
       algorithm:   'Ed25519',
