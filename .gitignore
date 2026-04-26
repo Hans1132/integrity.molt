@@ -35,3 +35,26 @@ Thumbs.db
 # SQLite database
 *.db
 *.db-journal
+
+# Local working directories — not for public repo
+.agents/
+.claude/
+.superstack/
+claude-session.jsonl
+skills/
+skills-lock.json
+tasks/active/
+tasks/backlog/
+tasks/done/
+
+# Draft documents
+docs/COPY.md
+docs/COPY.pdf
+docs/superpowers/
+docs/superteam/claude-code.md
+docs/superteam/IMG_*.PNG
+site-content-audit.txt
+public/test-og.png
+
+# Internal agent definitions
+agents/bot.md
