@@ -1,7 +1,7 @@
 'use strict';
 
 const METAPLEX_ASSET    = '2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy';
-const METAPLEX_URL      = 'https://www.metaplex.com/agents/integrity.molt';
+const METAPLEX_URL      = 'https://www.metaplex.com/agents/2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy';
 const METAPLEX_REGISTRY = 'metaplex_agent_registry';
 const METAPLEX_STANDARD = 'EIP-8004';
 const METAPLEX_OWNER    = 'HNhZiuihyLWbjH2Nm2WsEZiPGybjnRjQCptasW76Z7DY';
