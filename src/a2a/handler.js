@@ -675,7 +675,7 @@ function buildAgentCard(baseUrl) {
     description: 'AI-powered Solana security scanner and adversarial simulator. Provides on-chain program analysis, token audits, wallet profiling, adversarial attack simulation, and A2A oracle endpoints via the x402 payment protocol.',
     url:         base,
     iconUrl:     `${base}/favicon.ico`,
-    version:     '0.5.0',
+    version:     '0.5.1-ottersec',
     documentationUrl: 'https://intmolt.org',
     provider: {
       organization: 'integrity.molt',
