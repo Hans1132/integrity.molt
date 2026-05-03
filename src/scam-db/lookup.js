@@ -3,13 +3,15 @@
  * src/scam-db/lookup.js
  *
  * Obohacení scan výsledků o informace ze scam databází:
- *   1. Statická tabulka known_scams (import z SolRPDS / SolRugDetector)
- *   2. RugCheck API cache (TTL 24h, rate-limit 2 req/s)
+ *   1. Whitelist legit tokenů (defense in depth proti false positives)
+ *   2. Statická tabulka known_scams (import z SolRPDS / SolRugDetector)
+ *   3. RugCheck API cache (TTL 24h, rate-limit 2 req/s)
  *
  * Nezávislý na Helius API — žádné RPC volání!
  */
 
 const db = require('../../db');
+const whitelist = require('./whitelist');
 
 // ── RugCheck API rate limiter (max 2 req/s) ──────────────────────────────────
 const RUGCHECK_BASE_URL = 'https://api.rugcheck.xyz/v1/tokens';
@@ -63,11 +65,25 @@ function calcRiskLevel(risks) {
  * Vyhledá mint adresu v scam databázích.
  *
  * @param {string} mint  — Solana mint address
- * @returns {{ known_scam: object|null, rugcheck: object|null, db_match: boolean }}
+ * @returns {{ known_scam: object|null, rugcheck: object|null, db_match: boolean, whitelisted?: boolean, whitelist_meta?: object }}
  */
 async function lookupScamDb(mint) {
   if (!mint || typeof mint !== 'string') {
     return { known_scam: null, rugcheck: null, db_match: false };
+  }
+
+  // 0. Whitelist check FIRST — defense in depth proti false positives
+  //    v importovaných datasetech (např. SolRPDS pool addresses
+  //    klasifikované jako scam mints).
+  const whitelisted = whitelist.isWhitelisted(mint);
+  if (whitelisted) {
+    return {
+      known_scam: null,
+      rugcheck: null,
+      db_match: false,
+      whitelisted: true,
+      whitelist_meta: whitelisted
+    };
   }
 
   // 1. Statická scam tabulka — synchronní, nulové latency

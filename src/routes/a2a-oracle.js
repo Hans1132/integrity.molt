@@ -270,14 +270,31 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
     const iris = calculateIRIS(enrichment, scamDb);
 
     // Normalise risk_level to lowercase for A2A consumers
-    const riskLevel = (iris.grade || 'unknown').toLowerCase();
+    let riskLevel = (iris.grade || 'unknown').toLowerCase();
+    let irisScore = iris.score;
+    let irisBreakdown = iris.breakdown || null;
+    let riskFactors = iris.risk_factors || [];
+
+    // Whitelist override — top SPL tokens get baseline trusted score
+    if (scamDb && scamDb.whitelisted) {
+      irisScore = 100;
+      riskLevel = 'trusted';
+      riskFactors = [];
+      irisBreakdown = {
+        inflows:   { score: 25, max: 25, details: ['whitelisted_legit_token'] },
+        rights:    { score: 25, max: 25, details: ['whitelisted_legit_token'] },
+        imbalance: { score: 25, max: 25, details: ['whitelisted_legit_token'] },
+        speed:     { score: 25, max: 25, details: ['whitelisted_legit_token'] },
+        whitelist_meta: scamDb.whitelist_meta || null,
+      };
+    }
 
     const reportPayload = {
       address,
-      iris_score:  iris.score,
+      iris_score:  irisScore,
       risk_level:  riskLevel,
-      risk_factors: iris.risk_factors || [],
-      iris_breakdown: iris.breakdown || null,
+      risk_factors: riskFactors,
+      iris_breakdown: irisBreakdown,
     };
 
     // Sign the report payload (canonical JSON string)
