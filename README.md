@@ -301,7 +301,7 @@ Real client IP is read from the `CF-Connecting-IP` header set by the Cloudflare 
 ## Known limitations
 
 - The governance endpoint uses Helius Enhanced Transactions as its primary data source, with automatic fallback to Alchemy RPC (`getSignaturesForAddress` + batched `getTransaction`). The response carries `data_source: "helius"`, `"alchemy_rpc"`, or `"mock"` so consumers can always see which backend was used.
-- The SPL feed (`/feed/v1/new-spl-tokens`) reflects `INITIALIZE_MINT` events delivered via Helius webhooks. The webhook subscribes per watchlist address, not globally, so `count` reflects mints observed across monitored addresses rather than all new SPL tokens. `count: 0` is normal when the watchlist is empty or no monitored address received a mint event in the window.
+- `GET /feed/v1/new-spl-tokens` returns integrity.molt's signed feed of observed new SPL mint events. The current MVP poller tracks Pump.fun CREATE transactions and Token-2022 mint activity through Alchemy. It is not a complete global index of every SPL mint on Solana — standard Token Program mint discovery may be incomplete depending on upstream RPC indexing behavior.
 - No transparency log or Merkle anchoring yet. Receipts are atomic, not chained. Planned for Solana Foundation grant Milestone 3.
 
 ---
