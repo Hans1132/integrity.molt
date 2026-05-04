@@ -697,7 +697,8 @@ async function logScanToHistory({ email, address, scan_type, risk_score, risk_le
 }
 
 async function getCachedScanFromDb(address, scan_type, maxAgeMs = 3_600_000) {
-  const cutoff = new Date(Date.now() - maxAgeMs).toISOString();
+  // SQLite datetime format: 'YYYY-MM-DD HH:MM:SS' — toISOString() uses 'T' separator
+  const cutoff = new Date(Date.now() - maxAgeMs).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
   const row = db.prepare(`
     SELECT result_json FROM scan_history
     WHERE address = ? AND scan_type = ? AND result_json IS NOT NULL
