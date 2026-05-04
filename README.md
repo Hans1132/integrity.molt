@@ -32,6 +32,8 @@ OtterSec [verify.osec.io](https://verify.osec.io) is integrated as a live enrich
 
 Metaplex Agent Registry registration ([Core Asset 2tWPw22b...gZZy](https://www.metaplex.com/agents/2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy)) is cryptographically referenced in every signed receipt envelope through `issuer_metaplex_asset` and `issuer_metaplex_url` fields. Identity is verifiable on chain, not just in metadata.
 
+Alchemy Solana RPC serves as the automatic fallback data source for the governance endpoint. When Helius Enhanced Transactions are unavailable, the oracle transparently switches to Alchemy's `getSignaturesForAddress` + `getTransaction` pipeline — no change to the response schema, only `data_source` reflects the switch.
+
 Open standards — A2A 0.4.1 for discovery, x402 for payments, Ed25519 for signatures, JWKS (RFC 8037) for key publication. No proprietary protocol, no lock-in.
 
 ---
@@ -298,8 +300,8 @@ Real client IP is read from the `CF-Connecting-IP` header set by the Cloudflare 
 
 ## Known limitations
 
-- The governance endpoint uses Helius Enhanced Transactions. Without `HELIUS_API_KEY` it falls back to a mock verdict; the response carries `data_source: "mock"` so consumers can detect this.
-- The SPL feed (`/feed/v1/new-spl-tokens`) reflects `INITIALIZE_MINT` events delivered via Helius webhooks. In a self-hosted deployment with an empty watchlist or unconfigured webhook, `count` will be `0`.
+- The governance endpoint uses Helius Enhanced Transactions as its primary data source, with automatic fallback to Alchemy RPC (`getSignaturesForAddress` + batched `getTransaction`). The response carries `data_source: "helius"`, `"alchemy_rpc"`, or `"mock"` so consumers can always see which backend was used.
+- The SPL feed (`/feed/v1/new-spl-tokens`) reflects `INITIALIZE_MINT` events delivered via Helius webhooks. The webhook subscribes per watchlist address, not globally, so `count` reflects mints observed across monitored addresses rather than all new SPL tokens. `count: 0` is normal when the watchlist is empty or no monitored address received a mint event in the window.
 - No transparency log or Merkle anchoring yet. Receipts are atomic, not chained. Planned for Solana Foundation grant Milestone 3.
 
 ---
@@ -310,7 +312,7 @@ Real client IP is read from the `CF-Connecting-IP` header set by the Cloudflare 
 git clone https://github.com/Hans1132/integrity.molt
 cd integrity.molt
 cp .env.example .env
-# Fill in: HELIUS_API_KEY, OPENROUTER_API_KEY, USDC_ATA, SOLANA_WALLET_ADDRESS
+# Fill in: HELIUS_API_KEY, ALCHEMY_RPC_URL, OPENROUTER_API_KEY, USDC_ATA, SOLANA_WALLET_ADDRESS
 npm install
 node server.js
 ```
