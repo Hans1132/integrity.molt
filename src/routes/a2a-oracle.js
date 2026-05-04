@@ -429,14 +429,14 @@ router.post('/monitor/v1/governance-change', express.json({ limit: '8kb' }), asy
   // Primary: Helius Enhanced Transactions API
   try {
     txList = await fetchHeliusTransactions(safeProgram, txLimit);
-    if (txList === null) dataSource = 'mock'; // no HELIUS_API_KEY — try Alchemy below
+    // null means no HELIUS_API_KEY — fall through to Alchemy below
   } catch (heliusErr) {
     console.warn('[a2a-oracle] Helius fetch failed, trying Alchemy fallback:', heliusErr.message);
-    dataSource = 'alchemy_rpc';
   }
 
-  // Fallback: Alchemy RPC (if Helius unavailable / credits exhausted)
-  if (txList === null && dataSource !== 'mock') {
+  // Fallback: Alchemy RPC (Helius key missing or credits exhausted)
+  if (txList === null) {
+    dataSource = 'alchemy_rpc';
     try {
       txList = await fetchAlchemyTransactions(safeProgram, txLimit);
       if (txList === null) dataSource = 'mock_error_fallback'; // no usable RPC available

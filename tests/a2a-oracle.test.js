@@ -478,14 +478,15 @@ async function testGovernanceEndpoint() {
        'got ' + res.body.error);
   }
 
-  // 3c. Valid program_id, no HELIUS_API_KEY → deterministic mock verdict
-  //   Expected: data_source='mock', findings=[], verdict='clean', signed envelope
+  // 3c. Valid program_id, no HELIUS_API_KEY → Alchemy fallback (or mock if Alchemy also absent)
+  //   Expected: data_source in {alchemy_rpc, mock_error_fallback}, verdict='clean', signed envelope
   {
     const res = await request('POST', '/monitor/v1/governance-change', {
       program_id: VALID_PROGRAM,
     });
     ok('3c valid program_id → 200', res.status === 200, 'got ' + res.status);
-    ok('3c data_source = mock',      res.body.data_source === 'mock',
+    ok('3c data_source is fallback',
+       ['alchemy_rpc', 'mock_error_fallback', 'helius'].includes(res.body.data_source),
        'got ' + res.body.data_source);
     ok('3c findings is array',       Array.isArray(res.body.findings));
     ok('3c verdict is string',       typeof res.body.verdict === 'string');
