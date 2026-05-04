@@ -31,7 +31,7 @@ const HELIUS_BASE = 'https://api.helius.xyz/v0';
 
 async function fetchHeliusTransactions(programId, limit = 50) {
   const apiKey = process.env.HELIUS_API_KEY;
-  if (!apiKey) return null; // Dev mock mode
+  if (!apiKey) return null; // Dev mock mode — signal caller to try Alchemy
 
   const url = `${HELIUS_BASE}/addresses/${encodeURIComponent(programId)}/transactions?api-key=${apiKey}&limit=${limit}&type=ANY`;
   const res = await fetch(url, {
@@ -43,6 +43,76 @@ async function fetchHeliusTransactions(programId, limit = 50) {
     throw new Error(`Helius API error ${res.status}: ${text.slice(0, 200)}`);
   }
   return res.json();
+}
+
+// ── Alchemy RPC fallback ──────────────────────────────────────────────────────
+// Used when Helius API key is missing or Helius returns an error (credits exhausted etc.)
+async function fetchAlchemyTransactions(programId, limit = 50) {
+  const rpcUrl = process.env.ALCHEMY_RPC_URL || process.env.SOLANA_RPC_URL;
+  if (!rpcUrl || rpcUrl.includes('api.mainnet-beta.solana.com')) return null;
+
+  const rpc = async (method, params) => {
+    const res = await fetch(rpcUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      signal:  AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) throw new Error(`Alchemy RPC HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(`Alchemy RPC: ${data.error.message}`);
+    return data.result;
+  };
+
+  const sigInfos = await rpc('getSignaturesForAddress', [programId, { limit }]);
+  if (!Array.isArray(sigInfos) || sigInfos.length === 0) return [];
+
+  const sigs = sigInfos.filter(s => !s.err).map(s => s.signature);
+  const transactions = [];
+
+  // Batch RPC calls — 5 per request to stay under rate limits
+  for (let i = 0; i < sigs.length; i += 5) {
+    const batch = sigs.slice(i, i + 5).map((sig, idx) => ({
+      jsonrpc: '2.0', id: idx + 1, method: 'getTransaction',
+      params:  [sig, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0 }],
+    }));
+    const res = await fetch(rpcUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(batch),
+      signal:  AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) break;
+    const results = await res.json();
+    for (const item of (Array.isArray(results) ? results : [results])) {
+      if (item.result) transactions.push(_normalizeAlchemyTx(item.result));
+    }
+  }
+  return transactions;
+}
+
+function _normalizeAlchemyTx(tx) {
+  const sigs = tx.transaction?.signatures || [];
+  const msg  = tx.transaction?.message   || {};
+  const keys = msg.accountKeys           || [];
+
+  const toKey = k => (typeof k === 'string' ? k : (k?.pubkey || null));
+
+  return {
+    signature:         sigs[0]                          || null,
+    timestamp:         tx.blockTime                     || 0,
+    type:              'UNKNOWN',
+    fee:               tx.meta?.fee                     || 0,
+    slot:              tx.slot                          || null,
+    feePayer:          toKey(keys[0]),
+    accountData:       keys.map(k => ({ account: toKey(k) })),
+    instructions:      msg.instructions                 || [],
+    innerInstructions: tx.meta?.innerInstructions       || [],
+    nativeTransfers:   [],
+    tokenTransfers:    [],
+    events:            {},
+    _source:           'alchemy_rpc',
+  };
 }
 
 // Lazy require to avoid circular dependency with webhook-receiver if loaded before server.js
@@ -275,16 +345,18 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
     let irisBreakdown = iris.breakdown || null;
     let riskFactors = iris.risk_factors || [];
 
-    // Whitelist override — top SPL tokens get baseline trusted score
+    // Whitelist override — top SPL tokens skip scam_db penalty
+    // and return baseline low-risk score consistent with IRIS semantics
+    // (lower score = lower risk).
     if (scamDb && scamDb.whitelisted) {
-      irisScore = 100;
-      riskLevel = 'trusted';
+      irisScore = 0;
+      riskLevel = 'low';
       riskFactors = [];
       irisBreakdown = {
-        inflows:   { score: 25, max: 25, details: ['whitelisted_legit_token'] },
-        rights:    { score: 25, max: 25, details: ['whitelisted_legit_token'] },
-        imbalance: { score: 25, max: 25, details: ['whitelisted_legit_token'] },
-        speed:     { score: 25, max: 25, details: ['whitelisted_legit_token'] },
+        inflows:   { score: 0, max: 25, details: ['whitelisted_legit_token'] },
+        rights:    { score: 0, max: 25, details: ['whitelisted_legit_token'] },
+        imbalance: { score: 0, max: 25, details: ['whitelisted_legit_token'] },
+        speed:     { score: 0, max: 25, details: ['whitelisted_legit_token'] },
         whitelist_meta: scamDb.whitelist_meta || null,
       };
     }
@@ -350,42 +422,51 @@ router.post('/monitor/v1/governance-change', express.json({ limit: '8kb' }), asy
   const safeProgram = program_id.trim();
   const txLimit = Math.max(1, Math.min(parseInt(window_slots, 10) || 50, 200));
 
-  let findings = [];
+  let findings   = [];
   let dataSource = 'helius';
+  let txList     = null;
 
+  // Primary: Helius Enhanced Transactions API
   try {
-    const txList = await fetchHeliusTransactions(safeProgram, txLimit);
+    txList = await fetchHeliusTransactions(safeProgram, txLimit);
+    if (txList === null) dataSource = 'mock'; // no HELIUS_API_KEY — try Alchemy below
+  } catch (heliusErr) {
+    console.warn('[a2a-oracle] Helius fetch failed, trying Alchemy fallback:', heliusErr.message);
+    dataSource = 'alchemy_rpc';
+  }
 
-    if (txList === null) {
-      // No API key — deterministic mock for dev/test
-      dataSource = 'mock';
-      findings = [];
-    } else if (Array.isArray(txList)) {
-      for (const rawTx of txList) {
-        try {
-          const parsed = parseEnhancedTransaction(rawTx);
-          const alerts = evaluateTransaction(parsed, safeProgram);
-          for (const alert of alerts) {
-            findings.push({
-              rule:     alert.rule,
-              severity: alert.severity,
-              tx_sig:   alert.tx_signature || parsed.signature,
-              ts:       alert.timestamp
-                ? new Date(alert.timestamp).toISOString()
-                : new Date().toISOString(),
-              message:  alert.message,
-            });
-          }
-        } catch (innerErr) {
-          console.warn('[a2a-oracle] governance tx parse error:', innerErr.message);
+  // Fallback: Alchemy RPC (if Helius unavailable / credits exhausted)
+  if (txList === null && dataSource !== 'mock') {
+    try {
+      txList = await fetchAlchemyTransactions(safeProgram, txLimit);
+      if (txList === null) dataSource = 'mock_error_fallback'; // no usable RPC available
+    } catch (alchemyErr) {
+      console.error('[a2a-oracle] Alchemy fallback failed:', alchemyErr.message);
+      dataSource = 'mock_error_fallback';
+    }
+  }
+
+  // Process transactions (works for both Helius and Alchemy-normalized format)
+  if (Array.isArray(txList)) {
+    for (const rawTx of txList) {
+      try {
+        const parsed = parseEnhancedTransaction(rawTx);
+        const alerts = evaluateTransaction(parsed, safeProgram);
+        for (const alert of alerts) {
+          findings.push({
+            rule:     alert.rule,
+            severity: alert.severity,
+            tx_sig:   alert.tx_signature || parsed.signature,
+            ts:       alert.timestamp
+              ? new Date(alert.timestamp).toISOString()
+              : new Date().toISOString(),
+            message:  alert.message,
+          });
         }
+      } catch (innerErr) {
+        console.warn('[a2a-oracle] governance tx parse error:', innerErr.message);
       }
     }
-  } catch (heliusErr) {
-    console.error('[a2a-oracle] Helius fetch failed:', heliusErr.message);
-    // Return mock verdict on API error so callers always get a usable response
-    dataSource = 'mock_error_fallback';
-    findings = [];
   }
 
   // Determine verdict
