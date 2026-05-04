@@ -22,10 +22,13 @@ const { asyncSign, canonicalJSON } = require('../crypto/sign');
 const { isSolanaAddress } = require('../validation/address');
 const { calculateIRIS } = require('../features/iris-score');
 const { enrichScanResult } = require('../enrichment');
-const { lookupScamDb } = require('../scam-db/lookup');
+const { lookupScamDb, lookupScamCreator } = require('../scam-db/lookup');
 const { evaluateTransaction, parseEnhancedTransaction } = _requireParseEnhancedTx();
 const { PRICING } = require('../../config/pricing');
-const { recordReceiptFeedback, getReceiptFeedbackSummary } = require('../../db');
+const { recordReceiptFeedback, getReceiptFeedbackSummary, getCachedScanFromDb, logScanToHistory } = require('../../db');
+
+const A2A_SCAN_CACHE_TTL_MS = 30 * 60 * 1000;  // 30 minut
+const GOV_CACHE_TTL_MS      = 15 * 60 * 1000;  // 15 minut
 
 // ── Helius Enhanced Transactions API ─────────────────────────────────────────
 const HELIUS_BASE = 'https://api.helius.xyz/v0';
@@ -333,6 +336,12 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
   const address = req.params.address.trim();
 
   try {
+    // 1. DB-first cache — vrátí uložený podepsaný výsledek pokud je čerstvý (30 min)
+    const cached = await getCachedScanFromDb(address, 'a2a_scan', A2A_SCAN_CACHE_TTL_MS).catch(() => null);
+    if (cached) {
+      return res.json({ ...cached, cached: true });
+    }
+
     const [enrichment, scamDb] = await Promise.all([
       enrichScanResult(address).catch(() => null),
       lookupScamDb(address).catch(() => ({ known_scam: null, rugcheck: null, db_match: false })),
@@ -362,12 +371,30 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
       };
     }
 
+    // 2. Guilt-by-association — creator wallet z RugCheck enrichment
+    const creatorAddress = enrichment?.rugcheck?.creator || enrichment?.extensions?.mint_authority || null;
+    let creatorRisk = null;
+    if (creatorAddress && !scamDb?.whitelisted) {
+      creatorRisk = lookupScamCreator(creatorAddress);
+      if (creatorRisk?.isKnownScammer) {
+        riskFactors = [...riskFactors, 'known_scam_creator'];
+        irisScore = Math.max(irisScore, 55);  // floor: HIGH
+        if (irisScore >= 55 && riskLevel === 'low')   riskLevel = 'medium';
+        if (irisScore >= 55 && riskLevel === 'medium') riskLevel = 'high';
+      }
+    }
+
     const reportPayload = {
       address,
-      iris_score:  irisScore,
-      risk_level:  riskLevel,
+      iris_score:   irisScore,
+      risk_level:   riskLevel,
       risk_factors: riskFactors,
       iris_breakdown: irisBreakdown,
+      ...(creatorRisk?.isKnownScammer ? { creator_risk: {
+        address:    creatorAddress,
+        scam_count: creatorRisk.scamCount,
+        patterns:   creatorRisk.patterns,
+      } } : {}),
     };
 
     // Sign the report payload (canonical JSON string)
@@ -379,7 +406,7 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
       envelope = {};
     }
 
-    return res.json({
+    const responseObj = {
       ...reportPayload,
       signed_at:  envelope.signed_at  || new Date().toISOString(),
       signature:  envelope.signature  || null,
@@ -387,7 +414,18 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
       key_id:     envelope.key_id     || null,
       signer:     envelope.signer     || 'integrity.molt',
       algorithm:  envelope.algorithm  || 'Ed25519',
-    });
+    };
+
+    // 3. Uložit do scan_history pro příští requesty
+    logScanToHistory({
+      address,
+      scan_type:   'a2a_scan',
+      risk_score:  irisScore,
+      risk_level:  riskLevel,
+      result_json: responseObj,
+    }).catch(() => {});
+
+    return res.json(responseObj);
   } catch (err) {
     console.error('[a2a-oracle] /scan/v1 error:', err.message);
     return res.status(500).json({ error: 'scan_failed', detail: err.message.slice(0, 200) });
@@ -422,6 +460,12 @@ router.post('/monitor/v1/governance-change', express.json({ limit: '8kb' }), asy
 
   const safeProgram = program_id.trim();
   const txLimit = Math.max(1, Math.min(parseInt(window_slots, 10) || 50, 200));
+
+  // DB-first cache (15 min) — ušetří Helius/Alchemy RPC volání pro opakovaný dotaz
+  const govCached = await getCachedScanFromDb(safeProgram, 'governance_change', GOV_CACHE_TTL_MS).catch(() => null);
+  if (govCached) {
+    return res.json({ ...govCached, cached: true, data_source: 'scan_history_cache' });
+  }
 
   let findings   = [];
   let dataSource = 'helius';
@@ -491,7 +535,7 @@ router.post('/monitor/v1/governance-change', express.json({ limit: '8kb' }), asy
     envelope = {};
   }
 
-  return res.json({
+  const govResponseObj = {
     ...reportPayload,
     signed_at:  envelope.signed_at  || new Date().toISOString(),
     signature:  envelope.signature  || null,
@@ -499,7 +543,17 @@ router.post('/monitor/v1/governance-change', express.json({ limit: '8kb' }), asy
     key_id:     envelope.key_id     || null,
     signer:     envelope.signer     || 'integrity.molt',
     algorithm:  envelope.algorithm  || 'Ed25519',
-  });
+  };
+
+  // Uložit do scan_history pro DB-first cache při příštím dotazu
+  logScanToHistory({
+    address:     safeProgram,
+    scan_type:   'governance_change',
+    risk_level:  verdict,
+    result_json: govResponseObj,
+  }).catch(() => {});
+
+  return res.json(govResponseObj);
 });
 
 // ── GET /feed/v1/new-spl-tokens — public pull feed ────────────────────────────

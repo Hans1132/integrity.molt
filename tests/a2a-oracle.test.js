@@ -109,11 +109,8 @@ stubModule(BASE + '/src/enrichment', {
 
 // 3. lookupScamDb stub — returns benign result
 stubModule(BASE + '/src/scam-db/lookup', {
-  lookupScamDb: (_addr) => Promise.resolve({
-    known_scam: null,
-    rugcheck:   null,
-    db_match:   false,
-  }),
+  lookupScamDb:      (_addr) => Promise.resolve({ known_scam: null, rugcheck: null, db_match: false }),
+  lookupScamCreator: (_addr) => null,
 });
 
 // 4. webhook-receiver stub — evaluateTransaction returns no alerts

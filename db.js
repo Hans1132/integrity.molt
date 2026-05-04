@@ -316,9 +316,18 @@ function migrateAccuracySignalsSchema() {
       if (!e.message.includes('duplicate column name')) throw e;
     }
   }
-  try {
-    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS accuracy_envelope_sig ON scan_accuracy_signals (envelope_signature) WHERE envelope_signature IS NOT NULL");
-  } catch {}
+  const idxs = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS accuracy_envelope_sig ON scan_accuracy_signals (envelope_signature) WHERE envelope_signature IS NOT NULL",
+    // Rychlejší cache lookup — pokrývá getCachedScanFromDb()
+    "CREATE INDEX IF NOT EXISTS scan_history_cache_lookup ON scan_history (address, scan_type, created_at DESC) WHERE result_json IS NOT NULL",
+    // Confidence-based filtering known_scams
+    "CREATE INDEX IF NOT EXISTS known_scams_confidence ON known_scams (confidence DESC, scam_type)",
+    // IP blacklist — pouze aktivní záznamy
+    "CREATE INDEX IF NOT EXISTS ip_blacklist_active ON ip_blacklist (ip) WHERE expires_at IS NULL",
+  ];
+  for (const sql of idxs) {
+    try { db.exec(sql); } catch {}
+  }
 }
 
 // auth.js volá initUsersSchema() samostatně — mapujeme na initSchema
@@ -1203,6 +1212,80 @@ function getReceiptFeedbackSummary() {
   return { totals, by_source: bySource, recent };
 }
 
+// ── Abuse events ──────────────────────────────────────────────────────────────
+
+function logAbuseEvent(ip, eventType, details) {
+  db.prepare(`
+    INSERT INTO abuse_events (ip, event_type, details, occurred_at)
+    VALUES (?, ?, ?, datetime('now'))
+  `).run(ip, eventType, details ? JSON.stringify(details) : null);
+}
+
+function getAbuseStats(hours = 24) {
+  const since = new Date(Date.now() - hours * 3_600_000).toISOString().slice(0, 19);
+  return db.prepare(`
+    SELECT event_type, COUNT(*) AS count, COUNT(DISTINCT ip) AS unique_ips
+    FROM abuse_events
+    WHERE occurred_at >= ?
+    GROUP BY event_type
+    ORDER BY count DESC
+  `).all(since);
+}
+
+// ── IP blacklist ──────────────────────────────────────────────────────────────
+
+function isIpBlacklisted(ip) {
+  const row = db.prepare(`
+    SELECT ip FROM ip_blacklist
+    WHERE ip = ? AND (expires_at IS NULL OR expires_at > datetime('now'))
+  `).get(ip);
+  return !!row;
+}
+
+function blacklistIp(ip, reason, expiresInMs = null) {
+  const expiresAt = expiresInMs
+    ? new Date(Date.now() + expiresInMs).toISOString().slice(0, 19)
+    : null;
+  db.prepare(`
+    INSERT INTO ip_blacklist (ip, reason, added_at, expires_at, hit_count)
+    VALUES (?, ?, datetime('now'), ?, 0)
+    ON CONFLICT(ip) DO UPDATE SET
+      reason = excluded.reason,
+      expires_at = excluded.expires_at,
+      hit_count = hit_count + 1
+  `).run(ip, reason, expiresAt);
+}
+
+function cleanExpiredBlacklist() {
+  return db.prepare(`DELETE FROM ip_blacklist WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')`).run().changes;
+}
+
+// ── Global scan stats ─────────────────────────────────────────────────────────
+
+function incrementGlobalScanStats(type) {
+  const col = type === 'paid' ? 'paid_count' : 'free_count';
+  db.prepare(`
+    INSERT INTO global_scan_stats (stat_date, free_count, paid_count)
+    VALUES (date('now'), 0, 0)
+    ON CONFLICT(stat_date) DO UPDATE SET ${col} = ${col} + 1
+  `).run();
+}
+
+function getGlobalScanStats(days = 7) {
+  return db.prepare(`
+    SELECT stat_date, free_count, paid_count, (free_count + paid_count) AS total
+    FROM global_scan_stats
+    ORDER BY stat_date DESC
+    LIMIT ?
+  `).all(days);
+}
+
+// ── IRIS enrichment (read-only — zapisuje offline skript) ─────────────────────
+
+function getIrisEnrichment(mint) {
+  return db.prepare('SELECT * FROM iris_enrichment WHERE mint = ?').get(mint);
+}
+
 // ── Known scams databáze ──────────────────────────────────────────────────────
 
 function lookupKnownScam(mint) {
@@ -1355,6 +1438,13 @@ module.exports = {
   // Accuracy monitoring
   logAccuracySignal, logUserFeedback, getAccuracyStats,
   recordReceiptFeedback, getReceiptFeedbackSummary,
+  // Abuse & IP blacklist
+  logAbuseEvent, getAbuseStats,
+  isIpBlacklisted, blacklistIp, cleanExpiredBlacklist,
+  // Global scan stats
+  incrementGlobalScanStats, getGlobalScanStats,
+  // IRIS enrichment
+  getIrisEnrichment,
   // Validation log
   logValidationIssues,
   // Scam database
