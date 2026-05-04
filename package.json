@@ -4,9 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/e2e/smoke.js && node tests/security/no-secrets.js && node tests/payment/anti-replay.test.js && node tests/a2a-oracle.test.js",
+    "test": "node tests/e2e/smoke.js && node tests/security/no-secrets.js && node tests/payment/anti-replay.test.js && node tests/a2a-oracle.test.js && node tests/middleware/free-quota.test.js && node tests/a2a/task-store.test.js && node tests/features/iris-score.test.js && node tests/validation/report-validator.test.js && node tests/payment/pricing-consistency.test.js",
     "test:anti-replay": "node tests/payment/anti-replay.test.js",
     "test:a2a": "node tests/a2a-oracle.test.js",
+    "test:quota": "node tests/middleware/free-quota.test.js",
+    "test:task-store": "node tests/a2a/task-store.test.js",
+    "test:iris": "node tests/features/iris-score.test.js",
+    "test:report-validator": "node tests/validation/report-validator.test.js",
+    "test:pricing": "node tests/payment/pricing-consistency.test.js",
     "validate:openapi": "node scripts/validate-openapi-coverage.js"
   },
   "keywords": [],
