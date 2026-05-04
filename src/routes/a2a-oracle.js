@@ -25,6 +25,7 @@ const { enrichScanResult } = require('../enrichment');
 const { lookupScamDb } = require('../scam-db/lookup');
 const { evaluateTransaction, parseEnhancedTransaction } = _requireParseEnhancedTx();
 const { PRICING } = require('../../config/pricing');
+const { recordReceiptFeedback, getReceiptFeedbackSummary } = require('../../db');
 
 // ── Helius Enhanced Transactions API ─────────────────────────────────────────
 const HELIUS_BASE = 'https://api.helius.xyz/v0';
@@ -566,6 +567,98 @@ router.get('/feed/v1/new-spl-tokens', _feedRL, async (req, res) => {
     signer:     envelope.signer     || 'integrity.molt',
     algorithm:  envelope.algorithm  || 'Ed25519',
   });
+});
+
+const _feedbackRL = makeRateLimiter(5); // 5 req/min per IP — anti-spam
+
+/**
+ * POST /feedback/v1/receipt
+ *
+ * Přijme feedback k oracle receiptu. Verifikuje Ed25519 podpis obálky před uložením,
+ * aby do datasetu nešla zfalšovaná data.
+ *
+ * Body: { envelope: <oracle receipt>, verdict: "false_positive"|"false_negative"|"correct", note?: string }
+ */
+router.post('/feedback/v1/receipt', express.json({ limit: '128kb' }), _feedbackRL, async (req, res) => {
+  const { envelope, verdict, note } = req.body || {};
+
+  if (!envelope || typeof envelope !== 'object') {
+    return res.status(400).json({ ok: false, reason: 'missing_envelope' });
+  }
+  if (!['false_positive', 'false_negative', 'correct'].includes(verdict)) {
+    return res.status(400).json({ ok: false, reason: 'invalid_verdict — use false_positive | false_negative | correct' });
+  }
+
+  // Verifikuj Ed25519 podpis — brání otravě datasetu falešnými receipty
+  const { signature, verify_key, payload } = envelope;
+  if (!signature || !verify_key) {
+    return res.status(400).json({ ok: false, reason: 'envelope_missing_signature_or_verify_key' });
+  }
+
+  let sigValid = false;
+  try {
+    const sigBytes = Buffer.from(signature, 'base64');
+    const keyBytes = Buffer.from(verify_key, 'base64');
+    if (keyBytes.length !== 32 || sigBytes.length !== 64) {
+      return res.status(400).json({ ok: false, reason: 'invalid_key_or_signature_length' });
+    }
+    const META_KEYS = new Set(['signature', 'verify_key', 'key_id', 'signed_at', 'signer', 'algorithm', 'report']);
+    const payloadObj = payload && typeof payload === 'object'
+      ? payload
+      : Object.fromEntries(Object.entries(envelope).filter(([k]) => !META_KEYS.has(k)));
+    const canonical = canonicalJSON(payloadObj);
+    const keyObj = crypto.createPublicKey({
+      key: Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), keyBytes]),
+      format: 'der', type: 'spki',
+    });
+    sigValid = crypto.verify(null, Buffer.from(canonical, 'utf-8'), keyObj, sigBytes);
+  } catch (e) {
+    return res.status(400).json({ ok: false, reason: 'signature_verification_error', detail: e.message });
+  }
+
+  if (!sigValid) {
+    return res.status(400).json({ ok: false, reason: 'invalid_signature — envelope was not produced by this oracle' });
+  }
+
+  // Odvod metadata z envelope
+  const address = envelope.address || envelope.program_id || (payload && (payload.address || payload.program_id)) || null;
+  const oracleVerdict = envelope.risk_level || envelope.classification || (payload && (payload.risk_level || payload.classification)) || null;
+  const source = envelope.skill || (
+    address ? 'scan_address' : envelope.mints ? 'new_spl_feed' : 'unknown'
+  );
+
+  try {
+    recordReceiptFeedback({
+      envelopeSignature: signature,
+      address,
+      oracleVerdict,
+      source,
+      verdict,
+      note: note ? String(note).slice(0, 500) : null,
+    });
+  } catch (e) {
+    if (e.message === 'invalid_verdict') return res.status(400).json({ ok: false, reason: 'invalid_verdict' });
+    console.error('[a2a-oracle] recordReceiptFeedback error:', e.message);
+    return res.status(500).json({ ok: false, reason: 'db_error' });
+  }
+
+  return res.json({ ok: true, verdict, address, oracle_verdict: oracleVerdict });
+});
+
+/**
+ * GET /feedback/v1/summary
+ *
+ * Vrátí agregovaný přehled false positive / false negative a posledních 50 případů.
+ * Určeno pro interní analýzu kvality modelu.
+ */
+router.get('/feedback/v1/summary', async (req, res) => {
+  try {
+    const summary = getReceiptFeedbackSummary();
+    return res.json(summary);
+  } catch (e) {
+    console.error('[a2a-oracle] getReceiptFeedbackSummary error:', e.message);
+    return res.status(500).json({ error: 'db_error' });
+  }
 });
 
 module.exports = router;

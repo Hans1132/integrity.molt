@@ -280,6 +280,7 @@ function initSchema() {
   `);
   // Migruj sloupce pro existující DB (bezpečné i při opakovaném volání)
   migrateKnownScamsSchema();
+  migrateAccuracySignalsSchema();
   return Promise.resolve();
 }
 
@@ -300,6 +301,23 @@ function migrateKnownScamsSchema() {
   }
   try {
     db.exec("CREATE INDEX IF NOT EXISTS known_scams_creator ON known_scams (creator) WHERE creator IS NOT NULL");
+  } catch {}
+}
+
+function migrateAccuracySignalsSchema() {
+  const cols = [
+    "ALTER TABLE scan_accuracy_signals ADD COLUMN envelope_signature TEXT",
+    "ALTER TABLE scan_accuracy_signals ADD COLUMN address            TEXT",
+    "ALTER TABLE scan_accuracy_signals ADD COLUMN oracle_verdict     TEXT",
+    "ALTER TABLE scan_accuracy_signals ADD COLUMN source             TEXT",
+  ];
+  for (const sql of cols) {
+    try { db.exec(sql); } catch (e) {
+      if (!e.message.includes('duplicate column name')) throw e;
+    }
+  }
+  try {
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS accuracy_envelope_sig ON scan_accuracy_signals (envelope_signature) WHERE envelope_signature IS NOT NULL");
   } catch {}
 }
 
@@ -1132,6 +1150,59 @@ function getAccuracyStats(hours = 24) {
   return { hours, since, totals, topFlags, byCategory };
 }
 
+// Uloží feedback k oracle receiptu. Klíč = envelope_signature → duplikát je tiché IGNORE.
+function recordReceiptFeedback({ envelopeSignature, address, oracleVerdict, source, verdict, note }) {
+  const VALID = new Set(['false_positive', 'false_negative', 'correct']);
+  if (!VALID.has(verdict)) throw new Error('invalid_verdict');
+  db.prepare(`
+    INSERT OR IGNORE INTO scan_accuracy_signals
+      (envelope_signature, address, oracle_verdict, source, user_feedback, feedback_note, scan_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    envelopeSignature || null,
+    address           || null,
+    oracleVerdict     || null,
+    source            || null,
+    verdict,
+    note              || null,
+    source            || null,
+  );
+}
+
+function getReceiptFeedbackSummary() {
+  const totals = db.prepare(`
+    SELECT
+      COUNT(*)                                                                 AS total,
+      SUM(CASE WHEN user_feedback = 'false_positive' THEN 1 ELSE 0 END)       AS false_positives,
+      SUM(CASE WHEN user_feedback = 'false_negative' THEN 1 ELSE 0 END)       AS false_negatives,
+      SUM(CASE WHEN user_feedback = 'correct'        THEN 1 ELSE 0 END)       AS confirmed_correct
+    FROM scan_accuracy_signals
+    WHERE envelope_signature IS NOT NULL
+  `).get();
+
+  const bySource = db.prepare(`
+    SELECT source,
+           COUNT(*)                                                            AS total,
+           SUM(CASE WHEN user_feedback = 'false_positive' THEN 1 ELSE 0 END)  AS false_positives,
+           SUM(CASE WHEN user_feedback = 'false_negative' THEN 1 ELSE 0 END)  AS false_negatives,
+           SUM(CASE WHEN user_feedback = 'correct'        THEN 1 ELSE 0 END)  AS confirmed_correct
+    FROM scan_accuracy_signals
+    WHERE envelope_signature IS NOT NULL
+    GROUP BY source
+    ORDER BY total DESC
+  `).all();
+
+  const recent = db.prepare(`
+    SELECT address, source, oracle_verdict, user_feedback, feedback_note, created_at
+    FROM scan_accuracy_signals
+    WHERE envelope_signature IS NOT NULL
+    ORDER BY created_at DESC
+    LIMIT 50
+  `).all();
+
+  return { totals, by_source: bySource, recent };
+}
+
 // ── Known scams databáze ──────────────────────────────────────────────────────
 
 function lookupKnownScam(mint) {
@@ -1283,6 +1354,7 @@ module.exports = {
   getLiveStats,
   // Accuracy monitoring
   logAccuracySignal, logUserFeedback, getAccuracyStats,
+  recordReceiptFeedback, getReceiptFeedbackSummary,
   // Validation log
   logValidationIssues,
   // Scam database
