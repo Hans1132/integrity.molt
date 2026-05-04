@@ -25,6 +25,7 @@ const { runAdversarialSim }  = require('./src/adversarial/runner');
 const { getAllPlaybooks }     = require('./src/adversarial/playbooks');
 const { verifyWebhookAuth, handleHeliusWebhook, registerRescanCallback } = require('./src/monitor/webhook-receiver');
 const { initMonitor }        = require('./src/monitor/init');
+const splMintPoller          = require('./src/monitor/spl-mint-poller');
 const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 const { lookupScamDb }       = require('./src/scam-db/lookup');
@@ -5129,6 +5130,9 @@ db.initSchema()
       setTimeout(() => {
         initMonitor().catch(e => console.error('[monitor] Init error:', e.message));
       }, 5_000);
+
+      // SPL mint poller — Alchemy Token Program poll každých 5 min
+      splMintPoller.init(db.db);
 
       // Webhook-triggered re-scan: suspektní transakce spustí okamžitý risk re-scan
       registerRescanCallback(async (address, entry) => {

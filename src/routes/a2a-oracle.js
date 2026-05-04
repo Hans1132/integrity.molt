@@ -502,18 +502,10 @@ router.post('/monitor/v1/governance-change', express.json({ limit: '8kb' }), asy
 });
 
 // ── GET /feed/v1/new-spl-tokens — public pull feed ────────────────────────────
-/**
- * Returns a signed snapshot of new SPL token mint creation events from events.jsonl.
- *
- * events.jsonl contains entries with `type` as Helius raw types.
- * Mint creation is captured by INITIALIZE_MINT and MINT_TO types.
- * Filter also includes webhook-manager.js SECURITY_TX_TYPES: MINT_TO, INITIALIZE_MINT.
- */
-const EVENTS_FILE = path.join(__dirname, '../../data/monitor/events.jsonl');
-const MINT_TYPES = new Set(['INITIALIZE_MINT', 'MINT_TO', 'INITIALIZE_MINT_2', 'CREATE_MINT']);
+// Reads from spl_mints table populated by spl-mint-poller.js (Alchemy Token Program poll).
+// Falls back gracefully when the table is empty or DB unavailable.
 
 router.get('/feed/v1/new-spl-tokens', _feedRL, async (req, res) => {
-  // Parse ?since= query param (ISO8601), default: last 24h
   let sinceTs;
   if (req.query.since) {
     sinceTs = Date.parse(req.query.since);
@@ -526,47 +518,35 @@ router.get('/feed/v1/new-spl-tokens', _feedRL, async (req, res) => {
 
   const sinceISO = new Date(sinceTs).toISOString();
   let mints = [];
+  let dataSource = 'spl_mints_db';
 
   try {
-    if (fs.existsSync(EVENTS_FILE)) {
-      // Stream line-by-line to avoid loading the entire file into memory.
-      // events.jsonl can grow unbounded from Helius webhook deliveries.
-      await new Promise((resolve, reject) => {
-        const rl = require('readline').createInterface({
-          input: fs.createReadStream(EVENTS_FILE, { encoding: 'utf-8' }),
-          crlfDelay: Infinity,
-        });
-        rl.on('line', (line) => {
-          if (!line) return;
-          let entry;
-          try { entry = JSON.parse(line); } catch { return; }
+    const db = require('../../db');
+    const rawDb = db.db || db;
+    const rows = rawDb.prepare(
+      `SELECT mint, tx_sig, slot, block_time
+       FROM spl_mints
+       WHERE block_time >= ?
+       ORDER BY block_time DESC, mint ASC
+       LIMIT 500`
+    ).all(sinceTs);
 
-          if (!MINT_TYPES.has(entry.type)) return;
-          const entryTs = entry.ts || 0;
-          if (entryTs < sinceTs) return;
-          const mintAddr = (entry.accounts || [])[0] || null;
-          if (!mintAddr) return;
-
-          mints.push({
-            mint:       mintAddr,
-            created_at: new Date(entryTs).toISOString(),
-            slot:       entry.slot || null,
-            tx_sig:     entry.sig  || null,
-          });
-        });
-        rl.on('close', resolve);
-        rl.on('error', reject);
-      });
-    }
-  } catch (readErr) {
-    console.error('[a2a-oracle] feed events.jsonl read error:', readErr.message);
-    // Return empty list — do not 500 on missing/corrupt file
+    mints = rows.map(r => ({
+      mint:       r.mint,
+      created_at: new Date(r.block_time).toISOString(),
+      slot:       r.slot  || null,
+      tx_sig:     r.tx_sig || null,
+    }));
+  } catch (dbErr) {
+    console.error('[a2a-oracle] feed DB read error:', dbErr.message);
+    dataSource = 'error_fallback';
   }
 
   const reportPayload = {
     mints,
-    since: sinceISO,
-    count: mints.length,
+    since:       sinceISO,
+    count:       mints.length,
+    data_source: dataSource,
   };
 
   let envelope;

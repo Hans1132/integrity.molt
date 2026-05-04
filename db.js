@@ -259,6 +259,24 @@ function initSchema() {
     );
     CREATE INDEX IF NOT EXISTS validation_log_mint    ON validation_log (mint, created_at DESC);
     CREATE INDEX IF NOT EXISTS validation_log_invalid ON validation_log (valid, created_at DESC);
+
+    -- SPL mint feed — naplněno Alchemy pollerem (spl-mint-poller.js)
+    CREATE TABLE IF NOT EXISTS spl_mints (
+      mint        TEXT    PRIMARY KEY,
+      tx_sig      TEXT    NOT NULL UNIQUE,
+      slot        INTEGER,
+      block_time  INTEGER NOT NULL,
+      source      TEXT    NOT NULL DEFAULT 'alchemy_poller',
+      created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')*1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_spl_mints_bt ON spl_mints(block_time DESC);
+
+    -- Kurzor polleru — vždy max 1 řádek (id=1)
+    CREATE TABLE IF NOT EXISTS spl_mint_cursor (
+      id          INTEGER PRIMARY KEY CHECK (id = 1),
+      last_sig    TEXT,
+      last_run_at INTEGER
+    );
   `);
   // Migruj sloupce pro existující DB (bezpečné i při opakovaném volání)
   migrateKnownScamsSchema();
