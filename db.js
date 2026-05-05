@@ -15,6 +15,12 @@ const path     = require('path');
 const crypto   = require('crypto');
 const fs       = require('fs');
 
+// Konvertuje JS Date na SQLite TEXT formát 'YYYY-MM-DD HH:MM:SS' (bez T, bez Z, bez ms).
+// SQLite datetime('now') vrací tento formát — musí být konzistentní při WHERE porovnáních.
+function toSQLiteTimestamp(date) {
+  return date.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+}
+
 const DB_PATH = process.env.SQLITE_DB_PATH
   || path.join(__dirname, 'data', 'intmolt.db');
 
@@ -548,7 +554,7 @@ async function logEvent({ name, resource, ip, meta }) {
 }
 
 async function getFunnelStats(days = 30) {
-  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const cutoff = toSQLiteTimestamp(new Date(Date.now() - days * 86400000));
   return db.prepare(`
     SELECT name,
            COUNT(*)          AS total,
@@ -562,7 +568,7 @@ async function getFunnelStats(days = 30) {
 }
 
 async function getPaymentStats(days = 30) {
-  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const cutoff = toSQLiteTimestamp(new Date(Date.now() - days * 86400000));
   return db.prepare(`
     SELECT date(created_at)                                         AS day,
            resource,
@@ -579,7 +585,7 @@ async function getPaymentStats(days = 30) {
 }
 
 async function getPageviewStats(days = 30) {
-  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const cutoff = toSQLiteTimestamp(new Date(Date.now() - days * 86400000));
   return db.prepare(`
     SELECT date(created_at)              AS day,
            json_extract(meta, '$.path')  AS path,
@@ -598,7 +604,7 @@ async function countFreeScansToday(ip) {
   const row = db.prepare(`
     SELECT COUNT(*) AS cnt FROM events
     WHERE name = 'free_scan_used' AND ip = ? AND created_at >= ?
-  `).get(ip, dayStart.toISOString());
+  `).get(ip, toSQLiteTimestamp(dayStart));
   return parseInt(row?.cnt ?? 0, 10);
 }
 
@@ -930,7 +936,7 @@ async function createLocalUser({ email, password_hash, name }) {
 
 async function createPasswordResetToken(email) {
   const token   = crypto.randomBytes(32).toString('hex');
-  const expires = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+  const expires = toSQLiteTimestamp(new Date(Date.now() + 2 * 3600 * 1000));
   db.prepare('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE email = ?')
     .run(token, expires, email);
   return token;
@@ -972,7 +978,7 @@ async function getSubscriberWatchlist(email) {
 }
 
 async function getWeeklyScanSummary(email) {
-  const cutoff = new Date(Date.now() - 7 * 86400000).toISOString();
+  const cutoff = toSQLiteTimestamp(new Date(Date.now() - 7 * 86400000));
   return db.prepare(`
     SELECT
       COUNT(*)                                                         AS total_scans,
@@ -1001,7 +1007,7 @@ async function getDigestAd() {
 }
 
 async function getRecentHighRiskScans(email) {
-  const cutoff = new Date(Date.now() - 7 * 86400000).toISOString();
+  const cutoff = toSQLiteTimestamp(new Date(Date.now() - 7 * 86400000));
   return db.prepare(`
     SELECT address, scan_type, risk_score, risk_level, summary, created_at
     FROM scan_history
@@ -1164,8 +1170,8 @@ class SqliteStore extends session.Store {
   set(sid, sess, cb) {
     try {
       const expires = sess.cookie?.expires
-        ? new Date(sess.cookie.expires).toISOString()
-        : new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+        ? toSQLiteTimestamp(new Date(sess.cookie.expires))
+        : toSQLiteTimestamp(new Date(Date.now() + 30 * 24 * 3600 * 1000));
       db.prepare(
         'INSERT OR REPLACE INTO user_sessions (sid, sess, expires) VALUES (?, ?, ?)'
       ).run(sid, JSON.stringify(sess), expires);
