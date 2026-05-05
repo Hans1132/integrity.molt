@@ -709,7 +709,7 @@ async function getUserWatchlist(email) {
 
 async function upsertSubscription({ stripe_customer_id, stripe_sub_id, email, tier, status, current_period_end, telegram_chat_id }) {
   const periodEnd = current_period_end
-    ? new Date(current_period_end * 1000).toISOString()
+    ? toSQLiteTimestamp(new Date(current_period_end * 1000))
     : null;
   db.prepare(`
     INSERT INTO subscriptions
