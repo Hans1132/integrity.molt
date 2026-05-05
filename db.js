@@ -277,6 +277,115 @@ function initSchema() {
       last_sig    TEXT,
       last_run_at INTEGER
     );
+
+    -- Free scan quota per IP+den
+    CREATE TABLE IF NOT EXISTS free_scan_quota (
+      identifier   TEXT NOT NULL,
+      scan_date    DATE NOT NULL,
+      count        INTEGER NOT NULL DEFAULT 0,
+      last_scan_at TEXT    NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (identifier, scan_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_free_quota_date ON free_scan_quota (scan_date);
+
+    -- Abuse events log
+    CREATE TABLE IF NOT EXISTS abuse_events (
+      id           INTEGER   PRIMARY KEY AUTOINCREMENT,
+      ip           TEXT      NOT NULL,
+      event_type   TEXT      NOT NULL,
+      details      TEXT,
+      occurred_at  TEXT      NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_abuse_ip   ON abuse_events (ip, occurred_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_abuse_type ON abuse_events (event_type, occurred_at DESC);
+
+    -- IP blacklist
+    CREATE TABLE IF NOT EXISTS ip_blacklist (
+      ip          TEXT    PRIMARY KEY,
+      reason      TEXT    NOT NULL,
+      added_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+      expires_at  TEXT,
+      hit_count   INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- Globální scan statistiky per den
+    CREATE TABLE IF NOT EXISTS global_scan_stats (
+      stat_date   DATE    PRIMARY KEY,
+      free_count  INTEGER NOT NULL DEFAULT 0,
+      paid_count  INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- IRIS enrichment — výsledky offline enrichment skriptu
+    CREATE TABLE IF NOT EXISTS iris_enrichment (
+      mint                  TEXT    PRIMARY KEY,
+      mint_authority        TEXT,
+      freeze_authority      TEXT,
+      mint_auth_active      INTEGER,
+      freeze_auth_active    INTEGER,
+      top1_holder_pct       REAL,
+      top10_holder_pct      REAL,
+      hhi                   REAL,
+      holder_count          INTEGER,
+      supply_total          TEXT,
+      error_info            TEXT,
+      enriched_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+      rc_score              INTEGER,
+      rc_rugged             INTEGER,
+      rc_top1_pct           REAL,
+      rc_top10_pct          REAL,
+      rc_hhi                REAL,
+      rc_insider_count      INTEGER,
+      rc_total_holders      INTEGER,
+      rc_total_liquidity    REAL,
+      rc_risk_danger_count  INTEGER,
+      rc_risk_score_total   INTEGER,
+      rc_risks_json         TEXT,
+      rc_enriched_at        TEXT,
+      source                TEXT    NOT NULL DEFAULT 'scam_dataset'
+    );
+
+    -- A2A task persistence
+    CREATE TABLE IF NOT EXISTS a2a_tasks (
+      id             TEXT    PRIMARY KEY,
+      skill_id       TEXT    NOT NULL,
+      params_json    TEXT,
+      status_json    TEXT,
+      artifacts_json TEXT,
+      history_json   TEXT,
+      session_id     TEXT,
+      created_at     INTEGER NOT NULL,
+      expires_at     INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_a2a_tasks_session ON a2a_tasks (session_id);
+    CREATE INDEX IF NOT EXISTS idx_a2a_tasks_expires ON a2a_tasks (expires_at);
+
+    -- AutoPilot spending log
+    CREATE TABLE IF NOT EXISTS autopilot_spending (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      agent_mint        TEXT    NOT NULL,
+      skill_id          TEXT    NOT NULL,
+      amount_usdc       REAL    NOT NULL,
+      tx_sig            TEXT,
+      decision          TEXT    NOT NULL,
+      rejection_reason  TEXT,
+      created_at        INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_autopilot_mint ON autopilot_spending (agent_mint, created_at DESC);
+
+    -- OtterSec program verification cache
+    CREATE TABLE IF NOT EXISTS ottersec_verifications (
+      program_id        TEXT    PRIMARY KEY,
+      is_verified       INTEGER NOT NULL,
+      on_chain_hash     TEXT,
+      executable_hash   TEXT,
+      repo_url          TEXT,
+      last_verified_at  TEXT,
+      source            TEXT    NOT NULL DEFAULT 'ottersec_api',
+      fetched_at        INTEGER NOT NULL,
+      expires_at        INTEGER NOT NULL,
+      fetch_error       TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_ottersec_expires ON ottersec_verifications (expires_at);
   `);
   // Migruj sloupce pro existující DB (bezpečné i při opakovaném volání)
   migrateKnownScamsSchema();
@@ -310,6 +419,7 @@ function migrateAccuracySignalsSchema() {
     "ALTER TABLE scan_accuracy_signals ADD COLUMN address            TEXT",
     "ALTER TABLE scan_accuracy_signals ADD COLUMN oracle_verdict     TEXT",
     "ALTER TABLE scan_accuracy_signals ADD COLUMN source             TEXT",
+    "ALTER TABLE watchlist ADD COLUMN webhook_url TEXT",
   ];
   for (const sql of cols) {
     try { db.exec(sql); } catch (e) {
