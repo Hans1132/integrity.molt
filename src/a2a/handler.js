@@ -321,6 +321,29 @@ function extractSkillFromMessage(message) {
   return null;
 }
 
+// ── callbackUrl validation ────────────────────────────────────────────────────
+
+// Returns an error string if the URL is invalid or targets internal infrastructure,
+// null if valid. Prevents SSRF via callback POSTs to cloud metadata or localhost.
+const _SSRF_DENY = /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/i;
+
+function validateCallbackUrl(callbackUrl) {
+  if (!callbackUrl) return null;
+  let u;
+  try {
+    u = new URL(callbackUrl);
+  } catch {
+    return 'Invalid callbackUrl — must be http(s):// URL';
+  }
+  if (!['http:', 'https:'].includes(u.protocol)) {
+    return 'Invalid callbackUrl — must be http(s):// URL';
+  }
+  if (_SSRF_DENY.test(u.hostname)) {
+    return 'Invalid callbackUrl — internal/private addresses are not allowed';
+  }
+  return null;
+}
+
 // ── JSON-RPC 2.0 error codes ──────────────────────────────────────────────────
 
 function rpcError(id, code, message, data) {
@@ -368,15 +391,9 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
   // Webhook callback URL (metadata takes precedence over top-level)
   const callbackUrl = metadata?.callbackUrl || topCallbackUrl || null;
 
-  // Validate callbackUrl is a valid HTTP(S) URL if provided
-  if (callbackUrl) {
-    try {
-      const u = new URL(callbackUrl);
-      if (!['http:', 'https:'].includes(u.protocol)) throw new Error('non-http');
-    } catch {
-      return rpcError(rpcId, -32602, 'Invalid callbackUrl — must be http(s):// URL');
-    }
-  }
+  // Validate callbackUrl — protocol + SSRF deny-list
+  const _cbUrlErr = validateCallbackUrl(callbackUrl);
+  if (_cbUrlErr) return rpcError(rpcId, -32602, _cbUrlErr);
 
   // Forward x402 payment header if present (for paid skills)
   const paymentHeader = reqHeaders['x402-payment'] || reqHeaders['authorization'] || null;
@@ -558,15 +575,9 @@ async function handleTasksSendSubscribe(rpcId, params, req, res) {
   const paymentHeader = req.headers['x402-payment'] || req.headers['authorization'] || null;
   const skill         = SKILLS[skillId];
 
-  // Validate callbackUrl is a valid HTTP(S) URL if provided
-  if (callbackUrl) {
-    try {
-      const u = new URL(callbackUrl);
-      if (!['http:', 'https:'].includes(u.protocol)) throw new Error('non-http');
-    } catch {
-      return sseError(-32602, 'Invalid callbackUrl — must be http(s):// URL');
-    }
-  }
+  // Validate callbackUrl — protocol + SSRF deny-list
+  const _cbUrlErr2 = validateCallbackUrl(callbackUrl);
+  if (_cbUrlErr2) return sseError(-32602, _cbUrlErr2);
 
   const agentMint = req.headers['x-agent-mint'] || null;
 
@@ -664,10 +675,6 @@ async function handleTasksSendSubscribe(rpcId, params, req, res) {
 //   event: <name>\n
 //   data: <json>\n
 //   \n
-
-function sseWrite(res, event, data) {
-  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-}
 
 async function handleA2ASubscribe(req, res) {
   const { skill, address, sessionId, metadata } = req.body || {};
