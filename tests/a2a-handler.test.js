@@ -76,6 +76,62 @@ function sendQuickScan(address, extra) {
   });
 }
 
+/**
+ * Read all SSE events from an in-flight http.request until the response ends
+ * or timeoutMs elapses.
+ */
+function readSseEvents(req, timeoutMs = 3000) {
+  return new Promise((resolve, reject) => {
+    const collected = [];
+    let buf = '';
+    let currentEvent = null;
+    let resRef = null;
+    const timer = setTimeout(() => {
+      resolve({ status: resRef ? resRef.statusCode : 0, headers: resRef ? resRef.headers : {}, events: collected });
+    }, timeoutMs);
+    req.on('response', res => {
+      resRef = res;
+      res.on('data', chunk => {
+        buf += chunk.toString();
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ') && currentEvent) {
+            try { collected.push({ event: currentEvent, data: JSON.parse(line.slice(6)) }); } catch { /* skip */ }
+            currentEvent = null;
+          }
+        }
+      });
+      res.on('end', () => { clearTimeout(timer); resolve({ status: res.statusCode, headers: res.headers, events: collected }); });
+      res.on('error', err => { clearTimeout(timer); reject(err); });
+    });
+    req.on('error', err => { clearTimeout(timer); reject(err); });
+  });
+}
+
+/**
+ * Fire a JSON-RPC request expecting an SSE stream response.
+ * port must be the TEST_PORT (13402), not MINI_PORT.
+ */
+function sseRpc(port, method, params) {
+  const body = JSON.stringify({ jsonrpc: '2.0', id: 99, method, params });
+  const req = http.request({
+    hostname: '127.0.0.1',
+    port,
+    path:     '/a2a',
+    method:   'POST',
+    headers:  {
+      'Content-Type':   'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    },
+  });
+  req.write(body);
+  req.end();
+  return readSseEvents(req);
+}
+
 // ── test runner ───────────────────────────────────────────────────────────────
 
 let passed = 0;
@@ -342,6 +398,48 @@ async function main() {
     await test('missing jsonrpc field returns HTTP 400', async () => {
       const res = await httpPost(TEST_PORT, '/a2a', { method: 'tasks/get', params: {}, id: 1 });
       assert.strictEqual(res.statusCode, 400, `Expected 400, got ${res.statusCode}`);
+    });
+
+    // ── tasks/sendSubscribe ───────────────────────────────────────────────────
+
+    await test('tasks/sendSubscribe vrátí SSE stream s task_created + task_completed', async () => {
+      const result = await sseRpc(TEST_PORT, 'tasks/sendSubscribe', {
+        message: {
+          role: 'user',
+          parts: [{ type: 'text', text: VALID_ADDRESS }],
+        },
+        metadata: { skill: 'quick_scan' },
+      });
+
+      assert.ok(
+        result.headers['content-type']?.includes('text/event-stream'),
+        `Expected content-type: text/event-stream, got: ${result.headers['content-type']}`
+      );
+
+      const createdEv = result.events.find(e => e.event === 'task_created');
+      assert.ok(createdEv, `task_created event missing. Events: ${JSON.stringify(result.events.map(e => e.event))}`);
+      assert.ok(createdEv.data?.result?.id, `task_created result.id missing. data: ${JSON.stringify(createdEv.data)}`);
+      assert.strictEqual(
+        createdEv.data?.result?.status?.state,
+        'submitted',
+        `Expected submitted, got: ${createdEv.data?.result?.status?.state}`
+      );
+
+      const completedEv = result.events.find(e => e.event === 'task_completed');
+      assert.ok(completedEv, `task_completed event missing. Events: ${JSON.stringify(result.events.map(e => e.event))}`);
+      assert.ok(
+        Array.isArray(completedEv.data?.result?.artifacts) && completedEv.data.result.artifacts.length > 0,
+        `task_completed artifacts empty. data: ${JSON.stringify(completedEv.data)}`
+      );
+    });
+
+    await test('tasks/sendSubscribe bez message vrátí SSE task_failed', async () => {
+      const result = await sseRpc(TEST_PORT, 'tasks/sendSubscribe', {
+        metadata: { skill: 'quick_scan' },
+      });
+
+      const failedEv = result.events.find(e => e.event === 'task_failed');
+      assert.ok(failedEv, `task_failed event missing. Events: ${JSON.stringify(result.events.map(e => e.event))}`);
     });
 
   } finally {
