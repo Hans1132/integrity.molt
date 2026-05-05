@@ -531,6 +531,8 @@ async function handleTasksSendSubscribe(rpcId, params, req, res) {
   function sseError(code, message) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
     sseWrite(res, 'task_failed', rpcError(rpcId, code, message));
     res.end();
