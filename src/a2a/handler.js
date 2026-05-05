@@ -548,6 +548,27 @@ async function handleTasksSendSubscribe(rpcId, params, req, res) {
   const paymentHeader = req.headers['x402-payment'] || req.headers['authorization'] || null;
   const skill         = SKILLS[skillId];
 
+  // Validate callbackUrl is a valid HTTP(S) URL if provided
+  if (callbackUrl) {
+    try {
+      const u = new URL(callbackUrl);
+      if (!['http:', 'https:'].includes(u.protocol)) throw new Error('non-http');
+    } catch {
+      return sseError(-32602, 'Invalid callbackUrl — must be http(s):// URL');
+    }
+  }
+
+  const agentMint = req.headers['x-agent-mint'] || null;
+
+  if (skill.priceUSDC > 0 && agentMint) {
+    enrichPaymentContextWithPDA(null, agentMint);
+    const autopilotDecision = canAutoSign(agentMint, skillId, skill.priceUSDC);
+    if (!autopilotDecision.approved) {
+      logAutoSignDecision(agentMint, skillId, skill.priceUSDC, 'rejected', null, autopilotDecision.reason);
+      return sseError(-32000, 'AutoPilot rejected: ' + autopilotDecision.reason);
+    }
+  }
+
   const task = createTask(skillId, { address, options: metadata?.options || {}, callbackUrl }, sessionId || null);
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -596,6 +617,10 @@ async function handleTasksSendSubscribe(rpcId, params, req, res) {
       artifacts: completedArtifacts,
     }));
     res.end();
+
+    if (agentMint && skill.priceUSDC > 0) {
+      logAutoSignDecision(agentMint, skillId, skill.priceUSDC, 'approved', null);
+    }
 
     await postCallback(task.id, callbackUrl, { taskId: task.id, skillId, address, status: { state: 'completed' }, artifacts: completedArtifacts });
 
