@@ -358,10 +358,11 @@ async function main() {
         console.warn('  [teardown] could not restart service:', e.message);
       }
     }
+
+    // ── summary ────────────────────────────────────────────────────────────────
+    console.log(`\n  ${passed} passed, ${failed} failed`);
   }
 
-  // ── summary ──────────────────────────────────────────────────────────────────
-  console.log(`\n  ${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }
 
