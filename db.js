@@ -1099,7 +1099,7 @@ function getMonthlyScansForEmail(email) {
     SELECT COUNT(*) AS cnt FROM scan_history
     WHERE email = ?
       AND cached = 0
-      AND created_at >= strftime('%Y-%m-01T00:00:00', 'now')
+      AND created_at >= strftime('%Y-%m-01 00:00:00', 'now')
   `).get(email);
   return row?.cnt ?? 0;
 }
@@ -1114,13 +1114,14 @@ function getMonthlyAdversarialForEmail(email) {
     WHERE email = ?
       AND scan_type = 'adversarial'
       AND cached = 0
-      AND created_at >= strftime('%Y-%m-01T00:00:00', 'now')
+      AND created_at >= strftime('%Y-%m-01 00:00:00', 'now')
   `).get(email);
   return row?.cnt ?? 0;
 }
 
 function getAdvisorStats(days = 30) {
-  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const cutoff = new Date(Date.now() - days * 86400000)
+    .toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
   return db.prepare(`
     SELECT
       COUNT(*)                                                              AS total_scans,
@@ -1333,7 +1334,8 @@ function logAbuseEvent(ip, eventType, details) {
 }
 
 function getAbuseStats(hours = 24) {
-  const since = new Date(Date.now() - hours * 3_600_000).toISOString().slice(0, 19);
+  const since = new Date(Date.now() - hours * 3_600_000)
+    .toISOString().replace('T', ' ').slice(0, 19);
   return db.prepare(`
     SELECT event_type, COUNT(*) AS count, COUNT(DISTINCT ip) AS unique_ips
     FROM abuse_events
