@@ -520,6 +520,99 @@ function handleTasksCancel(rpcId, params) {
   return rpcResult(rpcId, { id, status: { state: 'canceled' } });
 }
 
+/**
+ * tasks/sendSubscribe — A2A 0.4.1 JSON-RPC SSE streaming.
+ * POST /a2a s method="tasks/sendSubscribe" → SSE stream.
+ * Events: task_created → task_working (keepalive) → task_completed | task_failed
+ */
+async function handleTasksSendSubscribe(rpcId, params, req, res) {
+  const { message, metadata, sessionId, callbackUrl: topCallbackUrl } = params || {};
+
+  function sseError(code, message) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.flushHeaders();
+    sseWrite(res, 'task_failed', rpcError(rpcId, code, message));
+    res.end();
+  }
+
+  if (!message) return sseError(-32602, 'Missing required param: message');
+
+  const skillId = metadata?.skill || extractSkillFromMessage(message) || 'quick_scan';
+  if (!SKILLS[skillId]) return sseError(-32602, `Unknown skill: ${skillId}`);
+
+  const address = metadata?.address || extractAddressFromMessage(message);
+  if (!address) return sseError(-32602, 'Cannot extract Solana address from message parts');
+
+  const callbackUrl   = metadata?.callbackUrl || topCallbackUrl || null;
+  const paymentHeader = req.headers['x402-payment'] || req.headers['authorization'] || null;
+  const skill         = SKILLS[skillId];
+
+  const task = createTask(skillId, { address, options: metadata?.options || {}, callbackUrl }, sessionId || null);
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const startMs = Date.now();
+
+  sseWrite(res, 'task_created', rpcResult(rpcId, {
+    id:        task.id,
+    skillId,
+    address,
+    status:    { state: 'submitted' },
+    createdAt: new Date(task.createdAt).toISOString(),
+    pricing:   skill.priceUSDC === 0
+      ? { type: 'free' }
+      : { type: 'per_call', amount: skill.priceUSDC, currency: 'USDC', protocol: 'x402' },
+  }));
+
+  updateTask(task.id, { status: { state: 'working' } });
+
+  const keepalive = setInterval(() => {
+    sseWrite(res, 'task_working', rpcResult(rpcId, {
+      id:         task.id,
+      status:     { state: 'working' },
+      elapsed_ms: Date.now() - startMs,
+    }));
+  }, 5000);
+
+  req.on('close', () => clearInterval(keepalive));
+
+  try {
+    const scanResult   = await executeSkill(skillId, address, metadata?.options || {}, paymentHeader);
+    const artifactData = flattenScanResult(scanResult);
+
+    clearInterval(keepalive);
+
+    const completedArtifacts = [{ name: `${skillId}_result`, mimeType: 'application/json', parts: [{ type: 'data', data: artifactData }] }];
+    updateTask(task.id, { status: { state: 'completed' }, artifacts: completedArtifacts });
+
+    sseWrite(res, 'task_completed', rpcResult(rpcId, {
+      id:        task.id,
+      status:    { state: 'completed' },
+      artifacts: completedArtifacts,
+    }));
+    res.end();
+
+    await postCallback(task.id, callbackUrl, { taskId: task.id, skillId, address, status: { state: 'completed' }, artifacts: completedArtifacts });
+
+  } catch (e) {
+    clearInterval(keepalive);
+    console.error(`[a2a/sendSubscribe] task ${task.id} (${skillId}) failed:`, e.message);
+    const errStatus = { state: 'failed', message: e.message.slice(0, 300) };
+    if (e.status === 402) {
+      errStatus.paymentRequired = { priceUSDC: skill.priceUSDC, currency: 'USDC', protocol: 'x402', hint: 'Include x402-payment header' };
+    }
+    updateTask(task.id, { status: errStatus });
+    sseWrite(res, 'task_failed', rpcError(rpcId, -32000, errStatus.message, errStatus));
+    res.end();
+    await postCallback(task.id, callbackUrl, { taskId: task.id, skillId, address, status: errStatus });
+  }
+}
+
 // ── SSE streaming handler — handleA2ASubscribe ────────────────────────────────
 // Exported and mounted in server.js as: POST /a2a/subscribe
 //
@@ -642,6 +735,11 @@ async function handleA2ARequest(req, res) {
 
   const { id: rpcId, method, params } = body;
 
+  // tasks/sendSubscribe — SSE streaming, nelze použít res.json()
+  if (method === 'tasks/sendSubscribe') {
+    return handleTasksSendSubscribe(rpcId, params, req, res);
+  }
+
   try {
     let response;
     switch (method) {
@@ -656,7 +754,7 @@ async function handleA2ARequest(req, res) {
         break;
       default:
         response = rpcError(rpcId, -32601, `Method not found: ${method}`, {
-          available: ['tasks/send', 'tasks/get', 'tasks/cancel']
+          available: ['tasks/send', 'tasks/get', 'tasks/cancel', 'tasks/sendSubscribe']
         });
     }
     return res.json(response);
@@ -758,4 +856,4 @@ function buildAgentCard(baseUrl) {
   };
 }
 
-module.exports = { handleA2ARequest, handleA2ASubscribe, buildAgentCard, SKILLS, getTask, createTask };
+module.exports = { handleA2ARequest, handleA2ASubscribe, handleTasksSendSubscribe, buildAgentCard, SKILLS, getTask, createTask };
