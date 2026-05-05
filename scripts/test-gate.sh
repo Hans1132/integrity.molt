@@ -117,6 +117,37 @@ else
   ERRORS="$ERRORS\n- Scam DB unit tests failed"
 fi
 
+# 11. A2A task-store unit tests
+echo "🗄️  A2A task-store tests..."
+if node tests/a2a-task-store.test.js 2>/dev/null; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- A2A task-store tests failed"
+fi
+
+# 12. A2A handler integration tests
+echo "🤖  A2A handler tests..."
+if systemctl is-active --quiet integrity-x402.service 2>/dev/null; then
+  echo "  ⚠️  SKIP — service running, port 3402 occupied (run manually: systemctl stop integrity-x402.service && node tests/a2a-handler.test.js)"
+else
+  if node tests/a2a-handler.test.js 2>/dev/null; then
+    PASS=$((PASS+1))
+  else
+    FAIL=$((FAIL+1))
+    ERRORS="$ERRORS\n- A2A handler tests failed"
+  fi
+fi
+
+# 13. Registry endpoint tests (pouze pokud service běží)
+echo "📋  Registry tests..."
+if node tests/registry.test.js 2>/dev/null; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- Registry tests failed"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
