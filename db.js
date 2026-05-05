@@ -814,7 +814,7 @@ async function logScanToHistory({ email, address, scan_type, risk_score, risk_le
 
 async function getCachedScanFromDb(address, scan_type, maxAgeMs = 3_600_000) {
   // SQLite datetime format: 'YYYY-MM-DD HH:MM:SS' — toISOString() uses 'T' separator
-  const cutoff = new Date(Date.now() - maxAgeMs).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+  const cutoff = toSQLiteTimestamp(new Date(Date.now() - maxAgeMs));
   const row = db.prepare(`
     SELECT result_json FROM scan_history
     WHERE address = ? AND scan_type = ? AND result_json IS NOT NULL
@@ -1126,8 +1126,7 @@ function getMonthlyAdversarialForEmail(email) {
 }
 
 function getAdvisorStats(days = 30) {
-  const cutoff = new Date(Date.now() - days * 86400000)
-    .toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+  const cutoff = toSQLiteTimestamp(new Date(Date.now() - days * 86400000));
   return db.prepare(`
     SELECT
       COUNT(*)                                                              AS total_scans,
@@ -1239,8 +1238,7 @@ function logUserFeedback(mint, feedback, note) {
 }
 
 function getAccuracyStats(hours = 24) {
-  const since = new Date(Date.now() - hours * 3_600_000)
-    .toISOString().replace('T', ' ').slice(0, 19);
+  const since = toSQLiteTimestamp(new Date(Date.now() - hours * 3_600_000));
 
   const totals = db.prepare(`
     SELECT
@@ -1363,7 +1361,7 @@ function isIpBlacklisted(ip) {
 
 function blacklistIp(ip, reason, expiresInMs = null) {
   const expiresAt = expiresInMs
-    ? new Date(Date.now() + expiresInMs).toISOString().slice(0, 19)
+    ? toSQLiteTimestamp(new Date(Date.now() + expiresInMs))
     : null;
   db.prepare(`
     INSERT INTO ip_blacklist (ip, reason, added_at, expires_at, hit_count)
