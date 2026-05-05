@@ -520,6 +520,14 @@ function handleTasksCancel(rpcId, params) {
   return rpcResult(rpcId, { id, status: { state: 'canceled' } });
 }
 
+// sseWrite is declared here (before handleTasksSendSubscribe which uses it) and
+// again below inside the handleA2ASubscribe section for the REST endpoint.
+// Both references resolve to this single declaration via function hoisting, but
+// keeping it here makes the dependency explicit.
+function sseWrite(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
 /**
  * tasks/sendSubscribe — A2A 0.4.1 JSON-RPC SSE streaming.
  * POST /a2a s method="tasks/sendSubscribe" → SSE stream.
@@ -528,13 +536,13 @@ function handleTasksCancel(rpcId, params) {
 async function handleTasksSendSubscribe(rpcId, params, req, res) {
   const { message, metadata, sessionId, callbackUrl: topCallbackUrl } = params || {};
 
-  function sseError(code, message) {
+  function sseError(code, errMsg, data) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
-    sseWrite(res, 'task_failed', rpcError(rpcId, code, message));
+    sseWrite(res, 'task_failed', rpcError(rpcId, code, errMsg, data));
     res.end();
   }
 
@@ -567,7 +575,13 @@ async function handleTasksSendSubscribe(rpcId, params, req, res) {
     const autopilotDecision = canAutoSign(agentMint, skillId, skill.priceUSDC);
     if (!autopilotDecision.approved) {
       logAutoSignDecision(agentMint, skillId, skill.priceUSDC, 'rejected', null, autopilotDecision.reason);
-      return sseError(-32000, 'AutoPilot rejected: ' + autopilotDecision.reason);
+      return sseError(-32000, 'AutoPilot rejected: ' + autopilotDecision.reason, {
+        skillId,
+        priceUSDC:   skill.priceUSDC,
+        agentMint,
+        reason:      autopilotDecision.reason,
+        dailyBudget: getAgentDailySpending(agentMint),
+      });
     }
   }
 
