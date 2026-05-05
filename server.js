@@ -1244,6 +1244,150 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'integrity.molt security scanner', version: '1.0' });
 });
 
+// skill.md — frames.ag / registry.frames.ag service descriptor
+app.get('/skill.md', (req, res) => {
+  res.type('text/markdown').send(`---
+name: integrity-molt
+description: Solana security oracle — IRIS risk scores with Ed25519-signed receipts for AI agents
+license: MIT
+compatibility: opencode
+metadata:
+  audience: developers
+  workflow: security-verification
+---
+
+# integrity.molt Security Oracle
+
+AI-powered Solana security oracle. Returns IRIS risk scores (0–100) and Ed25519-signed receipts that agents can verify and chain as audit trail entries. Pay-per-call via x402.
+
+## Base URL
+
+\`\`\`
+https://intmolt.org
+\`\`\`
+
+## Endpoints
+
+| Endpoint | Price | Description |
+|----------|-------|-------------|
+| \`GET /scan/v1/:address\` | free | IRIS security scan with signed receipt |
+| \`POST /verify/v1/signed-receipt\` | free | Verify Ed25519-signed oracle receipt |
+| \`GET /feed/v1/new-spl-tokens\` | free | Feed of new SPL token mints (last 24h) |
+| \`POST /monitor/v1/governance-change\` | $0.15 | Detect governance changes in a Solana program |
+
+## Endpoint Details
+
+### GET /scan/v1/:address (free)
+
+IRIS security scan of a Solana token mint or wallet address. Returns signed JSON envelope.
+
+**Example:**
+\`\`\`bash
+curl https://intmolt.org/scan/v1/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "iris_score": 0,
+  "risk_level": "low",
+  "risk_factors": [],
+  "signature": "<Ed25519 base64>",
+  "verify_key": "<base64>",
+  "signer": "integrity.molt",
+  "algorithm": "Ed25519"
+}
+\`\`\`
+
+### POST /verify/v1/signed-receipt (free)
+
+Verify a signed receipt was issued by integrity.molt and has not been tampered with.
+
+**Request:**
+\`\`\`json
+{ "envelope": { "<oracle receipt object>" } }
+\`\`\`
+
+**Response:**
+\`\`\`json
+{ "valid": true, "key_pinned": true, "issuer": "integrity.molt" }
+\`\`\`
+
+### POST /monitor/v1/governance-change ($0.15 USDC)
+
+Detects authority transfers, upgrade events, and suspicious governance patterns in a Solana program over recent transactions.
+
+**Request:**
+\`\`\`json
+{ "program_id": "<base58 address>", "window_slots": 50 }
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "program_id": "...",
+  "verdict": "clean",
+  "findings": [],
+  "signature": "<Ed25519 base64>",
+  "signer": "integrity.molt"
+}
+\`\`\`
+`);
+});
+
+// offer — frames.ag machine-readable service offer
+app.get('/offer', (req, res) => {
+  res.json({
+    version: '1.0.0',
+    service: {
+      slug:        'integrity-molt',
+      title:       'integrity.molt Security Oracle',
+      description: 'Solana security oracle — IRIS risk scores with Ed25519-signed receipts for AI agents',
+      version:     '1.0.0',
+      tags:        ['security', 'solana', 'oracle', 'ai-agents', 'signed-receipts', 'rug-detection'],
+    },
+    tools: [
+      {
+        route:       'GET /scan/v1/:address',
+        description: 'IRIS security scan of a Solana address — returns signed risk envelope',
+        price:       'free',
+        mimeType:    'application/json',
+        networks:    [{ network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', networkName: 'Solana', type: 'solana' }],
+      },
+      {
+        route:       'POST /verify/v1/signed-receipt',
+        description: 'Verify an Ed25519-signed oracle receipt from integrity.molt',
+        price:       'free',
+        mimeType:    'application/json',
+        networks:    [],
+      },
+      {
+        route:       'GET /feed/v1/new-spl-tokens',
+        description: 'Pull feed of new SPL token mints on Solana (last 24h)',
+        price:       'free',
+        mimeType:    'application/json',
+        networks:    [],
+      },
+      {
+        route:       'POST /monitor/v1/governance-change',
+        description: 'Detect governance changes in a Solana program over recent transactions',
+        price:       '$0.15',
+        mimeType:    'application/json',
+        networks:    [{ network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', networkName: 'Solana', type: 'solana' }],
+      },
+    ],
+    links: {
+      base:    'https://intmolt.org',
+      docs:    'https://intmolt.org/openapi.json',
+      openapi: 'https://intmolt.org/openapi.json',
+      health:  'https://intmolt.org/health',
+      skill:   'https://intmolt.org/skill.md',
+      offer:   'https://intmolt.org/offer',
+    },
+  });
+});
+
 // Service discovery - free
 app.get('/services', (req, res) => {
   res.json({

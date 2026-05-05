@@ -21,6 +21,7 @@ const { ENDPOINT_SPEC }            = require('./endpoint-spec');
  * Build the x-payment extension object for one endpoint.
  */
 function buildPayment(pricingKey, path, usdcAta) {
+  if (!pricingKey) return null;  // free endpoint — no x402 payment
   const amount        = PRICING[pricingKey];
   const amountDisplay = PRICING_DISPLAY[pricingKey];
   if (amount === undefined) {
@@ -66,15 +67,18 @@ function buildParameters(spec) {
  */
 function buildPathItem(spec, usdcAta) {
   const methodKey = spec.method.toLowerCase();
+  const isFree    = !spec.pricingKey;
+  const priceLabel = isFree ? 'free' : PRICING_DISPLAY[spec.pricingKey];
+  const payment    = buildPayment(spec.pricingKey, spec.path.replace(/{/g, ':').replace(/}/g, ''), usdcAta);
   const operation = {
-    summary:     `${spec.summary} (${PRICING_DISPLAY[spec.pricingKey]})`,
+    summary:     `${spec.summary} (${priceLabel})`,
     description: spec.description,
     tags:        spec.tags,
     responses: {
       '200': { description: spec.responseDescription },
-      '402': { description: `Payment required (${PRICING_DISPLAY[spec.pricingKey]} via x402)` }
+      ...(isFree ? {} : { '402': { description: `Payment required (${priceLabel} via x402)` } }),
     },
-    'x-payment': buildPayment(spec.pricingKey, spec.path.replace(/{/g, ':').replace(/}/g, ''), usdcAta)
+    ...(payment ? { 'x-payment': payment } : {}),
   };
 
   const params = buildParameters(spec);
