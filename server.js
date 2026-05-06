@@ -134,9 +134,14 @@ function _botJobCleanup() {
 
 // Načte nejnovější report soubory pro danou adresu (txt + signed.json).
 // prefix = '' pro quick/deep, 'token-audit', 'wallet-profile', 'defi-pool', 'swarm'
+let _reportDirCache = null, _reportDirCacheAt = 0;
 function loadLatestReport(reportsDir, slug, prefix) {
-  let files;
-  try { files = fs.readdirSync(reportsDir).sort().reverse(); } catch { return {}; }
+  const now = Date.now();
+  if (!_reportDirCache || now - _reportDirCacheAt > 30_000) {
+    try { _reportDirCache = fs.readdirSync(reportsDir).sort().reverse(); } catch { _reportDirCache = []; }
+    _reportDirCacheAt = now;
+  }
+  const files = _reportDirCache;
   const match = f => (!prefix || f.includes(prefix)) && f.includes(slug);
   const latestTxt    = files.find(f => match(f) && f.endsWith('.txt'));
   const latestSigned = files.find(f => match(f) && f.endsWith('.signed.json'));

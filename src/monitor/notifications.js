@@ -1,6 +1,24 @@
 'use strict';
 
 const https = require('https');
+const nodemailer = require('nodemailer');
+
+let _emailTransporter = null;
+function getEmailTransporter() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) return null;
+  if (!_emailTransporter) {
+    _emailTransporter = nodemailer.createTransport({
+      host,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_PORT === '465',
+      auth: { user, pass },
+    });
+  }
+  return _emailTransporter;
+}
 
 // ── State pro rate limiting a deduplikaci ─────────────────────────────────────
 
@@ -162,18 +180,8 @@ async function sendEmailAlert(to, alert) {
 
   // Zkus přes nodemailer pokud je k dispozici
   try {
-    const nodemailer = require('nodemailer');
-    const host = process.env.SMTP_HOST;
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
-    if (!host || !user || !pass) return;
-
-    const transporter = nodemailer.createTransport({
-      host,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_PORT === '465',
-      auth: { user, pass },
-    });
+    const transporter = getEmailTransporter();
+    if (!transporter) return;
 
     const emoji = SEVERITY_EMOJI[alert.severity] || '⚡';
     const subject = `${emoji} [${alert.severity.toUpperCase()}] ${alert.rule.replace(/_/g, ' ')} — integrity.molt`;
