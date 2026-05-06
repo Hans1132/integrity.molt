@@ -4,11 +4,42 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-06 (evening, docs)
+**Last updated:** 2026-05-06 (evening, arch review + quick fixes)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-06 (evening): Architekturální review + 2 quick fixy
+Commit `00fdc28`. Review provedl `voltagent-qa-sec:architect-reviewer`.
+
+**Fix 1 — explicitní Solana deps (KRITICKÉ, opraveno):**
+`@solana/web3.js@^1.98.4` a `@solana/spl-token@^0.4.14` přidány do `package.json`. Byly jen transitivní přes `@cheapay/x402` — riziko při `npm ci` na čisté mašině (process.exit(1) na startupu, celý payment flow down).
+
+**Fix 2 — global Express error handler (opraveno):**
+Přidán před `app.listen` v `server.js`. Express 5.2.1 propaguje async rejections nativně — `express-async-errors` nepotřeba. Loguje `method`, `url`, `x-request-id`; nikdy neposílá `err.message` klientovi.
+
+**Výsledky architekturálního auditu — otevřené položky (neuděláno):**
+
+KRITICKÉ (zbývá):
+- `server.js` je 5457 řádků (routes + payment middleware factory + HTML renderer + cron scheduler)
+  → Doporučeno: vyčlenit Stripe/legacy funnel do `src/legacy/` s feature flag `ENABLE_LEGACY_FUNNEL=false`
+
+STŘEDNÍ (zbývá):
+- 10 legacy deps (Stripe, Passport 4×, Puppeteer, bcrypt, nodemailer) v deps pro deprio funnel — attack surface
+- Synchronní `better-sqlite3` v async Express — OK dnes, re-evaluate při DB > 10 GB nebo > 100 writes/s
+- Žádný structured logger (console.log/error) — post-mortem korelace je manuální
+- `/health` vrací jen `{ok}` bez DB/RPC/signing-pipeline check
+- Žádný global try/catch v 56+ async route handlerech (Express 5 zachytí jen s global handlerem)
+
+NÍZKÉ (zbývá):
+- Skill metadata duplikovaná: `handler.js SKILLS` + `buildAgentCard` + `config/pricing.js` — 3 místa
+- JSON-RPC error code -32000 jako catch-all (AutoPilot reject, payment fail, server error)
+- callbackUrl SSRF deny-list: chybí link-local IPv6, DNS pre-resolution
+- `_a2aRL` Map roste bez bound — RAM leak při botnetu
+
+CO NEOPRAVOVAT (over-engineering pro aktuální scale):
+SQLite→Postgres, microservices split, Fastify, custom JWKS rotation, per-skill soubory v handleru.
 
 ### 2026-05-06 (evening): Interní developer dokumentace
 Commit `e75a09f`. Vytvořeno agentem `voltagent-dev-exp:documentation-engineer`, ~2950 řádků v 7 souborech v `docs/`:
