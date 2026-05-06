@@ -22,7 +22,7 @@ async function signDeltaReport(deltaReport) {
     envelope = await asyncSign(payload);
   } catch (e) {
     console.error('[delta/signing] signing failed:', e.message);
-    return deltaReport; // Return unsigned if signing fails (callers must check)
+    return { ...deltaReport, _signed: false };
   }
 
   return {

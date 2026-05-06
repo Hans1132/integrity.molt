@@ -5416,8 +5416,8 @@ async function notifyAdminError(type, err) {
   await sendTelegramAlert(ADMIN_TELEGRAM_CHAT, msg).catch(() => {});
 }
 
-process.on('uncaughtException',  err => notifyAdminError('uncaughtException', err));
-process.on('unhandledRejection', err => notifyAdminError('unhandledRejection', err));
+process.on('uncaughtException',  err => notifyAdminError('uncaughtException', err).finally(() => setTimeout(() => process.exit(1), 1000)));
+process.on('unhandledRejection', err => notifyAdminError('unhandledRejection', err).finally(() => setTimeout(() => process.exit(1), 1000)));
 
 // ── Global Express error handler ──────────────────────────────────────────────
 // Musí být za všemi route definicemi. Zachytává async route errors v Express 5

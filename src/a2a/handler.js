@@ -255,6 +255,7 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
         envelope = await asyncSign(canonicalJSON(payload));
       } catch (e) {
         console.error('[a2a] program_verification_status asyncSign failed:', e.message);
+        throw e;
       }
       return {
         ...payload,
