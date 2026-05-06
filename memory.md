@@ -4,11 +4,133 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-06 (night, security fixes commit 5117b16)
+**Last updated:** 2026-05-06 (performance quick wins, commity 837873e + 807887a)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-06: Performance quick wins — 4 commity (837873e, 807887a)
+Zdroj: `voltagent-qa-sec:performance-engineer` audit (read-only) + implementace.
+Všechny testy PASS (11/11 gates), service active.
+
+- **C1 Anthropic prompt caching** (`src/llm/anthropic-advisor.js`): `system` a tools blok nyní posílány s `cache_control: { type: 'ephemeral' }`. Cache miss rate byl 100%. Očekáváno: −40–60 % Anthropic API nákladů, −200–400 ms na cache hit. Ověřit v `usage.cache_read_input_tokens > 0` po druhém advisory volání.
+- **C3 Solana RPC keepalive** (`server.js:51`): `rpcAgent = https.Agent({ keepAlive: true, maxSockets: 10 })` singleton, předáván do každého `rpcPost()`. Dříve: nový TCP+TLS handshake per RPC call (~50–150 ms). Teď se spojení recykluje.
+- **H3 JWKS key cache** (`server.js:152`): `_jwksKeyBytes` načten při startu, JWKS handler zjednodušen (odstraněn try/catch + per-request readFileSync). Pokud klíč chybí při startu, server se nespustí — správné chování pro pinned signing key.
+- **M3 HTML template cache** (`server.js:153`): `_scanViewTemplate` načten při startu, `/scan/:address` route přestala číst `scan-view.html` per request.
+
+### 2026-05-06 (night+): 5 security fixů z pentest auditu
+Commit `1840ab5`. 187/187 testů PASS, service active.
+
+- **CRITICAL-2 path traversal `/report/download`:** `server.js:3742` — `path.resolve` + `REPORTS_DIR + path.sep` prefix check. Před opravou: `/../` sekvence procházela `startsWith` kontrolou. **PoC po fixu: 403 ✓**
+- **CRITICAL-1 Watchlist IDOR:** `db.js:630` — odstraněn `OR ? IS NULL` predikát (null owner = no delete). `server.js:3159,3201,3214` — `requireApiKey` + 401 guard na `POST /watchlist/add`, `DELETE /watchlist/:id`, `GET /watchlist`. **PoC po fixu: 401 ✓**. Gotcha: `GET /watchlist` data nebyla exposovana dříve díky `express.static` (line 644), který pre-emptuje route a servuje HTML; mutace (POST/DELETE) byly klíčové.
+- **CRITICAL-3 CAPTCHA_SECRET fail-closed:** `server.js:4132` — `process.exit(1)` pokud chybí nebo `=== 'changeme-local-dev'`. Přidáno do `.env.example`.
+- **CRITICAL-4 Helius webhook fail-closed:** `webhook-receiver.js:45` — 503 pokud `HELIUS_WEBHOOK_SECRET` chybí (dříve `accept all`). Přidáno do `.env.example`.
+- **H3 `/scan/cached` auth:** `server.js:4116` — `requireApiKey` + 401 guard (dříve bez auth = free přístup k paid deep audit výsledkům).
+
+**Zbývající z pentest auditu (neresolvováno):**
+- H1: `/scan/:address` self-fetch quota bypass (DoS amplification)
+- H2: `req.ip` nekonzistence napříč rate limitery
+- H4: Open redirect `?next=` (known M2)
+- H5: `INTERNAL_SCAN_SECRET` timing-unsafe (known M4)
+- Shell skripty v `/root/scanner/`, `/root/swarm/` — neauditovány, potenciální command injection
+
+### 2026-05-06 (night+): Penetration Testing Audit — `voltagent-qa-sec:penetration-tester`
+Read-only audit. Žádné commity. 4 CRITICAL, 6 HIGH, 4 MEDIUM, 4 LOW.
+
+**CRITICAL (opravit do 24h):**
+- **C1 — Watchlist IDOR + unauth CRUD** `db.js:630-636`, `server.js:3159-3223`: SQL predikát `OR ? IS NULL → TRUE` = smazání jakékoli watchlist položky bez auth. `POST /watchlist/add` a `GET /watchlist` bez jakéhokoli ověření. PoC: `DELETE /watchlist/42 -d '{}'`. Fix: opravit SQL, přidat `requireApiKey`.
+- **C2 — Path traversal `/report/download`** `server.js:3742`: `startsWith` bez `path.normalize` → `/root/scanner/reports/../../../etc/anything.html` projde. Server běží jako root. Fix: `path.resolve` + re-check prefix.
+- **C3 — CAPTCHA_SECRET hardcoded fallback** `server.js:4132`: `|| 'changeme-local-dev'`, chybí v `.env.example`. Fresh deploy = deterministický HMAC bypass → unlimited free scany. Fix: fail-closed + `.env.example`.
+- **C4 — Helius webhook fail-open** `src/monitor/webhook-receiver.js:45-57`: `HELIUS_WEBHOOK_SECRET` chybí v `.env.example`, při absenci přijme vše. Útočník může injektovat fake tx → spam Telegram alertů, credit burn. Fix: fail-closed + `.env.example`.
+
+**HIGH (tento týden):** `/scan/:address` self-fetch quota bypass (H1), `req.ip` nekonzistence napříč rate limitery (H2), `/scan/cached` bez auth vrací paid deep audit z cache (H3), open redirect `?next=` (H4 = known M2), `INTERNAL_SCAN_SECRET` timing-unsafe (H5 = known M4 eskalace).
+
+**Top exploit chain:** CRITICAL-3 (CAPTCHA bypass) + H1 (quota bypass) + H3 (cached deep audit) = $5 deep audity zdarma. CRITICAL-1 (watchlist) + HTML injection v `label` = spam z důvěryhodného bota.
+
+**Kritický gap — shell skripty neauditovány:** `/root/scanner/*.sh`, `/root/swarm/`, `/root/bounty-hunter/deep-scan.sh` přijímají GitHub URL. `spawn()` v JS je OK (no shell), ale skripty samotné mohou být zranitelné na command injection. **Nutný separátní audit bash skriptů.**
+
+**Pozitiva:** x402 anti-replay atomic, Stripe fail-closed, A2A Oracle signature check, `escapeHtml` v HTML, address validation konzistentní.
+
+---
+
+### 2026-05-06 (night+): 3 reliability fixy z error detective auditu
+Commit `e3e577a`. 187/187 testů PASS, service active.
+
+- **K2 `_signed: false` marker:** `src/delta/signing.js:25` — catch blok nyní vrací `{ ...deltaReport, _signed: false }` místo holého `deltaReport`. Calleři mohou rozlišit podepsaný od nepodepsaného reportu. **Dopad před opravou: unsigned delta report byl vydáván bez jakéhokoli rozlišovacího znaku.**
+- **K3 process.exit(1):** `server.js:5419-5420` — `uncaughtException` a `unhandledRejection` handlery nyní volají `.finally(() => setTimeout(() => process.exit(1), 1000))`. Process se po Telegram alertu ukončí — systemd (`Restart=always`) restartuje. **Dopad před opravou: process pokračoval v indeterminate state, systemd ho nerestartoval.**
+- **H1 JSON-RPC error:** `src/a2a/handler.js:258` — `program_verification_status` asyncSign catch blok nyní `throw e` místo pokračování s `signature: null`. Caller `rpcError()` vrátí `{ jsonrpc: "2.0", error: { code: -32603, ... } }` s HTTP 200. **Dopad před opravou: A2A klient dostával `signature: null` jako úspěšný výsledek.**
+
+**Gotcha — systemd:** service má `Restart=always` (ne `on-failure`) — process.exit(1) způsobí restart i při "čistém" shutdown; při deployi `systemctl stop` zavolat manuálně nebo přepnout na `Restart=on-failure` při příštím review.
+
+---
+
+### 2026-05-06 (night+): Chaos Engineering Audit — `voltagent-qa-sec:chaos-engineer`
+Read-only audit. Žádné commity. 5 kritických a 9 středních failure modes nalezeno.
+
+**Kritické (opravit přednostně):**
+- **K1** `src/crypto/sign.js` — `sign-report.py` SPOF: extern mimo repo, bez fallback, žádný dedikovaný alert. Výpadek = 100% paid tier selhání, zákazníci platí USDC bez receiptu.
+- **K2** `src/monitor/webhook-receiver.js:262` — Helius ack-before-process + žádná dead-letter queue. Downstream failure po ack = tiché ztracení eventu.
+- **K3** `src/monitor/notifications.js` — dvě unbounded Maps (`sentAlerts`, `rateWindows`): OOM pod alert storm → restart smyčka každých ~5 minut.
+- **K4** `src/rpc.js` — jediné RPC URL, failover nastává POUZE při restartu procesu, ne za runtime. Outage = 8s timeout cascade na všech scan endpointech.
+- **K5** `src/monitor/webhook-receiver.js:21-33` — `_dedupCache` in-memory Set, reset při každém restartu → Helius retry = duplicitní eventy.
+
+**Střední (S1–S9):** TOCTOU v free-quota, Anthropic API bez timeout, A2A loopback port exhaustion, Puppeteer unbounded cache, autopilot_spending tabulka bez TTL, WAL checkpoint lock, silent watchlist DB fallback, SPL poller ztracené poll okno, file-based circuit breaker tiše selže při disk full.
+
+**Doporučené opravy před prvním Game Day (4 položky):**
+1. sign pipeline: Telegram alert při spawn failure + 503 s `retry-after`
+2. `notifications.js`: cap `rateWindows` na 1000 entries s LRU eviction
+3. `webhook-receiver.js:213`: counter + alert při DB fallback na stale cache
+4. `rpc.js`: runtime failover array (primary/secondary bez restartu)
+
+**Observability gaps (8):** žádné metriky pro sign pipeline, A2A loopback, Map sizes, Helius downstream failure rate, watchlist DB fallback, SQLite BUSY count, autopilot table size; test-gate.sh nepokrývá payment chaos ani RPC timeout.
+
+**Chaos experiment agenda (CE-01 až CE-07):** seřazeno od nejnižšího blast radiu. CE-01 (sign-report.py chmod 000) a CE-04 (notification storm, staging only) jsou priorita 1.
+
+---
+
+### 2026-05-06 (night+): AI Writing Audit — `voltagent-qa-sec:ai-writing-auditor`
+Read-only audit 22 souborů (jen lidsky čtené texty, ne kód). Žádné commity.
+
+**Výsledek:** Technická dokumentace (`CLAUDE.md`, `memory.md`, `REVIEW_PACKET.md`, `CHANGELOG.md`, `architecture.md`, `payments.md`) je věcná a čistá. Problémy jsou koncentrované do marketingových/submission textů.
+
+**Střední závažnost (opravit před příštím odesláním):**
+- `docs/superteam/grant-application.md` — "flying blind", "Why This Matters", "Composability, not redundancy", "production-grade", "Solo builder + multi-agent swarm"
+- `docs/hackaton-submission.md` — "Composable by design, not by accident", anafora "There is no X" (3×), em dash density (39)
+- `docs/hackaton-plan.md` — "vítězná payment infrastruktura" (3×)
+- `docs/IRIS-whitepaper.md` — 44 em dashů (cíl < 20), "Novel Finding" bez citace negativního důkazu → přepsat na "To our knowledge..."
+- `docs/frontier-submission.md` — "canonical Solana program verification API maintained by Solana's leading auditor" (hyperbolické bez evidence)
+
+**Cross-cutting patterns:** "ecosystem" 4×, "composable/composability" 6×, "production-grade/ready" 3×, triády/anafora 4×, em dash overdose, sebepochvalná tvrzení bez důkazu.
+
+**Co nepřepisovat:** `outreach.md` (sales tón záměrný), `demo-script.md` (mluvený text), `COPY.md` (landing — konzultovat s Hansem zda nasazena).
+
+**Otázky pro Hanse:** (1) Jsou submission texty již odeslány? (2) Je COPY.md nasazena na intmolt.org? (3) Kam míří IRIS whitepaper (arXiv / blog / interní)?
+
+---
+
+### 2026-05-06 (night): 6 security fixů z ad-security-reviewer auditu
+Commit `f7588ee`. 187/187 testů PASS.
+
+- **H1+H2 canonicalJSON rekurze:** `src/crypto/sign.js` — `canonicalJSON()` nyní rekurzuje do polí (`[].map(canonicalJSON)`). Nested objekty uvnitř polí (např. `findings: [{severity, rule}]`) měly insertion-order klíče → sign a verify produkovaly různé bytes. Governance a feed `asyncSign` volaly `JSON.stringify()` místo `canonicalJSON()` — opraveno. **Dopad před opravou: governance a feed receipty byly externě neověřitelné.**
+- **C2 Stripe webhook fail-closed:** Oba webhook handlery (`/stripe/webhook`, `/api/v1/stripe-webhook`) nyní vrátí 503 pokud `STRIPE_WEBHOOK_SECRET` chybí — žádný fallback na `JSON.parse(body)`. **Dopad před opravou: forged Stripe event → volná subscription → free API klíč.**
+- **C1 API key auth gate:** `/api-keys/generate`, `GET /api-keys`, `DELETE /api-keys/:id` nyní vyžadují `req.isAuthenticated()` + shodu `req.user.email` s cílovým emailem. Fallback jen přes `ADMIN_API_KEY` hlavičku. Nový `requireApiKeyOwnership(emailExtractor)` middleware. **Dopad před opravou: kdokoli se znalostí emailu subscribera mohl vygenerovat plnohodnotný `im_xxx` API klíč.**
+- **H5 SESSION_SECRET assertion:** `auth.js configureSession()` — `process.exit(1)` při startu pokud `SESSION_SECRET` chybí v env. Odstraněn fallback `'dev-secret-please-change'`. SESSION_SECRET v `.env` přítomen.
+- **H3 agentMint validace:** `handler.js` — `x-agent-mint` header validovaný přes `isSolanaAddress()` před AutoPilot použitím. Odmítá 400 na neplatný formát (obě varianty: tasks/send i SSE). Import `isSolanaAddress` přidán na řádek 34.
+- **H4 CF-Connecting-IP:** `free-quota.js getClientIp()` — priorita: `cf-connecting-ip` → `x-forwarded-for` → `req.ip` → `socket.remoteAddress`. Před opravou XFF mohl být spoofnutý → obejití per-IP kvóty.
+
+**Gotcha — canonicalJSON testy:** A2A oracle testy testují sign→verify round-trip přes node:crypto (ne Python sign-report.py). Po opravě rekurze do polí prošly bez úprav, protože testovací payload neobsahoval nested-object arrays. Pokud se findings payload v testech rozroste, může odhalit regresi.
+
+**Gotcha — getClientIp fallback:** `socket.remoteAddress` zůstává jako poslední fallback kvůli unit testům v `tests/middleware/free-quota.test.js` — `makeReq()` nastavuje jen `socket.remoteAddress`, ne `req.ip`. Bez tohoto fallbacku by 3 testy selhávaly (IP = 'unknown', quota neaplikována správně).
+
+**Zbývající nálezy z auditu (neuděláno, není CRITICAL):**
+- M1: `/api/v1/admin/accuracy` a `/api/v1/admin/helius` bez autentizace
+- M2: Open redirect `?next=` v `/auth/*`
+- M3: `ADMIN_TOKEN` v `/admin/abuse-stats` přes `!==` (timing leak)
+- M4: `INTERNAL_SCAN_SECRET` přes `===` v free-quota.js
+- M5: Stripe/Passport live-mounted i po ADR-009 deprioritizaci
+- M6: Free quota check+consume race condition (dvě separátní transakce)
+- H6: SSRF deny-list neblokuje IPv6, `0.0.0.0`, decimální encoding, DNS rebinding
 
 ### 2026-05-06 (night): 5 security fixů z code-reviewer auditu
 Commit `5117b16`. Všech 5 fixů v jednom commitu, 187/187 testů PASS.
@@ -222,6 +344,9 @@ Při rebase + force-push použil Claude Code správně `--force-with-lease`, ne 
 - Verifikovat content `intmolt.org/skill.md` (z commit c2d1754) vs aktuální frames.ag spec na https://frames.ag/skill.md. Pokud strukturální rozdíly, fix in separátním commitu.
 - Ověřit, že stats endpoint cron alert reálně běží (post-fix audit z 2026-05-06).
 - Vyčistit 4 prázdné `.db` artefakty po VPS reconu, pokud nejsou potřeba pro kompatibilitu.
+- **Chaos fixes (4 položky, blocker před Game Day):** sign pipeline alert, notifications.js LRU cap, watchlist fallback alert, rpc.js runtime failover — viz chaos audit entry 2026-05-06 night+.
+- **Chaos experiments (CE-01, CE-04 jako první):** spustit v off-peak nebo staging po implementaci fixů.
+- **AI writing rewrite:** submission texty přepsat před dalším odesláním (grant-application, hackaton-submission, frontier-submission, IRIS whitepaper em dash pass).
 - Po Frontier: archivovat `/root/intmolt/` orphan do `/root/backups/intmolt-archived-2026-05-06/`.
 - Po Frontier: cleanup stale worktrees (`sharp-bartik-2d2239` z dubna, ověř merged a remove).
 - Po Frontier: Telegram bot empty response log fix nebo ztišení.
@@ -235,6 +360,11 @@ Při rebase + force-push použil Claude Code správně `--force-with-lease`, ne 
 > Co Hans potřebuje vědět při příští poradě se mnou (Claude na claude.ai). Krátký TL;DR po každém pracovním dni.
 
 **Aktuální fokus:** Frontier hackathon submission deadline 11. května 23:59 UTC (Public Goods Award $10K lane). Po 2026-05-06 strategické poradě je framing **agent-native security oracle** plně absorbovaný. Origin/main je clean (rebase done, MCP cleanup done, PR #1 merged). Next deliverables: frames.ag tool registration spec verify, video editing, submission text.
+
+**Nové poznatky z auditů (2026-05-06 night+):**
+- Chaos audit odhalil 5 kritických SPOF — nejrizikovější: sign-report.py (paid tier SPOF), notifications.js OOM (alert storm), RPC bez runtime failover. Opravy by měly předcházet dalšímu traffic spike (frames.ag distribuce = více A2A load).
+- AI writing audit: submission texty (grant, hackaton, frontier) mají AI-ismy, které snižují credibilitu u judges/grantérů. Přepsat před dalším odesláním. Technická docs je čistá.
+- Otázky pro Hanse: jsou submission texty již odeslány? Je COPY.md nasazena? Kam míří IRIS whitepaper?
 
 **Po pivotu ADR-009 + ADR-010:**
 - A2A 0.4.1 je primary surface, 11 skills fixed, pricing $0.15 až $5 USDC drží.
