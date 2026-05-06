@@ -3156,7 +3156,8 @@ function isBlockedWatchlistAddress(address) {
 }
 
 // POST /watchlist/add — přidat adresu do watchlistu
-app.post('/watchlist/add', express.json(), async (req, res) => {
+app.post('/watchlist/add', requireApiKey, express.json(), async (req, res) => {
+  if (!req.apiKey) return res.status(401).json({ error: 'Authentication required' });
   const { address, label, telegram_chat_id, email } = req.body || {};
   if (!address || !SOLANA_ADDRESS_RE.test(address)) {
     return res.status(400).json({ error: 'Invalid or missing Solana address' });
@@ -3198,10 +3199,12 @@ app.post('/watchlist/add', express.json(), async (req, res) => {
 });
 
 // DELETE /watchlist/:id — odebrat adresu z watchlistu
-app.delete('/watchlist/:id', express.json(), async (req, res) => {
+app.delete('/watchlist/:id', requireApiKey, express.json(), async (req, res) => {
+  if (!req.apiKey) return res.status(401).json({ error: 'Authentication required' });
   const id = parseInt(req.params.id, 10);
   const { telegram_chat_id } = req.body || {};
   if (!id) return res.status(400).json({ error: 'Invalid id' });
+  if (!telegram_chat_id) return res.status(400).json({ error: 'telegram_chat_id required for ownership verification' });
   try {
     const removed = await db.removeWatchlistEntry(id, telegram_chat_id);
     res.json({ ok: removed, id });
@@ -3211,7 +3214,8 @@ app.delete('/watchlist/:id', express.json(), async (req, res) => {
 });
 
 // GET /watchlist?telegram_chat_id=XXX — seznam sledovaných adres pro daný chat
-app.get('/watchlist', async (req, res) => {
+app.get('/watchlist', requireApiKey, async (req, res) => {
+  if (!req.apiKey) return res.status(401).json({ error: 'Authentication required' });
   const chat = req.query.telegram_chat_id;
   if (!chat) return res.status(400).json({ error: 'telegram_chat_id query param required' });
   try {
@@ -3740,15 +3744,16 @@ ${result.reportFiles ? `<div style="margin:20px 0;padding:20px 24px;background:#
 // GET /report/download?file=<abs_path>&name=<filename>
 // Only serves files within /root/scanner/reports/ ending in .png or .pdf
 app.get('/report/download', (req, res) => {
-  const filePath = req.query.file || '';
-  const fileName = path.basename(req.query.name || path.basename(filePath));
-  const allowed = filePath.startsWith('/root/scanner/reports/') &&
-    (filePath.endsWith('.png') || filePath.endsWith('.pdf') || filePath.endsWith('.html'));
-  if (!allowed || !fs.existsSync(filePath)) {
-    return res.status(404).send('Report not found');
+  const REPORTS_DIR = path.resolve('/root/scanner/reports');
+  const requestedPath = path.resolve(req.query.file || '');
+  if (!requestedPath.startsWith(REPORTS_DIR + path.sep) ||
+      !/\.(png|pdf|html)$/.test(requestedPath)) {
+    return res.status(403).json({ error: 'Access denied' });
   }
+  if (!fs.existsSync(requestedPath)) return res.status(404).send('Report not found');
+  const fileName = path.basename(req.query.name || requestedPath);
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  res.sendFile(filePath);
+  res.sendFile(requestedPath);
 });
 
 // ── Stripe Subscription ────────────────────────────────────────────────────────
@@ -4113,7 +4118,8 @@ app.get('/watchlist', (req, res) => res.sendFile('/root/x402-server/public/watch
 app.get('/scan', (req, res) => res.sendFile('/root/x402-server/public/scan.html'));
 
 // GET /scan/cached?address=X&type=Y — vrátí cached výsledek scanu (1h TTL) pro shareable links
-app.get('/scan/cached', async (req, res) => {
+app.get('/scan/cached', requireApiKey, async (req, res) => {
+  if (!req.apiKey) return res.status(401).json({ error: 'Authentication required' });
   const address = (req.query.address || '').trim();
   const type    = (req.query.type    || 'quick').trim().toLowerCase();
   if (!address) return res.status(400).json({ error: 'address required' });
@@ -4129,7 +4135,11 @@ app.get('/scan/cached', async (req, res) => {
 // GET /scan/captcha-challenge — generuje HMAC-signed matematickou CAPTCHA otázku
 const { createHmac } = require('node:crypto');
 const timingSafeEqual = _timingSafeEqual;
-const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET || 'changeme-local-dev';
+const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET;
+if (!CAPTCHA_SECRET || CAPTCHA_SECRET === 'changeme-local-dev') {
+  console.error('FATAL: CAPTCHA_SECRET not configured or using default value');
+  process.exit(1);
+}
 const CAPTCHA_TTL_MS = 15 * 60 * 1000; // 15 minut
 
 app.get('/scan/captcha-challenge', (req, res) => {

@@ -628,10 +628,11 @@ async function addWatchlistEntry({ address, label, notify_telegram_chat, notify_
 }
 
 async function removeWatchlistEntry(id, notify_telegram_chat) {
+  if (!notify_telegram_chat) return false;
   const result = db.prepare(`
     UPDATE watchlist SET active = 0
-    WHERE id = ? AND (notify_telegram_chat = ? OR ? IS NULL)
-  `).run(id, notify_telegram_chat || null, notify_telegram_chat || null);
+    WHERE id = ? AND notify_telegram_chat = ?
+  `).run(id, notify_telegram_chat);
   return result.changes > 0;
 }
 

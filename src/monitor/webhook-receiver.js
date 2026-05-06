@@ -44,8 +44,8 @@ if (!fs.existsSync(path.dirname(EVENTS_FILE))) {
  */
 function verifyWebhookAuth(req, res, next) {
   if (!WEBHOOK_SECRET) {
-    console.warn('[monitor] HELIUS_WEBHOOK_SECRET not set — accepting all webhook requests');
-    return next();
+    console.error('[monitor] HELIUS_WEBHOOK_SECRET not set — rejecting all webhook requests');
+    return res.status(503).json({ error: 'Webhook verification not configured' });
   }
   const auth = req.headers['authorization'] || '';
   if (auth !== WEBHOOK_SECRET) {
