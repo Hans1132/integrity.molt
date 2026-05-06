@@ -4,11 +4,21 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-06 (evening, QA run)
+**Last updated:** 2026-05-06 (evening, docs)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-06 (evening): Interní developer dokumentace
+Commit `e75a09f`. Vytvořeno agentem `voltagent-dev-exp:documentation-engineer`, ~2950 řádků v 7 souborech v `docs/`:
+- `DEVELOPER-INDEX.md` — navigační hub
+- `architecture.md` — komponentová mapa, datové toky (free/paid path), hot path budget
+- `skills.md` — všech 11 skills, cache TTL tabulka, executeSkill dispatch pattern
+- `payments.md` — x402 flow, anti-replay, pricing, frames.ag proxy
+- `database.md` — SQLite schéma 25+ tabulek, scan_history cache pattern
+- `signing.md` — Ed25519, canonicalJSON, JWKS, offline verifikace Python/JS
+- `development.md` — setup, test-gate, gotchas (CF-Connecting-IP, DB path, snake_case bug)
 
 ### 2026-05-06 (evening): QA A2A full test run — P0 bug nalezen a opraven
 Commit `a60e405`. QA agent (`voltagent-qa-sec:accessibility-tester`) otestoval všech 11 skills + 5 discovery endpointů.
