@@ -4,11 +4,32 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-06 (afternoon, post-rebase a PR #1 merge)
+**Last updated:** 2026-05-06 (evening)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-06 (evening): Missing skills + DB caching pro paid routes
+Commit `5f53e45`.
+
+**handler.js — chybějící skills přidány do executeSkill switch:**
+- `scan_address` → GET `/scan/v1/:address` via nový `internalGet()` helper
+- `new_spl_feed` → GET `/feed/v1/new-spl-tokens` (nevyžaduje address)
+- `verify_receipt` → POST `/verify/v1/signed-receipt`
+- `governance_change` → POST `/monitor/v1/governance-change`
+- Fix: API klíč (`Bearer im_xxx`) forwardovaný jako `Authorization` header na loopbacku, ne jako `x402-payment`. Bez toho `requireApiKey` nedetekoval klíč na paid loopback calls → vždy 402.
+
+**server.js — DB-first caching pro 5 paid routes:**
+- `/scan/token` (token_audit): 60min TTL; saves result_json; 48s→cache hit
+- `/scan/wallet` (wallet_profile): 30min TTL; added logScanToHistory (bylo chybějící)
+- `/scan/deep` (deep_audit): 60min TTL; saves result_json
+- `/api/v1/scan/agent-token` (agent_token_scan): 30min TTL; 298ms→32ms (10x)
+- `/api/v1/adversarial/simulate` (adversarial_sim): 2h TTL
+
+Cache pattern: `getCachedScanFromDb(address, scan_type, ttl)` AFTER payment middleware, logScanToHistory s result_json na response objektu. Stejný pattern jako existující `/scan/v1/:address` a `/monitor/v1/governance-change`.
+
+**Test klíč vytvořen pro testování:** `im_baeaa344...` (tier=dev, email=test@intmolt.org). Lze mazat — žádná produkční data neprojdou přes něj.
 
 ### 2026-05-06 (afternoon): Clean history rebase + PR #1 merge
 Po commit triáži byl rebase + force-push s `--force-with-lease`: 22 KEEP commitů cherry-picknuto na temp branch, main reset na ten temp, force-push do origin. Výsledek: commits `3770298` (MCP feat) ani `dde98e4` (cleanup) v origin/main už neexistují. HEAD po rebase byl `341f443` (fix(a2a)).
