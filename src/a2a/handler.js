@@ -227,9 +227,9 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
 
     case 'adversarial_sim':
       return internalPost('/api/v1/adversarial/simulate', {
-        programId: address,
-        skipFork:  options.skipFork !== false,  // analysis-only via A2A by default
-        ...options,
+        program_id:   address,
+        skip_fork:    options.skip_fork !== false,  // analysis-only via A2A by default
+        playbook_ids: options.playbook_ids || [],
       }, paymentHeader, 300_000);
 
     case 'program_verification_status': {
