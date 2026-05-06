@@ -529,7 +529,7 @@ router.post('/monitor/v1/governance-change', express.json({ limit: '8kb' }), asy
 
   let envelope;
   try {
-    envelope = await asyncSign(JSON.stringify(reportPayload));
+    envelope = await asyncSign(canonicalJSON(reportPayload));
   } catch (e) {
     console.error('[a2a-oracle] asyncSign failed for governance:', e.message);
     envelope = {};
@@ -606,7 +606,7 @@ router.get('/feed/v1/new-spl-tokens', _feedRL, async (req, res) => {
 
   let envelope;
   try {
-    envelope = await asyncSign(JSON.stringify(reportPayload));
+    envelope = await asyncSign(canonicalJSON(reportPayload));
   } catch (e) {
     console.error('[a2a-oracle] asyncSign failed for feed:', e.message);
     envelope = {};

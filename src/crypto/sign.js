@@ -81,17 +81,15 @@ async function asyncSign(reportText) {
  * @returns {string}
  */
 function canonicalJSON(obj) {
-  if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+  if (obj === null || typeof obj !== 'object') {
     return JSON.stringify(obj);
   }
-  const sorted = Object.keys(obj).sort().reduce((acc, k) => {
-    acc[k] = obj[k];
-    return acc;
-  }, {});
-  // Recurse into values (shallow sort is enough for 1-level report payloads,
-  // but full recursion prevents future footguns from nested objects)
-  return '{' + Object.keys(sorted).map(k =>
-    JSON.stringify(k) + ':' + canonicalJSON(sorted[k])
+  if (Array.isArray(obj)) {
+    return '[' + obj.map(canonicalJSON).join(',') + ']';
+  }
+  const keys = Object.keys(obj).sort();
+  return '{' + keys.map(k =>
+    JSON.stringify(k) + ':' + canonicalJSON(obj[k])
   ).join(',') + '}';
 }
 

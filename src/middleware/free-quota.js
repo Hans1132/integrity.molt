@@ -7,9 +7,11 @@ const INTERNAL_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const INTERNAL_SECRET = process.env.INTERNAL_SCAN_SECRET;
 
 function getClientIp(req) {
-  const xff = req.headers['x-forwarded-for'];
-  if (xff) return xff.split(',')[0].trim();
-  return req.socket?.remoteAddress || req.ip || 'unknown';
+  return req.headers['cf-connecting-ip']
+    || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    || req.ip
+    || req.socket?.remoteAddress
+    || 'unknown';
 }
 
 function isInternalCall(req) {

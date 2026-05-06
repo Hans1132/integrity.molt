@@ -131,9 +131,14 @@ function setupStrategies() {
 
 // ── Session middleware ─────────────────────────────────────────────────────────
 function configureSession(app) {
+  const SESSION_SECRET = process.env.SESSION_SECRET;
+  if (!SESSION_SECRET) {
+    console.error('FATAL: SESSION_SECRET not set in environment');
+    process.exit(1);
+  }
   app.use(session({
     store: new SqliteStore(),
-    secret:            process.env.SESSION_SECRET || 'dev-secret-please-change',
+    secret:            SESSION_SECRET,
     resave:            false,
     saveUninitialized: false,
     cookie: {

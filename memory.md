@@ -4,11 +4,22 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-06 (evening, arch review + quick fixes)
+**Last updated:** 2026-05-06 (night, security fixes commit 5117b16)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-06 (night): 5 security fixů z code-reviewer auditu
+Commit `5117b16`. Všech 5 fixů v jednom commitu, 187/187 testů PASS.
+
+- **K1 XSS:** `escapeHtml()` aplikován na user-controlled hodnoty v `/subscribe/success` (email, tier) a `/unsubscribe` (email). Funkce existovala v server.js ~3275, jen se nepoužívala na těchto místech.
+- **V7 x402 header shim:** `requirePayment` čte `req.headers['x-payment'] || req.headers['x402-payment']`. x402 klienti posílají `x402-payment`, server čekal `x-payment` → paid A2A přes reálné x402 klienty vždy vracel 402.
+- **V6 feedback key pinning:** `/verify/v1/signed-receipt` nyní odmítne `verify_key` neshodující se s pinnutým serverovým klíčem (`getVerifyKeyBytes()`). Envelope mohl být mathematically_valid ale vydaný jiným klíčem.
+- **K2 SSRF callback:** `/scan/token-audit` callback_url validovaný přes `validateCallbackUrl()` z `handler.js` (SSRF deny-list: localhost, 169.254.x, 10.x, 172.16.x, 192.168.x). Import přidán do řádku 1044 server.js.
+- **V5/V4 timing-safe auth:** Nová `safeCompare(a, b)` wrapper funkce nad `crypto.timingSafeEqual` (handle length mismatch). Nahrazuje `===` u STATS_TOKEN (3 místa: `/stats/funnel`, `/admin/digest/run`, `requireStatsToken`) a ADMIN_API_KEY (`requireBotKey`).
+
+**Gotcha:** `timingSafeEqual` byl lokálně importován uvnitř CAPTCHA sekce na řádku ~4110. Přidán globálně jako `_timingSafeEqual` na začátek souboru; lokální instance aliasována na `const timingSafeEqual = _timingSafeEqual` pro zpětnou kompatibilitu s CAPTCHA kódem.
 
 ### 2026-05-06 (evening): Architekturální review + 2 quick fixy
 Commit `00fdc28`. Review provedl `voltagent-qa-sec:architect-reviewer`.

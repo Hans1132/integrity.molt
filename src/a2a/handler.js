@@ -32,6 +32,7 @@ const {
 // ── AutoPilot + PDA ───────────────────────────────────────────────────────────
 const { canAutoSign, logAutoSignDecision, getAgentDailySpending } = require('./autopilot');
 const { enrichPaymentContextWithPDA } = require('../payment/verify-pda');
+const { isSolanaAddress } = require('../validation/address');
 
 // ── OtterSec + signing (program_verification_status skill) ───────────────────
 const { getVerificationStatus }   = require('../lib/ottersec');
@@ -441,7 +442,11 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
   const paymentHeader = reqHeaders['x402-payment'] || reqHeaders['authorization'] || null;
 
   // Agent identity — Metaplex Agent Token mint (optional, enables AutoPilot checks)
-  const agentMint = reqHeaders['x-agent-mint'] || null;
+  const agentMintRaw = reqHeaders['x-agent-mint'] || null;
+  if (agentMintRaw && !isSolanaAddress(agentMintRaw)) {
+    return rpcError(rpcId, -32602, 'Invalid x-agent-mint: must be a valid Solana address');
+  }
+  const agentMint = agentMintRaw;
 
   const skill = SKILLS[skillId];
 
@@ -621,7 +626,11 @@ async function handleTasksSendSubscribe(rpcId, params, req, res) {
   const _cbUrlErr2 = validateCallbackUrl(callbackUrl);
   if (_cbUrlErr2) return sseError(-32602, _cbUrlErr2);
 
-  const agentMint = req.headers['x-agent-mint'] || null;
+  const agentMintRawSse = req.headers['x-agent-mint'] || null;
+  if (agentMintRawSse && !isSolanaAddress(agentMintRawSse)) {
+    return sseError(-32602, 'Invalid x-agent-mint: must be a valid Solana address');
+  }
+  const agentMint = agentMintRawSse;
 
   if (skill.priceUSDC > 0 && agentMint) {
     enrichPaymentContextWithPDA(null, agentMint);

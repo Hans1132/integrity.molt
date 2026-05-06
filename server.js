@@ -3801,12 +3801,14 @@ app.post('/stripe/webhook',
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!stripeKey) return res.status(503).send('Stripe not configured');
 
+    if (!webhookSecret) {
+      console.error('[stripe] STRIPE_WEBHOOK_SECRET not configured — rejecting webhook');
+      return res.status(503).json({ error: 'Webhook verification not configured' });
+    }
     const stripe = Stripe(stripeKey);
     let event;
     try {
-      event = webhookSecret
-        ? stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], webhookSecret)
-        : JSON.parse(req.body.toString());
+      event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], webhookSecret);
     } catch (e) {
       console.error('[stripe] webhook signature failed:', e.message);
       return res.status(400).send(`Webhook Error: ${e.message}`);
@@ -3981,8 +3983,26 @@ app.get('/stats/funnel', async (req, res) => {
 
 // ── API Keys management ─────────────────────────────────────────────────────────
 
+// ── API key ownership guard — session must match email being operated on ────────
+function requireApiKeyOwnership(emailFromReq) {
+  return (req, res, next) => {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+      if (req.user?.email !== emailFromReq(req)) {
+        return res.status(403).json({ error: 'Forbidden: email does not match authenticated session' });
+      }
+      return next();
+    }
+    // Fallback: accept ADMIN_API_KEY for internal tooling / migration
+    const adminKey = process.env.ADMIN_API_KEY;
+    if (adminKey && safeCompare(req.headers['x-admin-key'] || '', adminKey)) {
+      return next();
+    }
+    return res.status(401).json({ error: 'Authentication required' });
+  };
+}
+
 // POST /api-keys/generate — vygeneruje nový API klíč (vyžaduje aktivní subscription)
-app.post('/api-keys/generate', express.json(), async (req, res) => {
+app.post('/api-keys/generate', express.json(), requireApiKeyOwnership(req => req.body?.email), async (req, res) => {
   const { email, label } = req.body || {};
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'Valid email is required' });
@@ -4008,7 +4028,7 @@ app.post('/api-keys/generate', express.json(), async (req, res) => {
 });
 
 // GET /api-keys?email=X — seznam aktivních klíčů (bez raw hodnot)
-app.get('/api-keys', async (req, res) => {
+app.get('/api-keys', requireApiKeyOwnership(req => req.query.email), async (req, res) => {
   const email = req.query.email;
   if (!email) return res.status(400).json({ error: 'email query param required' });
   const sub = await db.getActiveSubscription(email).catch(() => null);
@@ -4018,7 +4038,7 @@ app.get('/api-keys', async (req, res) => {
 });
 
 // DELETE /api-keys/:id — odvolání API klíče
-app.delete('/api-keys/:id', express.json(), async (req, res) => {
+app.delete('/api-keys/:id', express.json(), requireApiKeyOwnership(req => req.body?.email), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { email } = req.body || {};
   if (!id || !email) return res.status(400).json({ error: 'id and email required' });
@@ -4969,12 +4989,14 @@ app.post('/api/v1/stripe-webhook',
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!stripeKey) return res.status(503).send('Stripe not configured');
 
+    if (!webhookSecret) {
+      console.error('[stripe/v1] STRIPE_WEBHOOK_SECRET not configured — rejecting webhook');
+      return res.status(503).json({ error: 'Webhook verification not configured' });
+    }
     const stripe = Stripe(stripeKey);
     let event;
     try {
-      event = webhookSecret
-        ? stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], webhookSecret)
-        : JSON.parse(req.body.toString());
+      event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], webhookSecret);
     } catch (e) {
       console.error('[stripe/v1] webhook signature failed:', e.message);
       return res.status(400).send(`Webhook Error: ${e.message}`);
