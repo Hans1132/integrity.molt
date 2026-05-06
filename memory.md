@@ -4,11 +4,29 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-06 (evening)
+**Last updated:** 2026-05-06 (evening, QA run)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-06 (evening): QA A2A full test run — P0 bug nalezen a opraven
+Commit `a60e405`. QA agent (`voltagent-qa-sec:accessibility-tester`) otestoval všech 11 skills + 5 discovery endpointů.
+
+**Výsledek: 16/16 PASS po opravě.**
+
+**P0 bug — adversarial_sim parameter mismatch:**
+- `executeSkill` posílal camelCase: `programId`, `skipFork`, `playbookIds`
+- Endpoint `/api/v1/adversarial/simulate` čekal snake_case: `program_id`, `skip_fork`, `playbook_ids`
+- Dopad: 100% failure rate pro adversarial_sim přes A2A od doby přidání skilu
+- Fix: 3 přejmenování v `handler.js` case `adversarial_sim`
+- **Prevence regrese:** při přidávání nového skill case do executeSkill vždy ověřit naming convention cílového REST endpointu (Express routes typicky snake_case v body, handler.js musí matchovat)
+
+**Výsledky testu (všechny skills):**
+- Free: quick_scan, scan_address, new_spl_feed, verify_receipt, program_verification_status — PASS
+- Paid: agent_token_scan, governance_change, token_audit, wallet_profile, adversarial_sim, deep_audit — PASS
+- Discovery: agent-card.json, jwks.json, x402.json, skill.md, /offer — PASS
+- Cache hit ověřen: agent_token_scan 298ms→32ms; token_audit hit na 2. call
 
 ### 2026-05-06 (evening): Missing skills + DB caching pro paid routes
 Commit `5f53e45`.
