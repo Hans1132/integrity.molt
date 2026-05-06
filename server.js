@@ -1967,6 +1967,10 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, express.json(), valid
   const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
+    // DB-first cache — ušetří swarm pipeline pro opakované dotazy
+    const _deepCached = await db.getCachedScanFromDb(safeAddress, 'deep-audit', DEEP_AUDIT_CACHE_TTL_MS).catch(() => null);
+    if (_deepCached) return res.json({ ..._deepCached, cached: true });
+
     const _t0 = Date.now();
     // Swarm orchestrator + enrichment + scam-db + OtterSec in parallel (IRIS post-processing)
     const [swarmOut, deepEnrichment, deepScamDb, osecResult] = await Promise.allSettled([
@@ -2025,13 +2029,7 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, express.json(), valid
       source:           osecData.source,
     };
 
-    db.logScanToHistory({
-      email: req.apiKey?.email || null, address: safeAddress, scan_type: 'deep-audit',
-      risk_score: swarmResult?.aggregate_score ?? null,
-      risk_level: swarmResult?.decision || null,
-      summary: null, cached: false, result_json: null
-    }).catch(() => {});
-    res.json({
+    const _deepResponse = {
       status: 'complete',
       tier: 'deep-audit',
       pipeline: 'swarm',
@@ -2046,7 +2044,14 @@ app.post('/scan/deep', trackFunnel('deep'), requireApiKey, express.json(), valid
       report:          reportText || stdout,
       signed:          signedEnvelope,
       timestamp: new Date().toISOString()
-    });
+    };
+    db.logScanToHistory({
+      email: req.apiKey?.email || null, address: safeAddress, scan_type: 'deep-audit',
+      risk_score: swarmResult?.aggregate_score ?? null,
+      risk_level: swarmResult?.decision || null,
+      summary: null, cached: false, result_json: _deepResponse
+    }).catch(() => {});
+    res.json(_deepResponse);
   } catch (err) {
     res.status(500).json({ error: 'Audit failed', detail: err.message });
   }
@@ -2058,6 +2063,10 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
   const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
+    // DB-first cache — enhanced-token-scan.sh je drahý (~48s)
+    const _tokenCached = await db.getCachedScanFromDb(safeAddress, 'token', TOKEN_AUDIT_CACHE_TTL_MS).catch(() => null);
+    if (_tokenCached) return res.json({ ..._tokenCached, cached: true });
+
     const _t0 = Date.now();
     // Run script, RugCheck enrichment, and scam-db lookup in parallel
     const [scriptResult, enrichmentResult, scamDbResult] = await Promise.allSettled([
@@ -2098,14 +2107,8 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
     const advisorCtx = `Token audit pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}${irisSection}`;
     const adv = await runAdvisorIfGreyZone({ score: finalScore, context: advisorCtx, scanType: 'token' });
 
-    db.logScanToHistory({
-      email: req.apiKey?.email || null, address: safeAddress, scan_type: 'token',
-      risk_score: finalScore ?? null, risk_level: data?.risk_level || null,
-      summary: adv?.text?.slice(0, 500) || data?.summary || null, cached: false, result_json: null
-    }).catch(() => {});
-
     const signed = adv?.signed || (data?.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : shellSigned);
-    res.json({
+    const _tokenResponse = {
       status:        'complete',
       type:          'enhanced-token-scan',
       scan_version:  '2.0',
@@ -2118,7 +2121,14 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
       advisor:       adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
       signed,
       timestamp:     new Date().toISOString()
-    });
+    };
+    db.logScanToHistory({
+      email: req.apiKey?.email || null, address: safeAddress, scan_type: 'token',
+      risk_score: finalScore ?? null, risk_level: data?.risk_level || null,
+      summary: adv?.text?.slice(0, 500) || data?.summary || null, cached: false,
+      result_json: _tokenResponse
+    }).catch(() => {});
+    res.json(_tokenResponse);
   } catch (err) {
     res.status(500).json({ error: 'Token scan failed', detail: err.message });
   }
@@ -2130,6 +2140,10 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, express.json(), v
   const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
+    // DB-first cache — wallet-deep-scan.sh je drahý (~18s)
+    const _walletCached = await db.getCachedScanFromDb(safeAddress, 'wallet', WALLET_PROFILE_CACHE_TTL_MS).catch(() => null);
+    if (_walletCached) return res.json({ ..._walletCached, cached: true });
+
     const _t0 = Date.now();
 
     // Parallel: shell script + scamDb + RPC existence check + enrichment
@@ -2180,7 +2194,7 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, express.json(), v
     const adv = await runAdvisorIfGreyZone({ score: finalScore, context: advisorCtx, scanType: 'wallet' });
 
     const signed = adv?.signed || (data?.signed ? { signature: data.signature, key_id: data.key_id, algorithm: 'Ed25519' } : shellSigned);
-    res.json({
+    const _walletResponse = {
       status:       'complete',
       type:         'wallet-deep-scan',
       scan_version: '2.0',
@@ -2190,7 +2204,14 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, express.json(), v
       advisor:      adv ? { text: adv.text, advisor_used: adv.advisorUsed, provider: adv.provider } : null,
       signed,
       timestamp:    new Date().toISOString()
-    });
+    };
+    db.logScanToHistory({
+      email: req.apiKey?.email || null, address: safeAddress, scan_type: 'wallet',
+      risk_score: finalScore ?? null, risk_level: data?.risk_level || null,
+      summary: adv?.text?.slice(0, 500) || data?.summary || null, cached: false,
+      result_json: _walletResponse
+    }).catch(() => {});
+    res.json(_walletResponse);
   } catch (err) {
     res.status(500).json({ error: 'Wallet scan failed', detail: err.message });
   }
@@ -2738,6 +2759,10 @@ app.post(
     }
 
     try {
+      // DB-first cache (30 min)
+      const _agentCached = await db.getCachedScanFromDb(safeMint, 'agent-token', AGENT_TOKEN_CACHE_TTL_MS).catch(() => null);
+      if (_agentCached) return res.json({ ..._agentCached, cached: true });
+
       const _t0   = Date.now();
       const result = await scanAgentToken(safeMint);
       console.log(`[scan/agent-token] mint=${safeMint} scan=${Date.now()-_t0}ms score=${result.score} risk=${result.risk_level}`);
@@ -2781,7 +2806,7 @@ app.post(
         console.error('[scan/agent-token] signing failed:', e.message);
       }
 
-      res.json({
+      const _agentResponse = {
         status:          'complete',
         type:            'agent-token-scan',
         scan_version:    '1.0',
@@ -2804,7 +2829,14 @@ app.post(
         } : null,
         scan_ms:   result.scan_ms,
         timestamp: new Date().toISOString()
-      });
+      };
+      db.logScanToHistory({
+        email: req.apiKey?.email || null, address: safeMint, scan_type: 'agent-token',
+        risk_score: result.score ?? null, risk_level: result.risk_level || null,
+        summary: result.summary?.slice(0, 500) || null, cached: false,
+        result_json: _agentResponse
+      }).catch(() => {});
+      res.json(_agentResponse);
     } catch (err) {
       console.error('[scan/agent-token] error:', err.message);
       res.status(500).json({ error: 'Agent token scan failed', detail: err.message });
@@ -2896,6 +2928,10 @@ app.post(
       ? playbook_ids.map(id => String(id).replace(/[^\w_-]/g, '')).filter(Boolean)
       : [];
 
+    // DB-first cache (2h) — simulace je velmi drahá operace
+    const _advCached = await db.getCachedScanFromDb(safeProgramId, 'adversarial', ADVERSARIAL_SIM_CACHE_TTL_MS).catch(() => null);
+    if (_advCached) return res.json({ ..._advCached, cached: true });
+
     const _t0 = Date.now();
     console.log(`[adversarial] simulation requested for program=${safeProgramId} skip_fork=${!!skip_fork}`);
 
@@ -2914,7 +2950,14 @@ app.post(
       }).catch(() => {});
 
       console.log(`[adversarial] done in ${Date.now() - _t0}ms risk=${report.summary?.overall_risk}`);
-      res.json({ status: 'complete', ...report });
+      const _advResponse = { status: 'complete', ...report };
+      db.logScanToHistory({
+        email: req.apiKey?.email || null, address: safeProgramId, scan_type: 'adversarial',
+        risk_score: report.summary?.overall_risk_score ?? null,
+        risk_level: report.summary?.overall_risk || null,
+        summary: null, cached: false, result_json: _advResponse
+      }).catch(() => {});
+      res.json(_advResponse);
     } catch (err) {
       console.error('[adversarial] simulation failed:', err.message);
       res.status(500).json({ error: 'Adversarial simulation failed', detail: err.message });
@@ -3194,6 +3237,13 @@ const paidScanCache = new Map();
 // Cache výsledků free scanů — L1: in-memory (rychlost), L2: DB (persistence po restartu)
 const freeScanCache = new Map();
 const FREE_SCAN_CACHE_TTL = 3_600_000; // 1h
+
+// DB-first cache TTLs pro paid routes (ušetří drahé RPC/script volání)
+const TOKEN_AUDIT_CACHE_TTL_MS     = 60 * 60 * 1000;      // 60 min — expensive shell script
+const WALLET_PROFILE_CACHE_TTL_MS  = 30 * 60 * 1000;      // 30 min
+const DEEP_AUDIT_CACHE_TTL_MS      = 60 * 60 * 1000;      // 60 min — swarm pipeline
+const AGENT_TOKEN_CACHE_TTL_MS     = 30 * 60 * 1000;      // 30 min
+const ADVERSARIAL_SIM_CACHE_TTL_MS = 2  * 60 * 60 * 1000; // 2h — very expensive simulation
 
 function freeScanCacheKey(address, type, chain) {
   return `${address.toLowerCase()}:${type}:${chain}`;

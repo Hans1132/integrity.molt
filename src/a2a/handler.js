@@ -162,11 +162,36 @@ const INTERNAL_BASE = `http://127.0.0.1:${PORT}`;
 
 async function internalPost(path, body, paymentHeader, timeoutMs = 60_000) {
   const headers = { 'Content-Type': 'application/json', 'X-A2A-Caller': '1' };
-  if (paymentHeader) headers['x402-payment'] = paymentHeader;
+  if (paymentHeader) {
+    // API key (im_xxx) → forward as Authorization so requireApiKey middleware can set req.apiKey
+    // x402 payment envelope → forward as x402-payment for verifyPayment
+    if (paymentHeader.startsWith('Bearer im_') || paymentHeader.startsWith('im_')) {
+      headers['authorization'] = paymentHeader.startsWith('im_') ? `Bearer ${paymentHeader}` : paymentHeader;
+    } else {
+      headers['x402-payment'] = paymentHeader;
+    }
+  }
   const res = await fetch(`${INTERNAL_BASE}${path}`, {
     method:  'POST',
     headers,
     body:    JSON.stringify(body),
+    signal:  AbortSignal.timeout(timeoutMs)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err  = new Error(msg);
+    err.status  = res.status;
+    err.payload = json;
+    throw err;
+  }
+  return json;
+}
+
+async function internalGet(path, timeoutMs = 30_000) {
+  const res = await fetch(`${INTERNAL_BASE}${path}`, {
+    method:  'GET',
+    headers: { 'X-A2A-Caller': '1' },
     signal:  AbortSignal.timeout(timeoutMs)
   });
   const json = await res.json().catch(() => ({}));
@@ -240,6 +265,22 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
         algorithm:  envelope.algorithm  || 'Ed25519',
       };
     }
+
+    case 'scan_address':
+      // Signed IRIS oracle envelope — GET /scan/v1/:address (Ed25519-signed, cached 30min)
+      return internalGet(`/scan/v1/${encodeURIComponent(address)}`, 30_000);
+
+    case 'new_spl_feed':
+      // Pull feed — no address required; GET /feed/v1/new-spl-tokens
+      return internalGet('/feed/v1/new-spl-tokens', 15_000);
+
+    case 'verify_receipt':
+      // Offline-verifiable receipt check — POST /verify/v1/signed-receipt
+      // options.envelope must contain the signed receipt object
+      return internalPost('/verify/v1/signed-receipt', { envelope: options.envelope || address }, null, 15_000);
+
+    case 'governance_change':
+      return internalPost('/monitor/v1/governance-change', { program_id: address }, paymentHeader, 60_000);
 
     default:
       throw new Error(`Unknown skill: ${skillId}`);
@@ -382,9 +423,10 @@ async function handleTasksSend(rpcId, params, reqHeaders = {}) {
     return rpcError(rpcId, -32602, `Unknown skill: ${skillId}`, { available: Object.keys(SKILLS) });
   }
 
-  // Resolve target address
-  const address = metadata?.address || extractAddressFromMessage(message);
-  if (!address) {
+  // Resolve target address (not required for new_spl_feed and verify_receipt)
+  const _addressRequired = !['new_spl_feed', 'verify_receipt'].includes(skillId);
+  const address = metadata?.address || extractAddressFromMessage(message) || null;
+  if (_addressRequired && !address) {
     return rpcError(rpcId, -32602, 'Cannot extract Solana address from message parts');
   }
 
