@@ -946,4 +946,4 @@ function buildAgentCard(baseUrl) {
   };
 }
 
-module.exports = { handleA2ARequest, handleA2ASubscribe, handleTasksSendSubscribe, buildAgentCard, SKILLS, getTask, createTask };
+module.exports = { handleA2ARequest, handleA2ASubscribe, handleTasksSendSubscribe, buildAgentCard, SKILLS, getTask, createTask, validateCallbackUrl };

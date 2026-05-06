@@ -674,6 +674,12 @@ router.post('/feedback/v1/receipt', express.json({ limit: '128kb' }), _feedbackR
     return res.status(400).json({ ok: false, reason: 'invalid_signature — envelope was not produced by this oracle' });
   }
 
+  // Key pinning — verify_key musí odpovídat serverovému podpisovému klíči
+  const serverKeyBytes = getVerifyKeyBytes();
+  if (!Buffer.from(verify_key, 'base64').equals(serverKeyBytes)) {
+    return res.status(400).json({ ok: false, reason: 'key_not_pinned — envelope was not signed by this oracle' });
+  }
+
   // Odvod metadata z envelope
   const address = envelope.address || envelope.program_id || (payload && (payload.address || payload.program_id)) || null;
   const oracleVerdict = envelope.risk_level || envelope.classification || (payload && (payload.risk_level || payload.classification)) || null;

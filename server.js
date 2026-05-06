@@ -49,6 +49,11 @@ const {
 
 const https = require('https');
 const nodemailer = require('nodemailer');
+const { timingSafeEqual: _timingSafeEqual } = require('node:crypto');
+function safeCompare(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  return _timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 // ── Async Ed25519 signer — shared utility (src/crypto/sign.js) ───────────────
 // Neblokuje event loop. Použij asyncSign() všude místo execSync sign-report.py.
@@ -680,7 +685,7 @@ function requirePayment(accepts, requiredMicroUsdc = 0) {
     }
 
     const resource = accepts[0]?.resource;
-    const xPayment = req.headers['x-payment'];
+    const xPayment = req.headers['x-payment'] || req.headers['x402-payment'];
     if (!xPayment) {
       db.logEvent({ name: 'payment_required', resource, ip: req.ip })
         .catch(e => console.error('[db] logEvent error:', e.message));
@@ -1041,7 +1046,7 @@ app.get('/.well-known/x402.json', (req, res) => {
 
 // ── A2A (Agent-to-Agent) protocol — Google A2A spec ──────────────────────────
 
-const { handleA2ARequest, handleA2ASubscribe, buildAgentCard } = require('./src/a2a/handler');
+const { handleA2ARequest, handleA2ASubscribe, buildAgentCard, validateCallbackUrl } = require('./src/a2a/handler');
 
 // Agent card — machine-readable capability description for A2A discovery
 // Three paths: canonical (A2A 0.4+), legacy alias (A2A 0.2), root alias (ElizaOS/MCP discovery)
@@ -2691,18 +2696,15 @@ app.post(
 
       // Optional callback webhook
       if (callback_url) {
-        try {
-          const cbUrl = new URL(callback_url);
-          // Only allow https callbacks
-          if (cbUrl.protocol === 'https:') {
-            fetch(callback_url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'User-Agent': 'integrity.molt/1.0' },
-              body: JSON.stringify(response),
-              signal: AbortSignal.timeout(15000)
-            }).catch(e => console.error('[scan/token-audit] callback failed:', e.message));
-          }
-        } catch {}
+        const cbErr = validateCallbackUrl(callback_url);
+        if (!cbErr) {
+          fetch(callback_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'User-Agent': 'integrity.molt/1.0' },
+            body: JSON.stringify(response),
+            signal: AbortSignal.timeout(15000)
+          }).catch(e => console.error('[scan/token-audit] callback failed:', e.message));
+        }
       }
 
       res.json(response);
@@ -3892,8 +3894,8 @@ body{font-family:system-ui,sans-serif;background:#0d1117;color:#e6edf3;display:f
 h2{color:#4da6ff;margin-bottom:16px}p{color:#8b949e;margin:8px 0}a{color:#4da6ff;text-decoration:none}
 </style></head><body><div class="box">
 <h2>✓ Subscription active</h2>
-<p>Welcome, <strong>${session.customer_email || 'subscriber'}</strong></p>
-<p>Tier: <strong>${session.metadata?.tier || 'builder'}</strong></p>
+<p>Welcome, <strong>${escapeHtml(session.customer_email || 'subscriber')}</strong></p>
+<p>Tier: <strong>${escapeHtml(session.metadata?.tier || 'builder')}</strong></p>
 <p style="margin-top:24px"><a href="/">← Back to integrity.molt</a></p>
 </div></body></html>`);
   } catch {
@@ -3922,7 +3924,7 @@ app.get('/unsubscribe', async (req, res) => {
 <div style="text-align:center;padding:40px;border:1px solid #1e1e2e;border-radius:12px;max-width:420px">
   <div style="font-size:32px;margin-bottom:12px">✓</div>
   <h2 style="color:#fff;margin:0 0 10px">Odhlášení úspěšné</h2>
-  <p style="color:#6a7490;font-size:14px">Email <strong style="color:#d0d8e8">${email}</strong> nebude dostávat weekly digest.</p>
+  <p style="color:#6a7490;font-size:14px">Email <strong style="color:#d0d8e8">${escapeHtml(email)}</strong> nebude dostávat weekly digest.</p>
   <p style="color:#6a7490;font-size:13px;margin-top:8px">Vaše předplatné zůstává aktivní — odhlásíte se jen z newsletteru.</p>
   <p style="margin-top:24px"><a href="/" style="color:#4da6ff;text-decoration:none">← Zpět na integrity.molt</a></p>
 </div></body></html>`);
@@ -3964,7 +3966,7 @@ app.get('/stats/funnel', async (req, res) => {
   const token = process.env.STATS_TOKEN;
   if (token) {
     const auth = req.headers['authorization'] || '';
-    if (auth !== `Bearer ${token}`) {
+    if (!safeCompare(auth, `Bearer ${token}`)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
   }
@@ -4105,7 +4107,8 @@ app.get('/scan/cached', async (req, res) => {
 });
 
 // GET /scan/captcha-challenge — generuje HMAC-signed matematickou CAPTCHA otázku
-const { createHmac, timingSafeEqual } = require('node:crypto');
+const { createHmac } = require('node:crypto');
+const timingSafeEqual = _timingSafeEqual;
 const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET || 'changeme-local-dev';
 const CAPTCHA_TTL_MS = 15 * 60 * 1000; // 15 minut
 
@@ -4834,7 +4837,7 @@ function scheduleWeeklyDigest() {
 // ── Admin endpoint pro manuální spuštění digestu ───────────────────────────────
 const STATS_TOKEN = process.env.STATS_TOKEN;
 app.get('/admin/digest/run', async (req, res) => {
-  if (!STATS_TOKEN || req.headers['authorization'] !== `Bearer ${STATS_TOKEN}`) {
+  if (!STATS_TOKEN || !safeCompare(req.headers['authorization'] || '', `Bearer ${STATS_TOKEN}`)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
@@ -4878,7 +4881,7 @@ app.get('/ads/click/:id', async (req, res) => {
 // ── Admin: správa reklam (STATS_TOKEN) ────────────────────────────────────────
 
 function requireStatsToken(req, res, next) {
-  if (!STATS_TOKEN || req.headers['authorization'] !== `Bearer ${STATS_TOKEN}`) {
+  if (!STATS_TOKEN || !safeCompare(req.headers['authorization'] || '', `Bearer ${STATS_TOKEN}`)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   next();
@@ -5062,7 +5065,7 @@ app.post('/webhook/helius', express.json({ limit: '1mb' }), verifyWebhookAuth, w
 function requireBotKey(req, res, next) {
   const key = process.env.ADMIN_API_KEY;
   if (!key) return res.status(503).json({ error: 'ADMIN_API_KEY not configured' });
-  if (req.headers['x-admin-key'] !== key) return res.status(401).json({ error: 'Unauthorized' });
+  if (!safeCompare(req.headers['x-admin-key'] || '', key)) return res.status(401).json({ error: 'Unauthorized' });
   // Pouze z localhostu
   const ip = req.ip || req.connection?.remoteAddress || '';
   if (!ip.includes('127.0.0.1') && !ip.includes('::1') && ip !== '::ffff:127.0.0.1') {
