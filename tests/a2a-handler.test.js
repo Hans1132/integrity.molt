@@ -7,6 +7,14 @@
 //   Main test server (port 13402): mounts handleA2ARequest at POST /a2a
 //   Tests call POST http://127.0.0.1:13402/a2a with JSON-RPC envelopes
 
+// Port guard: skip suite when production service holds port 3402.
+// Testy potřebují vlastní mini-server na 3402 — nelze sdílet s live service.
+try {
+  require('child_process').execSync('nc -z 127.0.0.1 3402', { timeout: 500, stdio: 'ignore' });
+  console.log('  ⚠️  SKIP — port 3402 occupied (run manually after stopping integrity-x402.service)');
+  process.exit(0);
+} catch { /* port free — continue */ }
+
 // Must be set BEFORE requiring handler.js so that:
 //   PORT = 3402 → INTERNAL_BASE = http://127.0.0.1:3402 (mini-server)
 process.env.SQLITE_DB_PATH = ':memory:';

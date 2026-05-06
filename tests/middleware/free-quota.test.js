@@ -89,7 +89,7 @@ async function run() {
   await initSchema();
   rawDb.exec(QUOTA_TABLES_DDL);
 
-  const { checkFreeQuota, consumeFreeQuota, getQuotaStatus } = createQuotaMiddleware(rawDb);
+  const { checkFreeQuota, consumeFreeQuota, getQuotaStatus, getClientIp } = createQuotaMiddleware(rawDb);
   const { checkBlacklist, addToBlacklist } = createBlacklistMiddleware(rawDb);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -244,6 +244,87 @@ async function run() {
     let nextCalled = false;
     checkBlacklist(req, res, () => { nextCalled = true; });
     assert.strictEqual(nextCalled, true);
+  });
+
+  // ── CF-Connecting-IP header precedence (GAP-3) ─────────────────────────────
+
+  console.log('\n── CF-Connecting-IP Header Precedence ─────────────────────────────────────────\n');
+
+  await test('getClientIp: cf-connecting-ip takes precedence over x-forwarded-for', async () => {
+    const req = makeReq({
+      headers: {
+        'cf-connecting-ip': '10.0.0.99',
+        'x-forwarded-for':  '8.8.8.8',
+      },
+    });
+    assert.strictEqual(getClientIp(req), '10.0.0.99', 'CF header must win over XFF');
+  });
+
+  await test('getClientIp: cf-connecting-ip takes precedence over socket.remoteAddress', async () => {
+    const req = makeReq({
+      socket:  { remoteAddress: '1.1.1.1' },
+      headers: { 'cf-connecting-ip': '10.0.0.100' },
+    });
+    assert.strictEqual(getClientIp(req), '10.0.0.100', 'CF header must win over socket addr');
+  });
+
+  await test('getClientIp: falls back to x-forwarded-for when CF header absent', async () => {
+    const req = makeReq({
+      socket:  { remoteAddress: '1.1.1.1' },
+      headers: { 'x-forwarded-for': '203.0.113.5, 10.0.0.1' },
+    });
+    assert.strictEqual(getClientIp(req), '203.0.113.5', 'must use first XFF entry when CF absent');
+  });
+
+  await test('getClientIp: falls back to socket.remoteAddress when both CF and XFF absent', async () => {
+    const req = makeReq({
+      socket:  { remoteAddress: '172.16.0.1' },
+      headers: {},
+    });
+    assert.strictEqual(getClientIp(req), '172.16.0.1', 'must fall back to socket addr');
+  });
+
+  await test('quota: banned CF IP is blocked even if XFF shows clean IP', async () => {
+    clearTables();
+    const bannedIp  = '10.5.5.5';
+    const cleanIp   = '8.8.8.8';
+    consumeFreeQuota(bannedIp, today);
+    consumeFreeQuota(bannedIp, today);
+    consumeFreeQuota(bannedIp, today);
+
+    const req = makeReq({
+      socket:  { remoteAddress: '1.1.1.1' }, // Cloudflare edge
+      headers: {
+        'cf-connecting-ip': bannedIp,
+        'x-forwarded-for':  cleanIp,
+      },
+    });
+    const res = makeRes();
+    let nextCalled = false;
+    checkFreeQuota(req, res, () => { nextCalled = true; });
+    assert.strictEqual(nextCalled, false, 'banned CF IP must be blocked, not let through via clean XFF');
+    assert.strictEqual(res._statusCode, 429);
+  });
+
+  await test('quota: clean CF IP passes even if XFF shows exhausted IP', async () => {
+    clearTables();
+    const exhaustedIp = '10.5.5.6';
+    const cleanCfIp   = '10.5.5.7';
+    consumeFreeQuota(exhaustedIp, today);
+    consumeFreeQuota(exhaustedIp, today);
+    consumeFreeQuota(exhaustedIp, today);
+
+    const req = makeReq({
+      socket:  { remoteAddress: '1.1.1.1' },
+      headers: {
+        'cf-connecting-ip': cleanCfIp,
+        'x-forwarded-for':  exhaustedIp,
+      },
+    });
+    const res = makeRes();
+    let nextCalled = false;
+    checkFreeQuota(req, res, () => { nextCalled = true; });
+    assert.strictEqual(nextCalled, true, 'clean CF IP must pass through regardless of XFF');
   });
 
   console.log(`\nResults: ${passed} passed, ${failed} failed\n`);
