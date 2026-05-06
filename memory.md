@@ -4,11 +4,22 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-06 (performance quick wins, commity 837873e + 807887a)
+**Last updated:** 2026-05-06 (regresní testy + rozšíření npm test scope, commit 5230e3b)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-06: Regresní testy + rozšíření npm test scope (commit 5230e3b)
+Zdroj: `voltagent-qa-sec:test-automator` audit + implementace.
+
+- **Nové regresní testy:** `tests/security/path-traversal.test.js` (CRITICAL-2, 10 cases), `tests/security/watchlist-idor.test.js` (CRITICAL-1, 6 cases) — pinují oba security fixy z 1840ab5
+- **`tests/crypto/canonical-json.test.js`** (14 cases) — pinuje byte-identical serializaci canonicalJSON, základ pro všechny signed receipts
+- **CF-Connecting-IP** — 6 nových testů v `tests/middleware/free-quota.test.js` (GAP-3, ostrý edge z CLAUDE.md)
+- **`tests/a2a-handler.test.js`** — přidán sync port guard (`nc -z 127.0.0.1 3402`), test bezpečně přeskočí v npm test když běží production
+- **npm test scope:** rozšířen z 9 na 24 souborů (`package.json`), odstraněna divergence mezi `npm test` a `test-gate.sh`
+
+---
 
 ### 2026-05-06: Performance quick wins — 4 commity (837873e, 807887a)
 Zdroj: `voltagent-qa-sec:performance-engineer` audit (read-only) + implementace.
