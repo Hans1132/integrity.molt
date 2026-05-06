@@ -48,6 +48,7 @@ const {
 } = require('./src/validation/report-validator');
 
 const https = require('https');
+const rpcAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 30_000, maxSockets: 10 });
 const nodemailer = require('nodemailer');
 const { timingSafeEqual: _timingSafeEqual } = require('node:crypto');
 function safeCompare(a, b) {
@@ -499,7 +500,8 @@ function rpcPost(body) {
       const data = JSON.stringify(body);
       const req = https.request(SOLANA_RPC, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
+        agent: rpcAgent,
       }, res => {
         let buf = '';
         res.on('data', c => buf += c);

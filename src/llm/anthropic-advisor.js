@@ -90,12 +90,14 @@ async function runWithAdvisor({ systemPrompt, userMessage, tools = [], maxAdviso
     },
     ...tools,
   ];
+  // Cache breakpoint na posledním toolu (statická část, mění se jen při upgrade modelu/rules)
+  allTools[allTools.length - 1] = { ...allTools[allTools.length - 1], cache_control: { type: 'ephemeral' } };
 
   // Použití beta.messages.create — automaticky nastaví anthropic-beta header.
   const response = await client.beta.messages.create({
     model:      'claude-sonnet-4-6',
     max_tokens: 8192,
-    system:     systemPrompt,
+    system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
     tools:      allTools,
     messages:   [{ role: 'user', content: userMessage }],
     betas:      ['advisor-tool-2026-03-01'],
