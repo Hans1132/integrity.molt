@@ -1091,6 +1091,7 @@ const _a2aRLMiddleware = (req, res, next) => {
   next();
 };
 app.post('/a2a', express.json({ limit: '64kb' }), _a2aRLMiddleware, handleA2ARequest);
+app.get('/a2a', (req, res) => res.json({ message: 'A2A 0.4.1 endpoint — use POST with JSON-RPC', agent_card: `${req.protocol}://${req.get('host')}/.well-known/agent.json` }));
 
 // A2A SSE streaming endpoint — POST /a2a/subscribe
 // Body: { skill, address, sessionId?, metadata? }
