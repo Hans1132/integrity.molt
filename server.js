@@ -5394,6 +5394,17 @@ async function notifyAdminError(type, err) {
 process.on('uncaughtException',  err => notifyAdminError('uncaughtException', err));
 process.on('unhandledRejection', err => notifyAdminError('unhandledRejection', err));
 
+// ── Global Express error handler ──────────────────────────────────────────────
+// Musí být za všemi route definicemi. Zachytává async route errors v Express 5
+// (promise rejection propagation) i explicitní next(err) volání.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const reqId = req.headers['x-request-id'] || '-';
+  console.error(`[express] unhandled error method=${req.method} url=${req.url} reqId=${reqId} err=${err.message}`, err.stack);
+  res.status(err.status || 500).json({ error: 'Internal server error' });
+});
+
 // ── Startup ───────────────────────────────────────────────────────────────────
 db.initSchema()
   .then(() => initUsersSchema())
