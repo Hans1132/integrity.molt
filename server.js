@@ -3257,13 +3257,23 @@ function freeScanCacheKey(address, type, chain) {
 function setCachedScan(address, type, chain, result) {
   const key = freeScanCacheKey(address, type, chain);
   freeScanCache.set(key, { result, cachedAt: Date.now() });
-  setTimeout(() => freeScanCache.delete(key), FREE_SCAN_CACHE_TTL);
 }
+// Jeden timer místo timer-per-entry — čistí expirované záznamy každých 5 minut
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of freeScanCache) {
+    if (now - v.cachedAt > FREE_SCAN_CACHE_TTL) freeScanCache.delete(k);
+  }
+}, 5 * 60_000).unref();
 
 async function getCachedScan(address, type, chain) {
   // L1: in-memory
-  const entry = freeScanCache.get(freeScanCacheKey(address, type, chain));
-  if (entry && Date.now() - entry.cachedAt <= FREE_SCAN_CACHE_TTL) return entry.result;
+  const key = freeScanCacheKey(address, type, chain);
+  const entry = freeScanCache.get(key);
+  if (entry) {
+    if (Date.now() - entry.cachedAt <= FREE_SCAN_CACHE_TTL) return entry.result;
+    freeScanCache.delete(key); // lazy cleanup expirované L1 entry
+  }
   // L2: DB (po restartu serveru)
   try {
     const dbResult = await db.getCachedScanFromDb(address, type, FREE_SCAN_CACHE_TTL);

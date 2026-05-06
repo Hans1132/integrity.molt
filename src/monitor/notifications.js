@@ -44,11 +44,16 @@ function isDuplicate(alert) {
 
 function isRateLimited(address) {
   const now  = Date.now();
-  const key  = address;
-  const hits = (rateWindows.get(key) || []).filter(ts => now - ts < RATE_LIMIT_WINDOW);
+  const hits = (rateWindows.get(address) || []).filter(ts => now - ts < RATE_LIMIT_WINDOW);
+  // Přirozená TTL: žádné platné hits v okně → smaž klíč místo nechat stát navždy
+  if (hits.length === 0) rateWindows.delete(address);
   if (hits.length >= RATE_LIMIT_MAX) return true;
   hits.push(now);
-  rateWindows.set(key, hits);
+  rateWindows.set(address, hits);
+  // Safety cap pro případ alert storm — FIFO eviction, stejný pattern jako sentAlerts
+  if (rateWindows.size > 10_000) {
+    rateWindows.delete(rateWindows.keys().next().value);
+  }
   return false;
 }
 
