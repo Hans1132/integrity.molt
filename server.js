@@ -149,6 +149,8 @@ function loadLatestReport(reportsDir, slug, prefix) {
 }
 
 const VERIFY_KEY_PATH = '/root/.secrets/verify_key.bin';
+const _jwksKeyBytes = fs.readFileSync(VERIFY_KEY_PATH);
+const _scanViewTemplate = fs.readFileSync(path.join(__dirname, 'public', 'scan-view.html'), 'utf8');
 const { SOLANA_RPC_URL: SOLANA_RPC } = require('./src/rpc');
 
 // ── Konstanty pro quick-rpc scan ──────────────────────────────────────────────
@@ -1063,24 +1065,18 @@ app.get('/agent.json',                  (req, res) => res.json(_buildAgentCardRe
 // JWKS endpoint — Ed25519 public key in JWK Set format (RFC 8037)
 const _b64url = (buf) => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 app.get('/.well-known/jwks.json', (req, res) => {
-  try {
-    const keyBytes = fs.readFileSync(VERIFY_KEY_PATH);
-    res.set('Content-Type', 'application/jwk-set+json');
-    res.set('Cache-Control', 'public, max-age=3600, must-revalidate');
-    res.json({
-      keys: [{
-        kty: 'OKP',
-        crv: 'Ed25519',
-        use: 'sig',
-        alg: 'EdDSA',
-        kid: 'integrity-molt-primary-2026',
-        x:   _b64url(keyBytes)
-      }]
-    });
-  } catch (e) {
-    console.error('[jwks] failed to read verify key:', e.message);
-    res.status(500).json({ error: 'JWKS unavailable' });
-  }
+  res.set('Content-Type', 'application/jwk-set+json');
+  res.set('Cache-Control', 'public, max-age=3600, must-revalidate');
+  res.json({
+    keys: [{
+      kty: 'OKP',
+      crv: 'Ed25519',
+      use: 'sig',
+      alg: 'EdDSA',
+      kid: 'integrity-molt-primary-2026',
+      x:   _b64url(_jwksKeyBytes)
+    }]
+  });
 });
 
 // A2A JSON-RPC 2.0 endpoint — tasks/send, tasks/get, tasks/cancel
@@ -4629,7 +4625,7 @@ app.get('/scan/:address', async (req, res) => {
     console.warn('[scan/:address] IRIS fetch failed:', err.message);
   }
 
-  const template = fs.readFileSync(path.join(__dirname, 'public', 'scan-view.html'), 'utf8');
+  const template = _scanViewTemplate;
   const html = template
     .replace(/\{\{TITLE\}\}/g,          escapeHtml(meta.TITLE))
     .replace(/\{\{DESCRIPTION\}\}/g,    escapeHtml(meta.DESCRIPTION))
