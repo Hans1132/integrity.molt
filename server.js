@@ -1248,17 +1248,30 @@ app.get('/health', (req, res) => {
 app.get('/skill.md', (req, res) => {
   res.type('text/markdown').send(`---
 name: integrity-molt
-description: Solana security oracle — IRIS risk scores with Ed25519-signed receipts for AI agents
+version: 1.0.0
+description: Solana security oracle — IRIS risk scores, rug detection, and Ed25519-signed receipts for AI agents. Pay-per-call via x402 USDC.
+homepage: https://intmolt.org
 license: MIT
-compatibility: opencode
-metadata:
-  audience: developers
-  workflow: security-verification
+metadata: {"moltbot":{"category":"security","api_base":"https://intmolt.org","emoji":"🔒"},"x402":{"supported":true,"chains":["solana"],"networks":["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],"tokens":["USDC"],"priceRange":{"min":"0.15","max":"5.00","currency":"USDC"}}}
 ---
 
 # integrity.molt Security Oracle
 
-AI-powered Solana security oracle. Returns IRIS risk scores (0–100) and Ed25519-signed receipts that agents can verify and chain as audit trail entries. Pay-per-call via x402.
+AI-powered Solana security oracle. Returns IRIS risk scores (0–100) and Ed25519-signed receipts that agents can verify and chain as audit trail entries. Pay-per-call via x402 USDC on Solana mainnet.
+
+## TL;DR - Quick Reference
+
+Free skills: \`quick_scan\`, \`scan_address\`, \`new_spl_feed\`, \`verify_receipt\`, \`program_verification_status\`
+
+Paid skills (x402 USDC on Solana): \`agent_token_scan\` ($0.15), \`governance_change\` ($0.15), \`token_audit\` ($0.75), \`wallet_profile\` ($0.75), \`adversarial_sim\` ($4.00), \`deep_audit\` ($5.00)
+
+**Pay via x402/fetch proxy (AgentWallet):**
+\`\`\`bash
+curl -X POST https://frames.ag/api/wallets/USERNAME/actions/x402/fetch \\
+  -H "Authorization: Bearer TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"https://intmolt.org/a2a","method":"POST","body":{"jsonrpc":"2.0","id":"1","method":"tasks/send","params":{"message":{"role":"user","parts":[{"type":"text","text":"scan"}]},"metadata":{"skill":"agent_token_scan","address":"TOKEN_MINT"}}}}'
+\`\`\`
 
 ## Base URL
 
@@ -1266,115 +1279,175 @@ AI-powered Solana security oracle. Returns IRIS risk scores (0–100) and Ed2551
 https://intmolt.org
 \`\`\`
 
-## Endpoints
+## A2A Endpoint (all skills)
+
+All skills are accessible via the A2A JSON-RPC 2.0 endpoint:
+
+\`\`\`
+POST https://intmolt.org/a2a
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-1",
+  "method": "tasks/send",
+  "params": {
+    "message": { "role": "user", "parts": [{ "type": "text", "text": "scan" }] },
+    "metadata": { "skill": "<skill_name>", "address": "<solana_address>" }
+  }
+}
+\`\`\`
+
+## Skills
+
+| Skill | Price | Description |
+|-------|-------|-------------|
+| \`quick_scan\` | free | Quick IRIS risk score for a Solana address |
+| \`scan_address\` | free | Full address scan with risk factors |
+| \`new_spl_feed\` | free | Feed of new SPL token mints (last 24h) |
+| \`verify_receipt\` | free | Verify Ed25519-signed oracle receipt |
+| \`program_verification_status\` | free | Check if a Solana program is verified on-chain |
+| \`agent_token_scan\` | $0.15 USDC | Token security scan optimized for AI agents |
+| \`governance_change\` | $0.15 USDC | Detect governance changes in a Solana program |
+| \`token_audit\` | $0.75 USDC | Detailed token audit report |
+| \`wallet_profile\` | $0.75 USDC | Wallet risk profile with behavioral analysis |
+| \`adversarial_sim\` | $4.00 USDC | Adversarial simulation — test attack vectors |
+| \`deep_audit\` | $5.00 USDC | Deep security audit with signed findings report |
+
+## REST Endpoints (legacy)
 
 | Endpoint | Price | Description |
 |----------|-------|-------------|
 | \`GET /scan/v1/:address\` | free | IRIS security scan with signed receipt |
 | \`POST /verify/v1/signed-receipt\` | free | Verify Ed25519-signed oracle receipt |
 | \`GET /feed/v1/new-spl-tokens\` | free | Feed of new SPL token mints (last 24h) |
-| \`POST /monitor/v1/governance-change\` | $0.15 | Detect governance changes in a Solana program |
 
-## Endpoint Details
+## Signed Receipts
 
-### GET /scan/v1/:address (free)
+Every paid response includes an Ed25519-signed receipt envelope with:
+- \`iris_score\` (0–100, lower = safer)
+- \`risk_level\` (low / medium / high / critical)
+- \`risk_factors\` array
+- \`signature\` (Ed25519 base64, verifiable at \`/verify/v1/signed-receipt\`)
+- \`signer\`: \`integrity.molt\`
+- \`jwks_url\`: \`https://intmolt.org/jwks.json\`
 
-IRIS security scan of a Solana token mint or wallet address. Returns signed JSON envelope.
+## Discovery
 
-**Example:**
-\`\`\`bash
-curl https://intmolt.org/scan/v1/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
-\`\`\`
-
-**Response:**
-\`\`\`json
-{
-  "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-  "iris_score": 0,
-  "risk_level": "low",
-  "risk_factors": [],
-  "signature": "<Ed25519 base64>",
-  "verify_key": "<base64>",
-  "signer": "integrity.molt",
-  "algorithm": "Ed25519"
-}
-\`\`\`
-
-### POST /verify/v1/signed-receipt (free)
-
-Verify a signed receipt was issued by integrity.molt and has not been tampered with.
-
-**Request:**
-\`\`\`json
-{ "envelope": { "<oracle receipt object>" } }
-\`\`\`
-
-**Response:**
-\`\`\`json
-{ "valid": true, "key_pinned": true, "issuer": "integrity.molt" }
-\`\`\`
-
-### POST /monitor/v1/governance-change ($0.15 USDC)
-
-Detects authority transfers, upgrade events, and suspicious governance patterns in a Solana program over recent transactions.
-
-**Request:**
-\`\`\`json
-{ "program_id": "<base58 address>", "window_slots": 50 }
-\`\`\`
-
-**Response:**
-\`\`\`json
-{
-  "program_id": "...",
-  "verdict": "clean",
-  "findings": [],
-  "signature": "<Ed25519 base64>",
-  "signer": "integrity.molt"
-}
-\`\`\`
+- \`GET /agent.json\` — A2A agent card
+- \`GET /x402.json\` — x402 payment manifest
+- \`GET /jwks.json\` — Ed25519 public key
+- \`GET /offer\` — machine-readable skill offer (JSON)
 `);
 });
 
 // offer — frames.ag machine-readable service offer
 app.get('/offer', (req, res) => {
+  const SOLANA_MAINNET = { network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', networkName: 'Solana Mainnet', type: 'solana' };
   res.json({
     version: '1.0.0',
     service: {
       slug:        'integrity-molt',
       title:       'integrity.molt Security Oracle',
-      description: 'Solana security oracle — IRIS risk scores with Ed25519-signed receipts for AI agents',
+      description: 'Solana security oracle — IRIS risk scores, rug detection, and Ed25519-signed receipts for AI agents. Pay-per-call via x402 USDC.',
       version:     '1.0.0',
-      tags:        ['security', 'solana', 'oracle', 'ai-agents', 'signed-receipts', 'rug-detection'],
+      tags:        ['security', 'solana', 'oracle', 'ai-agents', 'signed-receipts', 'rug-detection', 'x402', 'iris-score'],
+      homepage:    'https://intmolt.org',
+      x402:        { supported: true, chains: ['solana'], tokens: ['USDC'], priceRange: { min: '0.15', max: '5.00', currency: 'USDC' } },
     },
     tools: [
+      // --- free skills ---
       {
-        route:       'GET /scan/v1/:address',
-        description: 'IRIS security scan of a Solana address — returns signed risk envelope',
+        route:       'POST /a2a',
+        skill:       'quick_scan',
+        description: 'Quick IRIS risk score for a Solana address — sub-second, no auth required',
         price:       'free',
         mimeType:    'application/json',
-        networks:    [{ network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', networkName: 'Solana', type: 'solana' }],
+        networks:    [SOLANA_MAINNET],
       },
       {
-        route:       'POST /verify/v1/signed-receipt',
-        description: 'Verify an Ed25519-signed oracle receipt from integrity.molt',
+        route:       'POST /a2a',
+        skill:       'scan_address',
+        description: 'Full address scan with IRIS score, risk factors, and signed receipt',
+        price:       'free',
+        mimeType:    'application/json',
+        networks:    [SOLANA_MAINNET],
+      },
+      {
+        route:       'POST /a2a',
+        skill:       'new_spl_feed',
+        description: 'Feed of new SPL token mints on Solana (last 24h)',
+        price:       'free',
+        mimeType:    'application/json',
+        networks:    [SOLANA_MAINNET],
+      },
+      {
+        route:       'POST /a2a',
+        skill:       'verify_receipt',
+        description: 'Verify an Ed25519-signed oracle receipt issued by integrity.molt',
         price:       'free',
         mimeType:    'application/json',
         networks:    [],
       },
       {
-        route:       'GET /feed/v1/new-spl-tokens',
-        description: 'Pull feed of new SPL token mints on Solana (last 24h)',
+        route:       'POST /a2a',
+        skill:       'program_verification_status',
+        description: 'Check if a Solana program is verified on-chain (source-matched deployment)',
         price:       'free',
         mimeType:    'application/json',
-        networks:    [],
+        networks:    [SOLANA_MAINNET],
+      },
+      // --- paid skills ($0.15 USDC) ---
+      {
+        route:       'POST /a2a',
+        skill:       'agent_token_scan',
+        description: 'Token security scan optimized for AI agents — IRIS score + risk factors + signed receipt',
+        price:       '$0.15 USDC',
+        mimeType:    'application/json',
+        networks:    [SOLANA_MAINNET],
       },
       {
-        route:       'POST /monitor/v1/governance-change',
-        description: 'Detect governance changes in a Solana program over recent transactions',
-        price:       '$0.15',
+        route:       'POST /a2a',
+        skill:       'governance_change',
+        description: 'Detect authority transfers, upgrade events, and suspicious governance patterns in a Solana program',
+        price:       '$0.15 USDC',
         mimeType:    'application/json',
-        networks:    [{ network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', networkName: 'Solana', type: 'solana' }],
+        networks:    [SOLANA_MAINNET],
+      },
+      // --- paid skills ($0.75 USDC) ---
+      {
+        route:       'POST /a2a',
+        skill:       'token_audit',
+        description: 'Detailed token audit report — liquidity, holder distribution, creator history, mint authority',
+        price:       '$0.75 USDC',
+        mimeType:    'application/json',
+        networks:    [SOLANA_MAINNET],
+      },
+      {
+        route:       'POST /a2a',
+        skill:       'wallet_profile',
+        description: 'Wallet risk profile — behavioral analysis, counterparty risk, historical activity',
+        price:       '$0.75 USDC',
+        mimeType:    'application/json',
+        networks:    [SOLANA_MAINNET],
+      },
+      // --- paid skills ($4.00 USDC) ---
+      {
+        route:       'POST /a2a',
+        skill:       'adversarial_sim',
+        description: 'Adversarial simulation — stress test a token or program against known attack vectors',
+        price:       '$4.00 USDC',
+        mimeType:    'application/json',
+        networks:    [SOLANA_MAINNET],
+      },
+      // --- paid skills ($5.00 USDC) ---
+      {
+        route:       'POST /a2a',
+        skill:       'deep_audit',
+        description: 'Deep security audit — full on-chain + off-chain analysis with Ed25519-signed findings report',
+        price:       '$5.00 USDC',
+        mimeType:    'application/json',
+        networks:    [SOLANA_MAINNET],
       },
     ],
     links: {
@@ -1384,6 +1457,9 @@ app.get('/offer', (req, res) => {
       health:  'https://intmolt.org/health',
       skill:   'https://intmolt.org/skill.md',
       offer:   'https://intmolt.org/offer',
+      jwks:    'https://intmolt.org/jwks.json',
+      agent:   'https://intmolt.org/agent.json',
+      x402:    'https://intmolt.org/x402.json',
     },
   });
 });
