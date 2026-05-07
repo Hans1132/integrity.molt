@@ -166,8 +166,9 @@ function initSchema() {
       stripe_customer_id   TEXT,
       created_at           TEXT    NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE INDEX IF NOT EXISTS users_email    ON users (email);
-    CREATE INDEX IF NOT EXISTS users_provider ON users (provider, provider_id);
+    CREATE INDEX IF NOT EXISTS users_email        ON users (email);
+    CREATE INDEX IF NOT EXISTS users_provider     ON users (provider, provider_id);
+    CREATE INDEX IF NOT EXISTS users_reset_token  ON users (reset_token) WHERE reset_token IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS user_sessions (
       sid      TEXT PRIMARY KEY,
@@ -486,6 +487,18 @@ function migrateAccuracySignalsSchema() {
     "CREATE INDEX IF NOT EXISTS ip_blacklist_active ON ip_blacklist (ip) WHERE expires_at IS NULL",
     // Telegram bot chat lookup
     "CREATE INDEX IF NOT EXISTS subscriptions_telegram ON subscriptions (telegram_chat_id, status)",
+    // K-1: watchlist duplicate guard — notify_email větev (notify_telegram_chat IS NULL)
+    "CREATE UNIQUE INDEX IF NOT EXISTS watchlist_unique_email_entry ON watchlist (address, notify_email) WHERE notify_telegram_chat IS NULL",
+    // K-2: consumePasswordResetToken full-table scan fix
+    "CREATE INDEX IF NOT EXISTS users_reset_token ON users (reset_token) WHERE reset_token IS NOT NULL",
+    // V-1: getActiveSubscribers composite covering index
+    "CREATE INDEX IF NOT EXISTS subscriptions_email_status ON subscriptions (email, status, current_period_end DESC)",
+    // V-5: canAutoSign hot-path covering index (agent_mint + decision + created_at)
+    "CREATE INDEX IF NOT EXISTS idx_autopilot_mint_decision ON autopilot_spending (agent_mint, decision, created_at DESC)",
+    // V-8: GROUP BY date(created_at) expression index
+    "CREATE INDEX IF NOT EXISTS events_date_name ON events (date(created_at) DESC, name)",
+    // V-9: getActiveSubscribers partial index (digest_unsubscribed = 0)
+    "CREATE INDEX IF NOT EXISTS subscriptions_digest_active ON subscriptions (email, current_period_end DESC) WHERE status = 'active' AND digest_unsubscribed = 0",
   ];
   for (const sql of idxs) {
     try { db.exec(sql); } catch {}
@@ -501,6 +514,7 @@ function dropLegacyDuplicateIndexes() {
     'DROP INDEX IF EXISTS idx_quota_date',           // duplikát idx_free_quota_date
     'DROP INDEX IF EXISTS idx_abuse_ip_time',        // duplikát idx_abuse_ip
     'DROP INDEX IF EXISTS autopilot_spending_mint_day', // duplikát idx_autopilot_mint
+    'DROP INDEX IF EXISTS users_email',              // duplikát SQLite autoindex na UNIQUE (email)
   ];
   for (const sql of drops) {
     try { db.exec(sql); } catch {}
@@ -518,6 +532,15 @@ setInterval(() => {
   try { db.prepare("DELETE FROM used_signatures WHERE created_at < (strftime('%s','now') - 3600)").run(); } catch {}
   // RugCheck cache: TTL 25h — stará data, která JS přeskakuje, se nikdy nemaží
   try { db.prepare("DELETE FROM rugcheck_cache WHERE fetched_at < datetime('now', '-25 hours')").run(); } catch {}
+  // D-1: TTL cleanup pro stará data (nerostou donekonečna)
+  try { db.prepare("DELETE FROM events WHERE created_at < datetime('now', '-90 days')").run(); } catch {}
+  try { db.prepare("DELETE FROM abuse_events WHERE occurred_at < datetime('now', '-30 days')").run(); } catch {}
+  try { db.prepare("DELETE FROM advisor_calls WHERE created_at < datetime('now', '-90 days')").run(); } catch {}
+  try { db.prepare("DELETE FROM scan_accuracy_signals WHERE created_at < datetime('now', '-180 days')").run(); } catch {}
+  try { db.prepare("DELETE FROM spl_mints WHERE block_time < (strftime('%s','now') - 90*86400)*1000").run(); } catch {}
+  try { db.prepare("DELETE FROM autopilot_spending WHERE created_at < (strftime('%s','now') - 90*86400)*1000").run(); } catch {}
+  try { db.prepare("DELETE FROM global_scan_stats WHERE stat_date < date('now', '-365 days')").run(); } catch {}
+  try { db.prepare("DELETE FROM free_scan_quota WHERE scan_date < date('now', '-7 days')").run(); } catch {}
 }, 6 * 3_600_000).unref();
 
 // ── Pool compatibility shim ────────────────────────────────────────────────────
@@ -723,26 +746,14 @@ async function listWatchlistForChat(notify_telegram_chat) {
 
 async function addUserWatchlistEntry({ email, address, label, notify_email }) {
   const notifyEmail = notify_email !== undefined ? notify_email : email;
-  try {
-    const result = db.prepare(`
-      INSERT INTO watchlist (address, label, notify_email)
-      VALUES (?, ?, ?)
-    `).run(address, label || null, notifyEmail);
-    return db.prepare('SELECT id, address, label, created_at FROM watchlist WHERE id = ?')
-      .get(result.lastInsertRowid);
-  } catch (e) {
-    // Conflict — reactivate if inactive
-    const existing = db.prepare(`
-      UPDATE watchlist SET active = 1,
-        label = COALESCE(?, label), notify_email = ?
-      WHERE address = ? AND (notify_email = ? OR ? IS NULL) AND active = 0
-    `).run(label || null, notifyEmail, address, notifyEmail, notifyEmail);
-    if (existing.changes > 0) {
-      return db.prepare('SELECT id, address, label, created_at FROM watchlist WHERE address = ? AND notify_email = ?')
-        .get(address, notifyEmail);
-    }
-    return null;
-  }
+  db.prepare(`
+    INSERT INTO watchlist (address, label, notify_email, active)
+    VALUES (?, ?, ?, 1)
+    ON CONFLICT (address, notify_email) WHERE notify_telegram_chat IS NULL
+    DO UPDATE SET active = 1, label = COALESCE(EXCLUDED.label, label)
+  `).run(address, label || null, notifyEmail);
+  return db.prepare('SELECT id, address, label, created_at FROM watchlist WHERE address = ? AND notify_email = ? AND notify_telegram_chat IS NULL')
+    .get(address, notifyEmail);
 }
 
 async function removeUserWatchlistEntry({ email, id }) {
@@ -1534,7 +1545,7 @@ function lookupScamCreator(walletAddress) {
  * Přepočítá / naplní tabulku scam_creators z known_scams.
  * Spouštěno po importu — není třeba volat za běhu.
  */
-function rebuildScamCreators() {
+const _rebuildScamCreatorsTx = db.transaction(() => {
   db.exec("DELETE FROM scam_creators");
   db.prepare(`
     INSERT INTO scam_creators (creator_wallet, scam_count, last_scam_at, patterns)
@@ -1549,6 +1560,10 @@ function rebuildScamCreators() {
     HAVING COUNT(*) >= 1
   `).run();
   return db.prepare('SELECT COUNT(*) AS cnt FROM scam_creators').get().cnt;
+});
+
+function rebuildScamCreators() {
+  return _rebuildScamCreatorsTx();
 }
 
 // ── RugCheck API cache ────────────────────────────────────────────────────────

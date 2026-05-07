@@ -24,7 +24,10 @@ const RPC_BATCH        = 5; // getTransaction paralelně najednou
 
 let _db    = null;
 let _timer = null;
-let _stmtInsertMint = null;
+let _stmtInsertMint    = null;
+let _stmtGetCursor     = null;
+let _stmtUpsertCursor  = null;
+let _stmtUpdateLastRun = null;
 
 function _getInsertMintStmt() {
   if (!_stmtInsertMint) {
@@ -33,6 +36,33 @@ function _getInsertMintStmt() {
     );
   }
   return _stmtInsertMint;
+}
+
+function _getGetCursorStmt() {
+  if (!_stmtGetCursor) _stmtGetCursor = _db.prepare('SELECT last_sig FROM spl_mint_cursor WHERE id=1');
+  return _stmtGetCursor;
+}
+
+function _getUpsertCursorStmt() {
+  if (!_stmtUpsertCursor) {
+    _stmtUpsertCursor = _db.prepare(`
+      INSERT INTO spl_mint_cursor (id, last_sig, last_run_at)
+      VALUES (1, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET last_sig=excluded.last_sig, last_run_at=excluded.last_run_at
+    `);
+  }
+  return _stmtUpsertCursor;
+}
+
+function _getUpdateLastRunStmt() {
+  if (!_stmtUpdateLastRun) {
+    _stmtUpdateLastRun = _db.prepare(`
+      INSERT INTO spl_mint_cursor (id, last_sig, last_run_at)
+      VALUES (1, NULL, ?)
+      ON CONFLICT(id) DO UPDATE SET last_run_at=excluded.last_run_at
+    `);
+  }
+  return _stmtUpdateLastRun;
 }
 
 function init(dbInstance) {
@@ -86,7 +116,7 @@ async function _poll() {
 }
 
 async function _pollProgram(rpcUrl, programId, label) {
-  const cursor = _db.prepare('SELECT last_sig FROM spl_mint_cursor WHERE id=1').get();
+  const cursor = _getGetCursorStmt().get();
   const until  = cursor?.last_sig || undefined;
 
   const sigInfos = await _rpc(rpcUrl, 'getSignaturesForAddress', [
@@ -131,19 +161,11 @@ async function _pollProgram(rpcUrl, programId, label) {
 }
 
 function _updateCursor(sig) {
-  _db.prepare(`
-    INSERT INTO spl_mint_cursor (id, last_sig, last_run_at)
-    VALUES (1, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET last_sig=excluded.last_sig, last_run_at=excluded.last_run_at
-  `).run(sig ?? null, Date.now());
+  _getUpsertCursorStmt().run(sig ?? null, Date.now());
 }
 
 function _updateLastRunAt() {
-  _db.prepare(`
-    INSERT INTO spl_mint_cursor (id, last_sig, last_run_at)
-    VALUES (1, NULL, ?)
-    ON CONFLICT(id) DO UPDATE SET last_run_at=excluded.last_run_at
-  `).run(Date.now());
+  _getUpdateLastRunStmt().run(Date.now());
 }
 
 function _extractInitializeMint(tx) {

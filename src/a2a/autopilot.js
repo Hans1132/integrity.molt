@@ -42,6 +42,23 @@ function initAutopilotSchema() {
 // Self-initialize when module is first required (better-sqlite3 is synchronous).
 initAutopilotSchema();
 
+// ── Prepared statements (module-level singletons) ─────────────────────────────
+
+const stmtDailySpent = db.prepare(`
+  SELECT COALESCE(SUM(amount_usdc), 0) AS daily_spent,
+         COUNT(*)                       AS tx_count
+  FROM autopilot_spending
+  WHERE agent_mint = ?
+    AND decision   = 'approved'
+    AND created_at >= ?
+`);
+
+const stmtInsertDecision = db.prepare(`
+  INSERT INTO autopilot_spending
+    (agent_mint, skill_id, amount_usdc, tx_sig, decision, rejection_reason, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
+
 // ── Core decision logic ───────────────────────────────────────────────────────
 
 /**
@@ -79,14 +96,7 @@ function canAutoSign(agentMint, skillId, amountUsdc) {
   todayStart.setUTCHours(0, 0, 0, 0);
   const todayMs = todayStart.getTime();
 
-  const row = db.prepare(`
-    SELECT COALESCE(SUM(amount_usdc), 0) AS daily_spent,
-           COUNT(*)                       AS tx_count
-    FROM autopilot_spending
-    WHERE agent_mint = ?
-      AND decision   = 'approved'
-      AND created_at >= ?
-  `).get(agentMint, todayMs);
+  const row = stmtDailySpent.get(agentMint, todayMs);
 
   const dailySpent = row?.daily_spent ?? 0;
 
@@ -113,11 +123,7 @@ function canAutoSign(agentMint, skillId, amountUsdc) {
  * @param {string|null} [reason]   Rejection reason (rejected only)
  */
 function logAutoSignDecision(agentMint, skillId, amountUsdc, decision, txSig = null, reason = null) {
-  db.prepare(`
-    INSERT INTO autopilot_spending
-      (agent_mint, skill_id, amount_usdc, tx_sig, decision, rejection_reason, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(agentMint, skillId, amountUsdc, txSig || null, decision, reason || null, Date.now());
+  stmtInsertDecision.run(agentMint, skillId, amountUsdc, txSig || null, decision, reason || null, Date.now());
 }
 
 // ── Spending query ────────────────────────────────────────────────────────────
@@ -133,16 +139,9 @@ function getAgentDailySpending(agentMint) {
   todayStart.setUTCHours(0, 0, 0, 0);
   const todayMs = todayStart.getTime();
 
-  const row = db.prepare(`
-    SELECT COALESCE(SUM(amount_usdc), 0) AS spent_usdc,
-           COUNT(*)                       AS tx_count
-    FROM autopilot_spending
-    WHERE agent_mint = ?
-      AND decision   = 'approved'
-      AND created_at >= ?
-  `).get(agentMint, todayMs);
+  const row = stmtDailySpent.get(agentMint, todayMs);
 
-  const spentUsdc    = row?.spent_usdc ?? 0;
+  const spentUsdc    = row?.daily_spent ?? 0;
   const limitUsdc    = config.maxDailyUsdc;
   const remainingUsdc = Math.max(0, limitUsdc - spentUsdc);
 
