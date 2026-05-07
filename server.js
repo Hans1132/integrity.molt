@@ -1871,8 +1871,12 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
         ip:                  req.ip
       }).catch(e => console.error('[db] logPayment error:', e.message));
       if (payResult.ok) {
+        db.logEvent({ name: 'payment_success', resource: quickPaymentAccepts[0].resource, ip: req.ip, meta: { micro_usdc: payResult.microUsdc } })
+          .catch(e => console.error('[db] logEvent error:', e.message));
         isPaid = true;
       } else {
+        db.logEvent({ name: 'payment_failed', resource: quickPaymentAccepts[0].resource, ip: req.ip, meta: { reason: payResult.reason } })
+          .catch(e => console.error('[db] logEvent error:', e.message));
         return res.status(402).json({
           x402Version: 1,
           error: 'Payment verification failed',
@@ -1985,6 +1989,7 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
       return res.json({
         status:       'address_not_found',
         address:      safeAddress,
+        tier:         'paid',
         risk_score:   null,
         risk_level:   'UNKNOWN',
         iris:         { score: null, grade: 'UNKNOWN', breakdown: null },
@@ -2052,7 +2057,7 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
       }
 
       // 4. Logování advisor usage do DB (fire-and-forget)
-      db.logAdvisorUsage(null, 'quick-paid', advisorResult);
+      db.logAdvisorUsage(null, 'quick-paid', advisorResult).catch(() => {});
     } catch (llmErr) {
       console.warn('[scan/quick] advisor failed, fallback na shell report:', llmErr.message);
     }
