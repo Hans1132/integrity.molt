@@ -1850,11 +1850,128 @@ app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, as
   }
 });
 
-// Quick Scan - paid endpoint (0.50 USDC = 500000 micro-USDC)
-app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), validateSolanaAddress, requirePayment(quickPaymentAccepts, PRICING.quick), async (req, res) => {
+// Quick Scan — graceful degradation: free tier (IRIS-only) without payment, paid tier (LLM report) with payment/API key
+app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), validateSolanaAddress, async (req, res) => {
   const address = (req.body.address || req.body.target || '').trim();
   const safeAddress = address; // validated by validateSolanaAddress middleware
 
+  // Determine payment tier
+  let isPaid = !!req.apiKey;
+  if (!isPaid) {
+    const xPayment = req.headers['x-payment'] || req.headers['x402-payment'];
+    if (xPayment) {
+      const payResult = await verifyPayment(xPayment, PRICING.quick, quickPaymentAccepts[0].resource);
+      db.logPayment({
+        tx_sig:              payResult.signature || `no-sig-${Date.now()}`,
+        resource:            quickPaymentAccepts[0].resource,
+        required_micro_usdc: PRICING.quick,
+        micro_usdc:          payResult.microUsdc || 0,
+        verified:            payResult.ok,
+        reason:              payResult.reason,
+        ip:                  req.ip
+      }).catch(e => console.error('[db] logPayment error:', e.message));
+      if (payResult.ok) {
+        isPaid = true;
+      } else {
+        return res.status(402).json({
+          x402Version: 1,
+          error: 'Payment verification failed',
+          detail: payResult.reason,
+          accepts: quickPaymentAccepts
+        });
+      }
+    }
+  }
+
+  // ── FREE TIER: rate limit + quota + IRIS-only ────────────────────────────────
+  if (!isPaid) {
+    const ip = req.ip || '127.0.0.1';
+
+    // Rate limit: 10 req/min/IP (shares _freeScanRL with /scan/iris)
+    if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
+      const now = Date.now();
+      const entry = _freeScanRL.get(ip) || { count: 0, windowStart: now };
+      if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }
+      entry.count++;
+      _freeScanRL.set(ip, entry);
+      if (entry.count > 10) {
+        return res.status(429).json({ error: 'Rate limit exceeded (10 req/min)' });
+      }
+    }
+
+    // Daily quota check
+    if (!isInternalCall(req)) {
+      const quota = getQuotaStatus(ip);
+      if (quota.remaining <= 0) {
+        return res.status(429).json({
+          error: 'Daily free scan limit reached',
+          message: `You've used ${quota.used}/${quota.limit} free scans today. Limit resets at midnight UTC.`,
+          used: quota.used, limit: quota.limit, remaining: 0,
+          resets_at: 'midnight UTC',
+          upgrade_url: 'https://intmolt.org/scan',
+        });
+      }
+      consumeFreeQuota(ip);
+    }
+
+    try {
+      const [enrichment, scamDb, accountRes] = await Promise.all([
+        enrichScanResult(safeAddress).catch(() => null),
+        lookupScamDb(safeAddress).catch(() => ({ known_scam: null, rugcheck: null, db_match: false })),
+        rpcPost({ jsonrpc: '2.0', id: 1, method: 'getAccountInfo',
+          params: [safeAddress, { encoding: 'base64', commitment: 'confirmed' }] }).catch(() => null),
+      ]);
+
+      const accountData = accountRes?.result?.value;
+      const noEnrichmentData = !enrichment ||
+        (!enrichment.external_sources?.rugcheck && !enrichment.external_sources?.solana_tracker);
+
+      if (!accountData && noEnrichmentData) {
+        return res.json({
+          status: 'address_not_found', address: safeAddress, tier: 'free',
+          risk_score: null, risk_level: 'UNKNOWN',
+          iris: { score: null, grade: 'UNKNOWN', breakdown: null },
+          message: "This address doesn't exist on-chain yet. It may be invalid, not yet funded, or previously closed. Insufficient data for risk scoring.",
+          risk_factors: [], timestamp: new Date().toISOString(),
+        });
+      }
+
+      const isWhitelisted = _legitTokens.has(safeAddress);
+      const scamDbForIris = isWhitelisted ? { ...scamDb, known_scam: null } : scamDb;
+      const iris = calculateIRIS(enrichment, scamDbForIris);
+      const scamDbOut = isWhitelisted
+        ? { known_scam: false, whitelisted: true, note: 'Verified legitimate token', db_match: false }
+        : { known_scam: scamDb.known_scam, rugcheck: scamDb.rugcheck, db_match: scamDb.db_match };
+
+      let riskFactors = Array.isArray(iris.risk_factors) ? iris.risk_factors : [];
+      if (isWhitelisted) {
+        riskFactors = riskFactors.filter(f =>
+          !f.toLowerCase().includes('scam') && !f.toLowerCase().includes('rug') && !f.toLowerCase().includes('suspicious')
+        );
+      }
+
+      db.logScanToHistory({
+        email: null, address: safeAddress, scan_type: 'quick-free',
+        risk_score: iris.score, risk_level: iris.grade,
+        summary: null, cached: false, result_json: null
+      }).catch(() => {});
+
+      return res.json({
+        status: 'complete',
+        address: safeAddress,
+        tier: 'free',
+        iris: { score: iris.score, grade: iris.grade, breakdown: iris.breakdown },
+        scam_db: scamDbOut,
+        risk_factors: riskFactors,
+        upgrade_hint: 'Add x402-payment header or API key for full LLM-powered analysis with signed report',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      return res.status(500).json({ error: 'Scan failed', detail: err.message });
+    }
+  }
+
+  // ── PAID TIER: full LLM report ───────────────────────────────────────────────
   try {
     const _t0 = Date.now();
 
@@ -1951,6 +2068,7 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
     res.json({
       status:        'complete',
       address:       safeAddress,
+      tier:          'paid',
       report:        finalReport,
       advisor_used:  advisorResult?.advisorUsed ?? false,
       provider:      advisorResult?.provider    ?? 'shell-only',
