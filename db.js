@@ -33,6 +33,9 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 db.pragma('busy_timeout  = 5000');
 db.pragma('synchronous   = NORMAL');
+db.pragma('cache_size    = -65536');   // 64 MB page cache (DB 15 MB se vejde celá)
+db.pragma('mmap_size     = 268435456'); // 256 MB mmap — eliminuje syscall overhead při read
+db.pragma('temp_store    = 2');         // MEMORY temp tables pro aggregace (ORDER BY bez disk I/O)
 
 // ── Schéma ────────────────────────────────────────────────────────────────────
 
@@ -94,8 +97,9 @@ function initSchema() {
       created_at            TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at            TEXT    NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE INDEX IF NOT EXISTS subscriptions_email  ON subscriptions (email);
-    CREATE INDEX IF NOT EXISTS subscriptions_status ON subscriptions (status, current_period_end);
+    CREATE INDEX IF NOT EXISTS subscriptions_email    ON subscriptions (email);
+    CREATE INDEX IF NOT EXISTS subscriptions_status   ON subscriptions (status, current_period_end);
+    CREATE INDEX IF NOT EXISTS subscriptions_telegram ON subscriptions (telegram_chat_id, status);
 
     CREATE TABLE IF NOT EXISTS api_keys (
       id            INTEGER PRIMARY KEY,
@@ -391,11 +395,51 @@ function initSchema() {
       expires_at        INTEGER NOT NULL,
       fetch_error       TEXT
     );
-    CREATE INDEX IF NOT EXISTS idx_ottersec_expires ON ottersec_verifications (expires_at);
+    CREATE INDEX IF NOT EXISTS idx_ottersec_expires  ON ottersec_verifications (expires_at);
+    CREATE INDEX IF NOT EXISTS idx_ottersec_fetched  ON ottersec_verifications (fetched_at);
+
+    CREATE INDEX IF NOT EXISTS idx_blacklist_expires        ON ip_blacklist (expires_at);
+    CREATE INDEX IF NOT EXISTS autopilot_spending_decision  ON autopilot_spending (decision, created_at DESC);
+    CREATE INDEX IF NOT EXISTS iris_enrichment_mint_auth    ON iris_enrichment (mint_auth_active, freeze_auth_active);
+
+    -- Frames.ag agent catalog (competitor/ecosystem intelligence)
+    CREATE TABLE IF NOT EXISTS framesag_agent_wallets (
+      entity_id         TEXT PRIMARY KEY,
+      name              TEXT,
+      vendor            TEXT,
+      category          TEXT,
+      chains            TEXT,
+      payment_protocols TEXT,
+      api_base_url      TEXT,
+      services          TEXT,
+      auth_model        TEXT,
+      pricing_model     TEXT,
+      status            TEXT,
+      docs_url          TEXT,
+      announcement_url  TEXT,
+      last_verified_at  TEXT,
+      evidence_json     TEXT,
+      imported_at       TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS framesag_agent_networks (
+      entity_id        TEXT PRIMARY KEY,
+      question         TEXT,
+      category         TEXT,
+      status           TEXT,
+      last_reviewed_at TEXT,
+      key_actors       TEXT,
+      recent_signals   TEXT,
+      current_thinking TEXT,
+      tension          TEXT,
+      evidence_json    TEXT,
+      imported_at      TEXT DEFAULT (datetime('now'))
+    );
   `);
   // Migruj sloupce pro existující DB (bezpečné i při opakovaném volání)
   migrateKnownScamsSchema();
   migrateAccuracySignalsSchema();
+  dropLegacyDuplicateIndexes();
   return Promise.resolve();
 }
 
@@ -440,8 +484,25 @@ function migrateAccuracySignalsSchema() {
     "CREATE INDEX IF NOT EXISTS known_scams_confidence ON known_scams (confidence DESC, scam_type)",
     // IP blacklist — pouze aktivní záznamy
     "CREATE INDEX IF NOT EXISTS ip_blacklist_active ON ip_blacklist (ip) WHERE expires_at IS NULL",
+    // Telegram bot chat lookup
+    "CREATE INDEX IF NOT EXISTS subscriptions_telegram ON subscriptions (telegram_chat_id, status)",
   ];
   for (const sql of idxs) {
+    try { db.exec(sql); } catch {}
+  }
+}
+
+// Odstraní duplikátní indexy zanechané staršími migracemi.
+// Nové ekvivalenty jsou vytvořeny přes CREATE INDEX IF NOT EXISTS výše.
+function dropLegacyDuplicateIndexes() {
+  const drops = [
+    'DROP INDEX IF EXISTS a2a_tasks_expires',        // duplikát idx_a2a_tasks_expires
+    'DROP INDEX IF EXISTS a2a_tasks_session',        // duplikát idx_a2a_tasks_session
+    'DROP INDEX IF EXISTS idx_quota_date',           // duplikát idx_free_quota_date
+    'DROP INDEX IF EXISTS idx_abuse_ip_time',        // duplikát idx_abuse_ip
+    'DROP INDEX IF EXISTS autopilot_spending_mint_day', // duplikát idx_autopilot_mint
+  ];
+  for (const sql of drops) {
     try { db.exec(sql); } catch {}
   }
 }
@@ -453,6 +514,10 @@ function initUsersSchema() { return initSchema(); }
 // Zabrání neomezenému růstu WAL souboru při dlouhém běhu service.
 setInterval(() => {
   try { db.pragma('wal_checkpoint(PASSIVE)'); } catch {}
+  // Anti-replay: Solana blockhash expiruje po ~150 slotech (~2 min), 1h TTL s velkou rezervou
+  try { db.prepare("DELETE FROM used_signatures WHERE created_at < (strftime('%s','now') - 3600)").run(); } catch {}
+  // RugCheck cache: TTL 25h — stará data, která JS přeskakuje, se nikdy nemaží
+  try { db.prepare("DELETE FROM rugcheck_cache WHERE fetched_at < datetime('now', '-25 hours')").run(); } catch {}
 }, 6 * 3_600_000).unref();
 
 // ── Pool compatibility shim ────────────────────────────────────────────────────
@@ -596,16 +661,6 @@ async function getPageviewStats(days = 30) {
     GROUP BY day, path
     ORDER BY day DESC, views DESC
   `).all(cutoff);
-}
-
-async function countFreeScansToday(ip) {
-  const dayStart = new Date();
-  dayStart.setUTCHours(0, 0, 0, 0);
-  const row = db.prepare(`
-    SELECT COUNT(*) AS cnt FROM events
-    WHERE name = 'free_scan_used' AND ip = ? AND created_at >= ?
-  `).get(ip, toSQLiteTimestamp(dayStart));
-  return parseInt(row?.cnt ?? 0, 10);
 }
 
 // ── Watchlist ─────────────────────────────────────────────────────────────────
@@ -1028,7 +1083,7 @@ async function getLiveStats() {
     SELECT
       (SELECT COUNT(*) FROM scan_history)                                                AS total_scans,
       (SELECT COUNT(*) FROM scan_history
-        WHERE strftime('%Y-%m-%d', created_at) = date('now'))                           AS scans_today,
+        WHERE created_at >= date('now') AND created_at < date('now', '+1 day'))         AS scans_today,
       (SELECT COUNT(*) FROM payments WHERE verified = 1)                                AS total_payments,
       (SELECT ROUND(100.0 * COUNT(CASE WHEN risk_score IS NOT NULL THEN 1 END)
               / NULLIF(COUNT(*), 0), 1)
@@ -1037,7 +1092,7 @@ async function getLiveStats() {
         FROM scan_history
         WHERE result_json IS NOT NULL
           AND json_extract(result_json, '$.scan_ms') IS NOT NULL
-          AND strftime('%Y-%m-%d', created_at) >= date('now', '-7 days'))               AS avg_scan_ms
+          AND created_at >= date('now', '-7 days'))                                      AS avg_scan_ms
   `).get();
   return {
     total_scans:             r?.total_scans        || 0,
@@ -1536,7 +1591,6 @@ module.exports = {
   db, pool, initSchema, initUsersSchema, initAdsSchema,
   logPayment, isAlreadyUsed, markSignatureUsed, logEvent,
   getFunnelStats, getPaymentStats, getPageviewStats,
-  countFreeScansToday,
   addWatchlistEntry, removeWatchlistEntry, getActiveWatchlist,
   updateWatchlistRisk, listWatchlistForChat,
   addUserWatchlistEntry, removeUserWatchlistEntry, getUserWatchlist,

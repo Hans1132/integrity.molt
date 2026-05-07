@@ -31,6 +31,12 @@ const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst'
 const { lookupScamDb }       = require('./src/scam-db/lookup');
 const { createQuotaMiddleware, createBlacklistMiddleware, GLOBAL_DAILY_CAP } = require('./src/middleware/free-quota');
 // Initialized after db is required at line 7; db.db is the raw better-sqlite3 instance
+const _rawDb = db.db;
+const _stmtAbuseGlobalToday  = _rawDb.prepare('SELECT free_count, paid_count FROM global_scan_stats WHERE stat_date = ?');
+const _stmtAbuseTopIps       = _rawDb.prepare('SELECT identifier as ip, count FROM free_scan_quota WHERE scan_date = ? ORDER BY count DESC LIMIT 20');
+const _stmtAbuseBlacklist    = _rawDb.prepare("SELECT ip, reason, added_at, expires_at, hit_count FROM ip_blacklist WHERE expires_at > datetime('now') ORDER BY added_at DESC");
+const _stmtAbuseEvents24h    = _rawDb.prepare("SELECT event_type, COUNT(*) as count FROM abuse_events WHERE occurred_at > datetime('now', '-24 hours') GROUP BY event_type");
+const _stmtAbuseTopIps24h    = _rawDb.prepare("SELECT ip, event_type, COUNT(*) as count FROM abuse_events WHERE occurred_at > datetime('now', '-24 hours') GROUP BY ip, event_type ORDER BY count DESC LIMIT 10");
 const _quotaMw = createQuotaMiddleware(db.db);
 const { checkFreeQuota, consumeFreeQuota, getQuotaStatus, isInternalCall } = _quotaMw;
 const _blacklistMw = createBlacklistMiddleware(db.db);
@@ -1644,27 +1650,16 @@ app.get('/admin/abuse-stats', (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
   const today = new Date().toISOString().slice(0, 10);
-  const rawDb = db.db;
-  const globalToday = rawDb.prepare(
-    'SELECT free_count, paid_count FROM global_scan_stats WHERE stat_date = ?'
-  ).get(today) || { free_count: 0, paid_count: 0 };
+  const globalToday = _stmtAbuseGlobalToday.get(today) || { free_count: 0, paid_count: 0 };
 
   res.json({
-    timestamp: new Date().toISOString(),
-    global_today:        globalToday,
-    cap_remaining:       GLOBAL_DAILY_CAP - globalToday.free_count,
-    top_ips_today:       rawDb.prepare(
-      'SELECT identifier as ip, count FROM free_scan_quota WHERE scan_date = ? ORDER BY count DESC LIMIT 20'
-    ).all(today),
-    blacklist_active:    rawDb.prepare(
-      "SELECT ip, reason, added_at, expires_at, hit_count FROM ip_blacklist WHERE expires_at > datetime('now') ORDER BY added_at DESC"
-    ).all(),
-    abuse_events_24h:    rawDb.prepare(
-      "SELECT event_type, COUNT(*) as count FROM abuse_events WHERE occurred_at > datetime('now', '-24 hours') GROUP BY event_type"
-    ).all(),
-    abuse_top_ips_24h:   rawDb.prepare(
-      "SELECT ip, event_type, COUNT(*) as count FROM abuse_events WHERE occurred_at > datetime('now', '-24 hours') GROUP BY ip, event_type ORDER BY count DESC LIMIT 10"
-    ).all(),
+    timestamp:        new Date().toISOString(),
+    global_today:     globalToday,
+    cap_remaining:    GLOBAL_DAILY_CAP - globalToday.free_count,
+    top_ips_today:    _stmtAbuseTopIps.all(today),
+    blacklist_active: _stmtAbuseBlacklist.all(),
+    abuse_events_24h: _stmtAbuseEvents24h.all(),
+    abuse_top_ips_24h: _stmtAbuseTopIps24h.all(),
   });
 });
 

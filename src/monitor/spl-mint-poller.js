@@ -24,6 +24,16 @@ const RPC_BATCH        = 5; // getTransaction paralelně najednou
 
 let _db    = null;
 let _timer = null;
+let _stmtInsertMint = null;
+
+function _getInsertMintStmt() {
+  if (!_stmtInsertMint) {
+    _stmtInsertMint = _db.prepare(
+      'INSERT OR IGNORE INTO spl_mints (mint, tx_sig, slot, block_time, source) VALUES (?, ?, ?, ?, ?)'
+    );
+  }
+  return _stmtInsertMint;
+}
 
 function init(dbInstance) {
   _db = dbInstance;
@@ -108,10 +118,7 @@ async function _pollProgram(rpcUrl, programId, label) {
       const mint = _extractInitializeMint(tx);
       if (!mint) continue;
       try {
-        _db.prepare(`
-          INSERT OR IGNORE INTO spl_mints (mint, tx_sig, slot, block_time, source)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(mint, chunk[j], tx.slot ?? null, (tx.blockTime ?? 0) * 1000, label);
+        _getInsertMintStmt().run(mint, chunk[j], tx.slot ?? null, (tx.blockTime ?? 0) * 1000, label);
         inserted++;
       } catch (e) {
         if (!e.message.includes('UNIQUE')) console.error('[spl-mint-poller] insert error:', e.message);
