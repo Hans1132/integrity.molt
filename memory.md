@@ -4,11 +4,25 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-06 (regresní testy + rozšíření npm test scope, commit 5230e3b)
+**Last updated:** 2026-05-07 (database audit fixes, commit 28e2a4f)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-07: Database audit fixes — `voltagent-data-ai:database-optimizer` (commit 28e2a4f)
+Read-only audit → implementace v jednom commitu. 11/11 test gate PASS.
+
+- **K-3/D-5 TTL cleanup:** `used_signatures` (1h, unix seconds `strftime('%s','now') - 3600`) + `rugcheck_cache` (25h) přidáno do 6h WAL checkpoint setInterval. Obě tabulky dříve rostly neomezeně.
+- **V-1 spl-mint-poller:** `db.prepare()` pro INSERT hoistnuto z poll smyčky do lazy singleton `_getInsertMintStmt()`. Dříve: až 100 SQL kompilací per poll cyklus.
+- **V-2 index:** `subscriptions_telegram ON subscriptions (telegram_chat_id, status)` — přidán do `initSchema()` + `migrateAccuracySignalsSchema()` (existující DB).
+- **V-3 getLiveStats():** `strftime('%Y-%m-%d', created_at) = date('now')` → sargable `created_at >= date('now') AND created_at < date('now', '+1 day')`. Totéž pro 7denní okno. Umožňuje index range scan místo full table scan.
+- **V-4 dead code:** odstraněna `countFreeScansToday()` — nikde nevolána, index nevyhovující.
+- **V-6 admin abuse-stats:** 5× `rawDb.prepare()` hoistnuto na module level jako konstanty. Dříve: SQL kompilace při každém admin requestu.
+- **D-2 schema drift:** do `initSchema()` přidány chybějící indexy (`autopilot_spending_decision`, `idx_blacklist_expires`, `idx_ottersec_fetched`, `iris_enrichment_mint_auth`) a tabulky `framesag_agent_wallets`, `framesag_agent_networks`. Nový deploy byl dříve bez nich.
+- **Záměrně přeskočeno:** D-1 (scan_history_addr_type ponechán), D-3 (duplikátní schema v modulech — defensive guarantee), V-5/V-7 (OK při aktuální zátěži).
+
+---
 
 ### 2026-05-06: Regresní testy + rozšíření npm test scope (commit 5230e3b)
 Zdroj: `voltagent-qa-sec:test-automator` audit + implementace.
