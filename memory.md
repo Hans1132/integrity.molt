@@ -399,26 +399,28 @@ Při rebase + force-push použil Claude Code správně `--force-with-lease`, ne 
 
 > Co Hans potřebuje vědět při příští poradě se mnou (Claude na claude.ai). Krátký TL;DR po každém pracovním dni.
 
-**Aktuální fokus:** Frontier hackathon submission deadline 11. května 23:59 UTC (Public Goods Award $10K lane). Po 2026-05-06 strategické poradě je framing **agent-native security oracle** plně absorbovaný. Origin/main je clean (rebase done, MCP cleanup done, PR #1 merged). Next deliverables: frames.ag tool registration spec verify, video editing, submission text.
+**Aktuální fokus:** Frontier hackathon submission deadline 11. května 23:59 UTC (Public Goods Award $10K lane). Framing **agent-native security oracle** plně absorbovaný. Next deliverables: frames.ag tool registration spec verify, video editing, submission text.
 
-**Nové poznatky z auditů (2026-05-06 night+):**
-- Chaos audit odhalil 5 kritických SPOF — nejrizikovější: sign-report.py (paid tier SPOF), notifications.js OOM (alert storm), RPC bez runtime failover. Opravy by měly předcházet dalšímu traffic spike (frames.ag distribuce = více A2A load).
-- AI writing audit: submission texty (grant, hackaton, frontier) mají AI-ismy, které snižují credibilitu u judges/grantérů. Přepsat před dalším odesláním. Technická docs je čistá.
-- Otázky pro Hanse: jsou submission texty již odeslány? Je COPY.md nasazena? Kam míří IRIS whitepaper?
+**2026-05-07 — dvojitý DB audit (oba koly dokončeny):**
+- Dva `voltagent-data-ai:database-optimizer` audity + opravy. Celkem ~20 issues across db.js, autopilot.js, spl-mint-poller.js.
+- Klíčové opravy: partial UNIQUE index watchlist (K-1, dříve možné duplicity), rebuildScamCreators atomicita (K-3, crash = prázdná tabulka), 11 nových/opravených indexů, 8-tabulkový TTL cleanup v 6h intervalu, prepared stmt hoisting v autopilot + poller.
+- Empiricky verifikováno: `SQLITE_ENABLE_UPDATE_DELETE_LIMIT` přítomen → V-7 (ORDER BY v UPDATE) není bug.
+- Test suite: 11/11 gate PASS oba koly. Commity: 28e2a4f (round 1) + 526b31b (round 2).
 
-**Po pivotu ADR-009 + ADR-010:**
-- A2A 0.4.1 je primary surface, 11 skills fixed, pricing $0.15 až $5 USDC drží.
-- Frames.ag distribuce schválena (registrace v jejich registry plus citation z frames.ag/datasets).
-- MCP server NEvznikne (scope creep z 5. 5. archivován a vyrebasen z historie).
-- Human funnel přes integritymolt.com plus Stripe deprio, ne aktivně rozvíjený.
-- SF grant Milestone 3 absorbuje frames.ag jako třetí distribuční target vedle SendAI plus ElizaOS.
+**Otevřené položky ze security a chaos auditů (2026-05-06, stále neresolvováno):**
+- Chaos: 4 kritické opravy před Game Day (sign-report.py alert, notifications.js LRU cap, watchlist DB fallback alert, rpc.js runtime failover)
+- Security: H1 (self-fetch quota bypass), H2 (req.ip nekonzistence), H4 (open redirect), H5 (INTERNAL_SCAN_SECRET timing-unsafe), M1–M6
+- AI writing: submission texty mají AI-ismy — přepsat před dalším odesláním
 
-**Technický stav po cleanu:**
-- Test suite ~187 passing tests + 22 adversarial scenarios (z 113 před cleanupem, +74 z PR #1).
-- Origin/main čistá historie bez MCP stop.
-- Backup branch `backup/pre-cleanup-2026-05-06` plus archive `/root/backups/mcp-scope-creep-2026-05-06/` zachovány.
-- Žádné nepushnuté commity, repo synced.
+**Technický stav (aktuální):**
+- Test suite ~187 passing tests + 22 adversarial scenarios. 11/11 gates.
+- Origin/main čistá, žádné nepushnuté commity.
+- Backup branch `backup/pre-cleanup-2026-05-06` zachován (smazat po týdnu od 2026-05-06 bez incidentu → 2026-05-13).
+- `data/intmolt.db` je live (13.5 MB+), root `intmolt.db` je stale artefakt.
 
-**Open questions, které čekají strategický input:** žádné po dnešní session.
+**ADR stav:**
+- A2A 0.4.1 primary surface, 11 skills fixed, pricing $0.15–$5 USDC.
+- Frames.ag distribuce: `/skill.md` + `/offer` endpointy v server.js, content vs spec zbývá verifikovat.
+- MCP server NEvznikne bez ADR (history clean po rebase 2026-05-06).
 
-**Heads-up pro příští workflow change:** Jakmile Hans poprvé projde celý gating cycle (Trivial -> Medium -> Large na reálném change po deploy CLAUDE.md), zaznamenat sem co fungovalo a co ne, abychom kalibrovali triggery.
+**Otázky pro Hanse (z AI writing auditu):** jsou submission texty již odeslány? Je COPY.md nasazena? Kam míří IRIS whitepaper?
