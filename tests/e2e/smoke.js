@@ -104,12 +104,15 @@ async function runTests() {
     ok('GET /api/v1/stats → valid JSON', false, e.message);
   }
 
-  // 4. POST /scan/quick bez platby → 402
+  // 4. POST /scan/quick bez platby → 200 free tier (graceful degradation)
   try {
     const res = await request('POST', '/scan/quick', { address: 'So11111111111111111111111111111111111111112' });
-    ok('POST /scan/quick bez platby → 402', res.status === 402, 'got ' + res.status);
+    const body = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+    ok('POST /scan/quick bez platby → 200 free tier', res.status === 200, 'got ' + res.status);
+    ok('POST /scan/quick free tier: tier=free', body.tier === 'free', 'got ' + body.tier);
   } catch (e) {
-    ok('POST /scan/quick bez platby → 402', false, e.message);
+    ok('POST /scan/quick bez platby → 200 free tier', false, e.message);
+    ok('POST /scan/quick free tier: tier=free', false, e.message);
   }
 
   // 5. GET /.well-known/x402.json → 200 + valid JSON
