@@ -4,13 +4,28 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-07 (database audit fixes, commit 28e2a4f)
+**Last updated:** 2026-05-07 (database audit fixes round 2, commit 526b31b)
 
 ---
 
 ## Recent changes (top of stack, newest first)
 
-### 2026-05-07: Database audit fixes — `voltagent-data-ai:database-optimizer` (commit 28e2a4f)
+### 2026-05-07: Database audit fixes round 2 — `voltagent-data-ai:database-optimizer` (commit 526b31b)
+Read-only audit → empirické verifikace (V-7 není bug, K-1 žádné duplicity) → implementace. 11/11 test gate PASS.
+
+- **K-1 watchlist duplicate guard:** `watchlist_unique_email_entry` partial UNIQUE index (address, notify_email WHERE notify_telegram_chat IS NULL) + `addUserWatchlistEntry` přepsán na `INSERT … ON CONFLICT … DO UPDATE`. Dříve: souběžné inserty mohly vytvořit duplicity pro email-only záznamy.
+- **K-2 users_reset_token:** partial index `ON users (reset_token) WHERE reset_token IS NOT NULL` — `consumePasswordResetToken` dělal full-table scan.
+- **K-3 rebuildScamCreators atomicity:** DELETE + INSERT obalen do `db.transaction()`. Dříve: crash po DELETE = prázdná tabulka scam_creators až do restartu.
+- **V-1/V-5/V-8/V-9 nové indexy:** `subscriptions_email_status`, `idx_autopilot_mint_decision` (covering), `events_date_name` (expression), `subscriptions_digest_active` (partial) — přidány přes `migrateAccuracySignalsSchema()`.
+- **V-4 autopilot.js:** `stmtDailySpent` + `stmtInsertDecision` hoistnuty na module-level. Chyba: `getAgentDailySpending` četl `row.spent_usdc` ale sdílený stmt vrací `daily_spent` — opraveno.
+- **V-6 dropLegacyDuplicateIndexes:** přidán `DROP INDEX IF EXISTS users_email` (SQLite UNIQUE autoindex ho duplikoval).
+- **V-10 spl-mint-poller:** cursor prepared stmts (`_stmtGetCursor`, `_stmtUpsertCursor`, `_stmtUpdateLastRun`) hoistnuty do lazy singletons.
+- **D-1 TTL cleanup:** 6h interval rozšířen o 8 tabulek: events (90d), abuse_events (30d), advisor_calls (90d), scan_accuracy_signals (180d), spl_mints (90d), autopilot_spending (90d), global_scan_stats (365d), free_scan_quota (7d).
+- **Přeskočeno:** V-7 (SQLite build má `SQLITE_ENABLE_UPDATE_DELETE_LIMIT`, ORDER BY v UPDATE funguje), K-4 (atomická transakce logPayment+markSignatureUsed — příliš invazivní), D-2/D-3/D-5–D-8.
+
+---
+
+### 2026-05-07: Database audit fixes round 1 — `voltagent-data-ai:database-optimizer` (commit 28e2a4f)
 Read-only audit → implementace v jednom commitu. 11/11 test gate PASS.
 
 - **K-3/D-5 TTL cleanup:** `used_signatures` (1h, unix seconds `strftime('%s','now') - 3600`) + `rugcheck_cache` (25h) přidáno do 6h WAL checkpoint setInterval. Obě tabulky dříve rostly neomezeně.
