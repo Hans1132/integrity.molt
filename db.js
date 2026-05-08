@@ -448,11 +448,14 @@ function initSchema() {
 // Funkce je deklarovaná jako function (hoisted) níže.
 function migrateKnownScamsSchema() {
   const alterCols = [
-    "ALTER TABLE known_scams ADD COLUMN creator          TEXT",
-    "ALTER TABLE known_scams ADD COLUMN first_seen_slot  INTEGER",
-    "ALTER TABLE known_scams ADD COLUMN first_seen_at    TEXT",
-    "ALTER TABLE known_scams ADD COLUMN rug_pattern      TEXT",
-    "ALTER TABLE known_scams ADD COLUMN confidence_score REAL",
+    "ALTER TABLE known_scams ADD COLUMN creator             TEXT",
+    "ALTER TABLE known_scams ADD COLUMN first_seen_slot     INTEGER",
+    "ALTER TABLE known_scams ADD COLUMN first_seen_at       TEXT",
+    "ALTER TABLE known_scams ADD COLUMN rug_pattern         TEXT",
+    "ALTER TABLE known_scams ADD COLUMN confidence_score    REAL",
+    "ALTER TABLE known_scams ADD COLUMN add_to_remove_ratio REAL",
+    "ALTER TABLE known_scams ADD COLUMN inactivity_days     INTEGER",
+    "ALTER TABLE known_scams ADD COLUMN flagged_at          INTEGER",
   ];
   for (const sql of alterCols) {
     try { db.exec(sql); } catch (e) {
