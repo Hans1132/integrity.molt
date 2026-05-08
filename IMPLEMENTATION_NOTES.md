@@ -64,6 +64,7 @@ Compare `rugged` field — expect >80% match rate. If <80%, 7-day inactivity win
 - **18-month historical gap** (Nov 2024–May 2026) is NOT closed by this pipeline. Only forward coverage from deployment date (2026-05-08).
 - Helius Enhanced Transaction parsing varies by DEX — parser is best-effort, logs warnings for unknown structures.
 - `pool_address` extracted from `tokenTransfers.toUserAccount` may not always be the actual pool — depends on Helius parsing accuracy per DEX type.
+- **`poolAddress` derivation is approximate**: Current parser extracts `pool_address` from `tokenTransfers[].toUserAccount`, which is the user wallet address, not the actual DEX pool account. This means ADD and REMOVE events from different users for the same pool land in separate `pool_activity` rows. The rug-pull inactivity pattern (`last_swap_ts < last_liquidity_remove_ts` in the same row) requires correct pool address co-location to fire reliably. Parser refinement per DEX using actual Helius response structure is required before `helius_realtime` flags should be trusted for production. This is tracked as Future Work item #4 (parser refinement).
 
 ## Future work
 
