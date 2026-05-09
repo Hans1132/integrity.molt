@@ -9,6 +9,14 @@ const db = new Database(DB_PATH, { readonly: true });
 
 console.log('=== False Positive Guards Health Check ===\n');
 
+// V4 anchor — scanner is disabled if this row is missing
+const anchor = db.prepare(`SELECT created_at FROM polling_state WHERE dex_program_id = 'bitquery_dexpools'`).get();
+if (!anchor) {
+  console.error('FAIL: bitquery_dexpools row missing from polling_state — scanner is disabled!');
+  process.exit(1);
+}
+console.log('V4 anchor:', new Date(anchor.created_at).toISOString(), '✓\n');
+
 // New column presence
 const cols = db.prepare('PRAGMA table_info(known_scams)').all().map(c => c.name);
 const required = ['rugcheck_verified', 'rugcheck_response_summary', 'flag_reasons'];

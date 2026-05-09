@@ -32,14 +32,22 @@ async function fetchCsv(url) {
   const text = await res.text();
   const lines = text.trim().split('\n');
   // CSV: Name,Symbol,Mint,Decimals,LogoURI,Community Validated
+  // Name can contain commas — extract Mint by regex (base58 pattern before ,decimals,)
+  const MINT_RE = /,([1-9A-HJ-NP-Za-km-z]{32,44}),\d+,/;
   return lines.slice(1) // skip header
     .filter(l => l.endsWith(',true'))
     .map(l => {
-      const parts = l.split(',');
-      // Mint is column 2 (index 2)
-      return { name: parts[0], symbol: parts[1], address: parts[2] };
+      const m = l.match(MINT_RE);
+      if (!m) return null;
+      const mint = m[1];
+      // Symbol and name: extract the part before the mint match
+      const prefix = l.slice(0, l.indexOf(',' + mint + ','));
+      const commaIdx = prefix.lastIndexOf(',');
+      const symbol = commaIdx >= 0 ? prefix.slice(commaIdx + 1) : prefix;
+      const name   = commaIdx >= 0 ? prefix.slice(0, commaIdx) : '';
+      return { address: mint, symbol, name };
     })
-    .filter(t => t.address && t.address.length > 30); // basic sanity
+    .filter(Boolean);
 }
 
 async function seedWhitelist() {
@@ -59,9 +67,14 @@ async function seedWhitelist() {
 
   if (tokens.length === 0) throw new Error('No tokens fetched from any source');
 
+  // ON CONFLICT: update symbol/name/source but preserve original added_at
   const upsert = db.prepare(`
-    INSERT OR REPLACE INTO token_whitelist (mint, symbol, name, source, added_at)
+    INSERT INTO token_whitelist (mint, symbol, name, source, added_at)
     VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(mint) DO UPDATE SET
+      symbol = excluded.symbol,
+      name   = excluded.name,
+      source = excluded.source
   `);
 
   const insertBatch = db.transaction((tokens, source) => {
