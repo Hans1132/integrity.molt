@@ -4,11 +4,18 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-09 (ultrareview bug fixes — V4 hybrid pipeline)
+**Last updated:** 2026-05-09 (IRIS scoring fixes — threshold, LP fallback, null-address filter)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-09: IRIS scoring fixes — threshold, LP fallback, null-address filter
+3 opravy schválené Hansem. Token 5pdyeWSC: IRIS 28/MEDIUM → 51/HIGH.
+- **Změny:** `src/enrichment/rugcheck.js` (přidat `lp_locked_pct` z markets[].lp.lpLockedPct, min přes všechny markety), `src/features/iris-score.js` (isRcDanger threshold >=75→>=50; LP fallback `rugcheck?.lp_locked_pct` když tracker=null; System Program + Token Program do DEX_PROGRAM_IDS deny-listu)
+- **Důvod:** score_norm=71 těsně minul threshold >=75 → floor nefire-oval → MEDIUM místo HIGH. Solana Tracker null → LP burn zcela chyběl. RugCheck někdy vrátí 11111...111 jako 63% holder (null address bug).
+- **Gotcha:** RugCheck `lp_locked_pct` je timelocked NEBO burned (ne nutně permanentní). Sekundární signál je méně silný než Solana Tracker `lp_burn_pct`. Solana Tracker má prioritu.
+- **Test:** 11/11 gate pass. Live debug: IRIS 51/HIGH ✓
 
 ### 2026-05-09: Ultrareview bug fixes — V4 hybrid pipeline fully enabled (commit 2ea577f)
 11 nálezů opraveno (8 normal, 3 nit). V4 pipeline byl před těmito opravami nefunkční v produkci.

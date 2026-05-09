@@ -97,6 +97,14 @@ function normalize(raw) {
     return markets.reduce((s, m) => s + (m.liquidityUsd || m.liquidity_usd || 0), 0);
   })();
 
+  // LP lock % — konzervativně bereme minimum přes všechny markety (nejhorší případ).
+  // Pozor: lpLockedPct = locked (timelocked nebo burned), ne nutně burned navždy.
+  // Používáme jako fallback pro Inflows scoring, když Solana Tracker není dostupný.
+  const lpLockedPct = (() => {
+    const vals = markets.map(m => m.lp?.lpLockedPct).filter(v => typeof v === 'number');
+    return vals.length > 0 ? Math.min(...vals) : null;
+  })();
+
   const verified = !!(
     raw.verification?.jup_verified ||
     raw.verification?.jup_strict   ||
@@ -125,6 +133,7 @@ function normalize(raw) {
                             insider:  h.insider || false
                           })),
     total_liquidity_usd:  totalLiquidity,
+    lp_locked_pct:        lpLockedPct,
     mint_authority:       raw.mintAuthority       || null,
     freeze_authority:     raw.freezeAuthority     || null,
     token_program:        raw.tokenProgram

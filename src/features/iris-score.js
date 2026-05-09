@@ -35,10 +35,14 @@ function getLegitMints() {
   return _legitMints;
 }
 
-// ── Známé DEX program adresy ──────────────────────────────────────────────────
-// Tyto adresy jsou LP pool vaults / program-owned accounts — ne skuteční holdeři.
-// Filtrují se z top_holders před výpočtem HHI a top1%.
+// ── Známé DEX program adresy a nulové adresy ─────────────────────────────────
+// Tyto adresy jsou LP pool vaults / program-owned accounts nebo null adresy —
+// ne skuteční holdeři. Filtrují se z top_holders před výpočtem HHI a top1%.
 const DEX_PROGRAM_IDS = new Set([
+  // Solana system / null adresy — RugCheck někdy vrátí tyto jako fake holdery
+  '11111111111111111111111111111111',               // System Program / null address
+  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',  // SPL Token Program
+  'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',  // Token-2022 Program
   // Raydium
   '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',  // AMM v4
   'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',  // CLMM
@@ -154,8 +158,10 @@ function scoreInflows(enrichment) {
     }
   }
 
-  // LP burn (0-10)
-  const lpBurn = tracker?.lp_burn_pct ?? null;
+  // LP burn/lock (0-10)
+  // Primárně Solana Tracker lp_burn_pct (burned = permanentní).
+  // Fallback: RugCheck lp_locked_pct (locked ≈ timelocked nebo burned — méně silný signál).
+  const lpBurn = tracker?.lp_burn_pct ?? rugcheck?.lp_locked_pct ?? null;
   if (lpBurn !== null) {
     if (lpBurn <= INFLOWS.lp_burn_critical_pct) {
       score += 10;
@@ -399,7 +405,7 @@ function calculateIRIS(enrichmentData, scamDbData) {
   const knownScam  = scamDb.known_scam;
   const rcRisk     = scamDb.rugcheck;
   const confidence = knownScam?.confidence_score ?? knownScam?.confidence ?? 0;
-  const isRcDanger = rcRisk?.risk_level === 'danger' && (rcRisk?.score_norm ?? 0) >= 75;
+  const isRcDanger = rcRisk?.risk_level === 'danger' && (rcRisk?.score_norm ?? 0) >= 50;
 
   // Confirmed rug pull v naší DB (confidence ≥ 0.8) → CRITICAL floor
   if (knownScam?.scam_type === 'rug_pull' && confidence >= 0.8) {
