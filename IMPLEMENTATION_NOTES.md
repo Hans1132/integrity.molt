@@ -77,14 +77,19 @@ Compare `rugged` field — expect >80% match rate. If <80%, 7-day inactivity win
 
 ## V4 Migration to Bitquery (2026-05-09)
 
-### Why migrated from V3
+### Architecture: Hybrid live extension pipeline
 
-V3 Helius Enhanced API was deployed and polled. Result after testing across 5 DEX programs:
-- Raydium AMM v4: returned classified ADD_LIQUIDITY / REMOVE_LIQUIDITY — **1 of 5 working**
-- Raydium CPMM, Orca Whirlpool, Pump.fun, Meteora: returned UNKNOWN / CREATE types — **4 of 5 broken**
-- Root cause: Helius does not classify liquidity events for non-Raydium AMM v4 programs reliably
+Helius enhanced API streams SWAP activity across 5 major DEXes (Raydium, Orca, Pump.fun, Meteora, Pumpswap) — writes `pool_activity.last_swap_ts`. Bitquery GraphQL queries provide filtered liquidity removal events across all Solana DEX pool sizes — writes `pool_activity.last_liquidity_remove_ts`. Combined data feeds SolRPDS deterministic methodology (paper sections 4.2-4.3) for inactivity-based rug pull detection.
 
-Bitquery `Solana.DEXPools` returns parsed `ChangeAmount` (signed delta) for all major DEXes in a single query. Switch to V4 eliminates the per-DEX parser problem entirely.
+Signal sources:
+- **Helius V3** (existing, untouched): SWAP events → `last_swap_ts`
+- **Bitquery V4** (new): REMOVAL events only → `last_liquidity_remove_ts`
+- **Inactivity scanner**: flags pool when `last_swap_ts < now-7d` AND `last_swap_ts < last_liquidity_remove_ts`
+- **Source label**: `hybrid_realtime` (both signals required for flag)
+
+### Why Bitquery for removals
+
+Helius enhanced API misclassified liquidity events on 4 of 5 DEXes tested (only Raydium AMM v4 worked). Bitquery `Solana.DEXPools` with `Quote.ChangeAmount < 0` filter returns full removal-event coverage across all Solana DEX pool sizes. No TVL filter needed — Bitquery server-side query optimization keeps cost at ~5 points per cycle regardless of filter complexity.
 
 ### Files added
 
@@ -120,24 +125,22 @@ pm2 stop solrpds-poller
 
 `BITQUERY_API_KEY` — required. Get it at https://account.bitquery.io (free plan: 1000 pts/month).
 `BITQUERY_ENDPOINT` — optional override (default: `https://streaming.bitquery.io/graphql`; EAP plan: `.../eap`)
-`BITQUERY_POLL_INTERVAL_HOURS` — optional, default 12 (free plan). Set to 1 for Developer plan (100k pts).
-`BITQUERY_PAGE_SIZE` — optional, default 500 (conservative for free plan).
 
 ### Cost model
 
-| Plan | Points/month | Safe interval | Projected spend |
-|------|-------------|---------------|-----------------|
-| Free | 1,000 | 12h (60 polls × ~8 pts) | ~480 pts |
-| Developer ($49) | 100,000 | 1h (720 polls × ~8 pts) | ~5,760 pts |
+| Plan | Points/month | Interval | Polls/month | Pts/poll | Projected spend |
+|------|-------------|----------|-------------|----------|-----------------|
+| Free | 1,000 | 4h | 180 | ~5 | ~900 pts ✓ |
+| Developer ($49) | 100,000 | 4h | 180 | ~5 | ~900 pts (110× headroom) |
 
 ### Methodology fidelity
 
 SolRPDS paper §4.2–4.3 sign-correlation rule implemented in `bitquery-event-transformer.js`:
-- Swap: opposite signs on Base/Quote ChangeAmount → SWAP events only
-- Add: both positive → ADD_LIQUIDITY events
-- Remove: both negative → REMOVE_LIQUIDITY events
+- Swap: opposite signs on Base/Quote ChangeAmount → SWAP events only (handled by Helius V3)
+- Add: both positive → ADD_LIQUIDITY events (not recorded by V4, future work)
+- Remove: both negative → REMOVE_LIQUIDITY events → recorded by Bitquery V4
 
-This distinction is the critical fidelity gate — swaps must not inflate `total_added/removed_liquidity`.
+Critical: the transformer correctly excludes swap events from the removal count. Without this, swaps (opposite signs) would inflate `total_removed_liquidity` and corrupt `add_to_remove_ratio`.
 
 ### PM2 launch sequence (after BITQUERY_API_KEY is set)
 

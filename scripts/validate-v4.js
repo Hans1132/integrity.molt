@@ -44,12 +44,12 @@ console.table(sources);
 const recent = db.prepare(`
   SELECT mint, add_to_remove_ratio, inactivity_days, flagged_at
   FROM known_scams
-  WHERE source = 'bitquery_realtime'
+  WHERE source = 'hybrid_realtime'
   ORDER BY flagged_at DESC LIMIT 10
 `).all();
-console.log('\nRecent bitquery_realtime flags:');
+console.log('\nRecent hybrid_realtime flags:');
 if (recent.length === 0) {
-  console.log('  (none yet — scanner needs 7+ days of data accumulation)');
+  console.log('  (none yet — scanner needs 7+ days of combined Helius+Bitquery data)');
 } else {
   console.table(recent.map(r => ({
     mint: r.mint?.slice(0, 12) + '...',
@@ -59,14 +59,21 @@ if (recent.length === 0) {
   })));
 }
 
-if (state.total_polls > 0) {
-  const avgPerPoll = state.total_credits_used / state.total_polls;
-  const monthlyProjection = avgPerPoll * 60; // 12h interval = 60 polls/month
-  console.log('\nCredit projection (12h interval):');
-  console.log(`  Avg per poll: ${avgPerPoll.toFixed(1)} pts`);
-  console.log(`  Projected monthly: ${monthlyProjection.toFixed(0)} pts`);
-  console.log(`  Free plan budget: 1000 pts — headroom: ${(1000 / monthlyProjection).toFixed(1)}x`);
-  if (monthlyProjection > 900) {
-    console.warn('  WARNING: projected spend >900 pts/month. Increase BITQUERY_POLL_INTERVAL_HOURS or reduce PAGE_SIZE.');
-  }
-}
+// Credit projection: 4h interval, 5 pts/poll (single filtered query)
+const POLLS_PER_MONTH = 6 * 30; // 6 polls/day × 30 days = 180
+const PTS_PER_POLL = 5;
+const monthlyProjection = POLLS_PER_MONTH * PTS_PER_POLL;
+console.log('\nCredit projection (4h interval, single filtered query):');
+console.log(`  Polls/month: ${POLLS_PER_MONTH}`);
+console.log(`  Pts/poll: ${PTS_PER_POLL} (estimated)`);
+console.log(`  Projected monthly: ${monthlyProjection} pts`);
+console.log(`  Free plan budget: 1000 pts — headroom: ${(1000 / monthlyProjection).toFixed(1)}x`);
+
+// Hybrid architecture status
+const heliusRows = db.prepare(`SELECT COUNT(*) as c FROM pool_activity WHERE last_swap_ts IS NOT NULL`).get();
+const removalRows = db.prepare(`SELECT COUNT(*) as c FROM pool_activity WHERE last_liquidity_remove_ts IS NOT NULL`).get();
+const bothRows = db.prepare(`SELECT COUNT(*) as c FROM pool_activity WHERE last_swap_ts IS NOT NULL AND last_liquidity_remove_ts IS NOT NULL`).get();
+console.log('\nHybrid signal coverage:');
+console.log(`  Pools with Helius SWAP signal:     ${heliusRows.c}`);
+console.log(`  Pools with Bitquery REMOVAL signal: ${removalRows.c}`);
+console.log(`  Pools with BOTH signals (SolRPDS ready): ${bothRows.c}`);

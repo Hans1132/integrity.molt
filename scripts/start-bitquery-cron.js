@@ -5,57 +5,45 @@ const cron = require('node-cron');
 const { pollBitquery } = require('../lib/bitquery-poller');
 const { scanForInactivity } = require('../lib/inactivity-scanner');
 
-// Poll interval: 12h default for free plan (1000 pts/month).
-// Set BITQUERY_POLL_INTERVAL_HOURS=1 for Developer plan (100k pts/month).
-const intervalHours = parseInt(process.env.BITQUERY_POLL_INTERVAL_HOURS || '12', 10);
-
-console.log(`[BITQUERY-CRON] SolRPDS extension poller V4 starting (interval: ${intervalHours}h)`);
+console.log('[BITQUERY-V4] Hybrid SolRPDS poller starting (removal events, 4h interval)');
 
 if (!process.env.BITQUERY_API_KEY) {
-  console.error('[BITQUERY-CRON] FATAL: BITQUERY_API_KEY not set. Add it to .env and restart.');
+  console.error('[BITQUERY-V4] FATAL: BITQUERY_API_KEY not set');
   process.exit(1);
 }
 
-// Schedule poll based on interval hours
-// 12h → '0 */12 * * *', 6h → '0 */6 * * *', 1h → '0 * * * *'
-const pollCron = intervalHours >= 12 ? '0 */12 * * *'
-               : intervalHours >= 6  ? '0 */6 * * *'
-               : intervalHours >= 4  ? '0 */4 * * *'
-               : '0 * * * *';
-
-cron.schedule(pollCron, async () => {
-  console.log('[BITQUERY-CRON] Starting scheduled poll');
+// Every 4 hours — 6 polls/day × 5 pts = 30 pts/day, 900 pts/month (free plan safe)
+cron.schedule('0 */4 * * *', async () => {
+  console.log('[BITQUERY-V4] Starting scheduled removal poll');
   try {
     const result = await pollBitquery();
-    console.log('[BITQUERY-CRON] Poll complete:', JSON.stringify(result));
+    console.log('[BITQUERY-V4] Poll complete:', JSON.stringify(result));
   } catch (err) {
-    console.error('[BITQUERY-CRON] Poll exception:', err.message);
+    console.error('[BITQUERY-V4] Poll exception:', err.message);
   }
 });
 
-// Inactivity scanner: 30 min after poll offset
-// 12h → '30 */12 * * *', otherwise 30 min past each hour
-const scanCron = intervalHours >= 12 ? '30 */12 * * *' : '30 * * * *';
-
-cron.schedule(scanCron, () => {
-  console.log('[BITQUERY-CRON] Starting inactivity scan');
+// Inactivity scanner at :30 past each 4h mark (offset from poll)
+// Runs after both Helius (SWAP) and Bitquery (REMOVAL) have had time to write
+cron.schedule('30 */4 * * *', () => {
+  console.log('[BITQUERY-V4] Starting inactivity scan');
   try {
     const result = scanForInactivity();
-    console.log('[BITQUERY-CRON] Scan complete:', JSON.stringify(result));
+    console.log('[BITQUERY-V4] Scan complete:', JSON.stringify(result));
   } catch (err) {
-    console.error('[BITQUERY-CRON] Scan exception:', err.message);
+    console.error('[BITQUERY-V4] Scan exception:', err.message);
   }
 });
 
-// Initial poll after 30s warmup (let PM2 finish startup)
+// Initial poll after 15s warmup
 setTimeout(async () => {
-  console.log('[BITQUERY-CRON] Initial poll on startup');
+  console.log('[BITQUERY-V4] Initial removal poll on startup');
   try {
     const result = await pollBitquery();
-    console.log('[BITQUERY-CRON] Initial poll complete:', JSON.stringify(result));
+    console.log('[BITQUERY-V4] Initial poll complete:', JSON.stringify(result));
   } catch (err) {
-    console.error('[BITQUERY-CRON] Initial poll exception:', err.message);
+    console.error('[BITQUERY-V4] Initial poll exception:', err.message);
   }
-}, 30000);
+}, 15000);
 
-console.log(`[BITQUERY-CRON] Scheduled: poll ${pollCron}, scan ${scanCron}`);
+console.log('[BITQUERY-V4] Scheduled: poll 0 */4 * * *, scan 30 */4 * * *');
