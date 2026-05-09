@@ -1,0 +1,22 @@
+integrity.molt - Solana Counterparty Risk Oracle
+Copyright (c) 2025-2026 Jan Licko / Hans1132
+
+This product integrates third-party data subject to the following licenses:
+
+================================================================================
+SolRPDS Dataset
+================================================================================
+Source: https://github.com/DeFiLabX/SolRPDS
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+        https://creativecommons.org/licenses/by/4.0/
+
+Citation:
+  Alhaidari, A., Kalal, B., Palanisamy, B., & Sural, S. (2025).
+  SolRPDS: A Dataset for Analyzing Rug Pulls in Solana Decentralized Finance.
+  ACM CODASPY '25, 293-298. DOI: 10.1145/3714393.3726487
+
+Modifications:
+  Records imported into integrity.molt's `known_scams` table with
+  source='solrpds' label. No original records altered. Schema-level
+  augmentation only (added columns: source, add_to_remove_ratio,
+  inactivity_days, flagged_at).

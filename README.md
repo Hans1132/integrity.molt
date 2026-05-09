@@ -446,6 +446,19 @@ integrity.molt is listed in the [frames.ag tools registry](https://github.com/fr
 
 Submitted to the Colosseum Solana Frontier Hackathon (May 2026) in the Public Goods track.
 
+## Acknowledgments & Citations
+
+This project integrates the **SolRPDS dataset** (Solana Rug Pull Dataset) as a historical baseline for scam pool detection covering February 2021 through November 2024.
+
+> Alhaidari, A., Kalal, B., Palanisamy, B., & Sural, S. (2025).
+> **SolRPDS: A Dataset for Analyzing Rug Pulls in Solana Decentralized Finance.**
+> Proceedings of the Fifteenth ACM Conference on Data and Application Security and Privacy (CODASPY '25), 293–298.
+> https://doi.org/10.1145/3714393.3726487
+
+The SolRPDS dataset is licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) and is publicly available at https://github.com/DeFiLabX/SolRPDS.
+
+**Indication of changes:** Original SolRPDS records are stored unmodified in the `known_scams` table with `source = 'solrpds'`. integrity.molt augments this baseline with multi-source live signals (RugCheck API, Solana Tracker, OtterSec verify.osec.io) and a Solana DEX liquidity event monitoring pipeline that applies the same deterministic methodology described in paper sections 4.2–4.3 to post-cutoff data.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
