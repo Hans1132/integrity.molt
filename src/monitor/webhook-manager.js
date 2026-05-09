@@ -18,9 +18,7 @@ const SECURITY_TX_TYPES = [
   'BURN',
   'BURN_NFT',
   'TRANSFER',
-  'TRANSFER_CHECKED',
   'MINT_TO',
-  'INITIALIZE_MINT',
 ];
 
 function getApiKey() {
