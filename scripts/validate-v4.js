@@ -69,6 +69,15 @@ console.log(`  Pts/poll: ${PTS_PER_POLL} (estimated)`);
 console.log(`  Projected monthly: ${monthlyProjection} pts`);
 console.log(`  Free plan budget: 1000 pts — headroom: ${(1000 / monthlyProjection).toFixed(1)}x`);
 
+// 24h activity — created_at a updated_at jsou INTEGER ms, ne TEXT datetime
+// Správný filtr: (strftime('%s','now') - 86400) * 1000
+const since24h = (Math.floor(Date.now() / 1000) - 86400) * 1000;
+const mints24h = db.prepare(`SELECT COUNT(*) as c FROM spl_mints WHERE created_at > ?`).get(since24h);
+const pools24h = db.prepare(`SELECT COUNT(*) as c FROM pool_activity WHERE updated_at > ?`).get(since24h);
+console.log('\n24h pipeline activity:');
+console.log(`  New SPL mints detected:   ${mints24h.c}`);
+console.log(`  Pool activity updates:    ${pools24h.c}`);
+
 // Hybrid architecture status
 const heliusRows = db.prepare(`SELECT COUNT(*) as c FROM pool_activity WHERE last_swap_ts IS NOT NULL`).get();
 const removalRows = db.prepare(`SELECT COUNT(*) as c FROM pool_activity WHERE last_liquidity_remove_ts IS NOT NULL`).get();
