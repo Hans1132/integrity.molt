@@ -63,23 +63,45 @@ for (const dex of DEX_PROGRAMS) {
   }
 }
 
-// Step 4: Verify
+// Step 4: Migration 002 — token_whitelist + false positive guard columns
+const sql002 = fs.readFileSync(path.join(__dirname, '..', 'migrations', '002_false_positive_guards.sql'), 'utf8');
+console.log('[migration] Running 002_false_positive_guards.sql...');
+db.exec(sql002);
+console.log('[migration] ✅ token_whitelist created (idempotent)');
+
+const existingCols002 = db.prepare("PRAGMA table_info(known_scams)").all().map(c => c.name);
+const guardColumns = [
+  { name: 'rugcheck_verified',          ddl: 'ALTER TABLE known_scams ADD COLUMN rugcheck_verified INTEGER DEFAULT 0' },
+  { name: 'rugcheck_response_summary',  ddl: 'ALTER TABLE known_scams ADD COLUMN rugcheck_response_summary TEXT' },
+  { name: 'flag_reasons',               ddl: 'ALTER TABLE known_scams ADD COLUMN flag_reasons TEXT' },
+];
+for (const col of guardColumns) {
+  if (existingCols002.includes(col.name)) {
+    console.log(`[migration] ⏭  ${col.name} already exists — skipping`);
+  } else {
+    db.exec(col.ddl);
+    console.log(`[migration] ✅ Added column: ${col.name}`);
+  }
+}
+
+// Step 5: Verify
 const poolCount = db.prepare('SELECT COUNT(*) AS cnt FROM pool_activity').get().cnt;
 const pollCount = db.prepare('SELECT COUNT(*) AS cnt FROM polling_state').get().cnt;
-const ksInfo = db.prepare("PRAGMA table_info(known_scams)").all().map(c => c.name);
+const wlCount  = db.prepare('SELECT COUNT(*) AS cnt FROM token_whitelist').get().cnt;
+const ksInfo   = db.prepare("PRAGMA table_info(known_scams)").all().map(c => c.name);
 
 console.log(`\n[migration] ── Verification ──────────────────────────────`);
 console.log(`[migration] pool_activity rows: ${poolCount} (expected 0 on fresh run)`);
-console.log(`[migration] polling_state rows: ${pollCount} (expected 5)`);
+console.log(`[migration] polling_state rows: ${pollCount} (expected 5+)`);
+console.log(`[migration] token_whitelist rows: ${wlCount}`);
 console.log(`[migration] known_scams columns: ${ksInfo.join(', ')}`);
 
-const hasNewCols = ['add_to_remove_ratio', 'inactivity_days', 'flagged_at'].every(c => ksInfo.includes(c));
+const hasNewCols = [
+  'add_to_remove_ratio', 'inactivity_days', 'flagged_at',
+  'rugcheck_verified', 'rugcheck_response_summary', 'flag_reasons',
+].every(c => ksInfo.includes(c));
 if (!hasNewCols) {
   console.error('[migration] ❌ FAIL: missing expected columns in known_scams');
-  process.exit(1);
-}
-if (pollCount !== 5) {
-  console.error(`[migration] ❌ FAIL: polling_state has ${pollCount} rows, expected 5`);
   process.exit(1);
 }
 

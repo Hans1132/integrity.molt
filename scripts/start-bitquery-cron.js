@@ -25,10 +25,10 @@ cron.schedule('0 */4 * * *', async () => {
 
 // Inactivity scanner at :30 past each 4h mark (offset from poll)
 // Runs after both Helius (SWAP) and Bitquery (REMOVAL) have had time to write
-cron.schedule('30 */4 * * *', () => {
+cron.schedule('30 */4 * * *', async () => {
   console.log('[BITQUERY-V4] Starting inactivity scan');
   try {
-    const result = scanForInactivity();
+    const result = await scanForInactivity();
     console.log('[BITQUERY-V4] Scan complete:', JSON.stringify(result));
   } catch (err) {
     console.error('[BITQUERY-V4] Scan exception:', err.message);

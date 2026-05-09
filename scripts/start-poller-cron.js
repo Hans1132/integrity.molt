@@ -22,7 +22,7 @@ cron.schedule('0 * * * *', async () => {
 cron.schedule('30 * * * *', async () => {
   console.log('[SCAN] Starting hourly inactivity scan');
   try {
-    const result = scanForInactivity();
+    const result = await scanForInactivity();
     console.log('[SCAN] Scan complete:', JSON.stringify(result));
   } catch (err) {
     console.error('[SCAN] Scan failed:', err.message);
