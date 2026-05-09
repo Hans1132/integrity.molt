@@ -59,3 +59,4 @@ public/test-og.png
 # Internal agent definitions
 agents/bot.md
 .gcp-credentials.json
+memory.md
