@@ -1645,7 +1645,7 @@ app.get('/api/v1/stats/advisor', (req, res) => {
 
 // Abuse monitoring dashboard — requires ADMIN_TOKEN header
 app.get('/admin/abuse-stats', (req, res) => {
-  const token = req.headers['x-admin-token'] || req.query.token;
+  const token = req.headers['x-admin-token'];
   if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
     return res.status(403).json({ error: 'Forbidden' });
   }
@@ -1663,8 +1663,8 @@ app.get('/admin/abuse-stats', (req, res) => {
   });
 });
 
-// Accuracy monitoring — internal, no auth (add auth if exposed externally)
-app.get('/api/v1/admin/accuracy', (req, res) => {
+// Accuracy monitoring — requires STATS_TOKEN
+app.get('/api/v1/admin/accuracy', requireStatsToken, (req, res) => {
   try {
     const hours = Math.min(parseInt(req.query.hours) || 24, 720);
     res.json({ ok: true, ...db.getAccuracyStats(hours) });
@@ -1673,8 +1673,8 @@ app.get('/api/v1/admin/accuracy', (req, res) => {
   }
 });
 
-// Helius webhook status — internal monitoring dashboard
-app.get('/api/v1/admin/helius', (req, res) => {
+// Helius webhook status — requires STATS_TOKEN
+app.get('/api/v1/admin/helius', requireStatsToken, (req, res) => {
   try {
     const fs   = require('fs');
     const path = require('path');
@@ -2616,7 +2616,11 @@ app.post('/scan/contract', trackFunnel('contract'), requireApiKey, requirePaymen
 
     if (outMatch?.[1]) {
       try {
-        report = JSON.parse(fs.readFileSync(outMatch[1], 'utf-8'));
+        const resolvedPath = path.resolve(outMatch[1]);
+        if (!resolvedPath.startsWith('/root/') || !resolvedPath.endsWith('.json')) {
+          throw new Error(`Unexpected output path from scan script: ${resolvedPath}`);
+        }
+        report = JSON.parse(fs.readFileSync(resolvedPath, 'utf-8'));
         signature = report.signature || null;
       } catch (e) {
         console.error('[scan/contract] Failed to read output JSON:', e.message);

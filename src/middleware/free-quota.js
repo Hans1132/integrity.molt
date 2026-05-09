@@ -7,11 +7,9 @@ const INTERNAL_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const INTERNAL_SECRET = process.env.INTERNAL_SCAN_SECRET;
 
 function getClientIp(req) {
-  return req.headers['cf-connecting-ip']
-    || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
-    || req.ip
-    || req.socket?.remoteAddress
-    || 'unknown';
+  // CF-Connecting-IP is the only trusted source per CLAUDE.md sharp edge #1.
+  // Fallback to loopback — internal callers are caught by isInternalCall() first.
+  return req.headers['cf-connecting-ip'] || '127.0.0.1';
 }
 
 function isInternalCall(req) {
