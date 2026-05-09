@@ -30,7 +30,7 @@ async function fetchCsv(url) {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
-  const lines = text.trim().split('\n');
+  const lines = text.trim().split(/\r?\n/);
   // CSV: Name,Symbol,Mint,Decimals,LogoURI,Community Validated
   // Name can contain commas — extract Mint by regex (base58 pattern before ,decimals,)
   const MINT_RE = /,([1-9A-HJ-NP-Za-km-z]{32,44}),\d+,/;

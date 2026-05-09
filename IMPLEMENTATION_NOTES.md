@@ -98,15 +98,15 @@ Helius enhanced API misclassified liquidity events on 4 of 5 DEXes tested (only 
 | `lib/bitquery-client.js` | Bitquery GraphQL client, lazy API key check |
 | `lib/bitquery-event-transformer.js` | Transforms DEXPools events → typed liquidity events |
 | `lib/bitquery-poller.js` | Poll loop with pagination, state tracking, error handling |
-| `scripts/start-bitquery-cron.js` | PM2 entry point (12h default for free plan) |
+| `scripts/start-bitquery-cron.js` | PM2 entry point (4h interval, 900 pts/month on free plan) |
 | `scripts/validate-v4.js` | Health check + credit projection |
 
 ### Files modified
 
 | File | Change |
 |------|--------|
-| `lib/inactivity-scanner.js` | Source label `helius_realtime` → `bitquery_realtime`; added `created_at >= V4_start` filter to prevent retroactive mislabelling |
-| `ecosystem.config.js` | Added `solrpds-poller-v4` entry; kept `solrpds-poller` (V3, deprecated) |
+| `lib/inactivity-scanner.js` | Source label changed to `hybrid_realtime`; added `created_at >= V4_start` filter to prevent retroactive mislabelling |
+| `ecosystem.config.js` | Added `solrpds-poller-v4-bitquery` entry; kept `solrpds-poller` (V3, deprecated) |
 
 ### DEPRECATED
 
@@ -149,7 +149,7 @@ Critical: the transformer correctly excludes swap events from the removal count.
 pm2 stop solrpds-poller
 
 # 2. Start V4 Bitquery poller
-pm2 start ecosystem.config.js --only solrpds-poller-v4
+pm2 start ecosystem.config.js --only solrpds-poller-v4-bitquery
 pm2 save
 
 # 3. Validation gate sequence
@@ -158,5 +158,5 @@ node scripts/validate-v4.js
 
 # 4. Monitor credit spend after 24h
 node scripts/validate-v4.js
-pm2 logs solrpds-poller-v4 --lines 200 --err
+pm2 logs solrpds-poller-v4-bitquery --lines 200 --err
 ```

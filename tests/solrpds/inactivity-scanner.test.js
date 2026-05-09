@@ -70,14 +70,15 @@ const THREE_DAYS_AGO   = now - (3  * 24 * 60 * 60 * 1000);
 const EIGHT_MONTHS_AGO = now - (8  * 30 * 24 * 60 * 60 * 1000);
 const THREE_MONTHS_AGO = now - (3  * 30 * 24 * 60 * 60 * 1000);
 
-// Pool A: rug pull candidate (old token, inactive 8d, swap before removal)
+// Pool A: rug pull candidate (recently-observed token, inactive 8d, swap before removal)
+// first_activity_ts = THREE_MONTHS_AGO — passes age guard (> now-6months)
 setupDb.prepare(`
   INSERT INTO pool_activity
     (pool_address, mint, total_added_liquidity, total_removed_liquidity,
      add_count, remove_count, first_activity_ts, last_activity_ts,
      last_liquidity_remove_ts, last_swap_ts)
   VALUES ('Pool1', 'MintRug1', 1000, 500, 5, 3, ?, ?, ?, ?)
-`).run(EIGHT_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
+`).run(THREE_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
 
 // Pool B: recent activity (should NOT be flagged — last_swap_ts too recent)
 setupDb.prepare(`
@@ -86,7 +87,7 @@ setupDb.prepare(`
      add_count, remove_count, first_activity_ts, last_activity_ts,
      last_liquidity_remove_ts, last_swap_ts)
   VALUES ('Pool2', 'MintActive', 2000, 100, 10, 1, ?, ?, ?, ?)
-`).run(EIGHT_MONTHS_AGO, THREE_DAYS_AGO, THREE_DAYS_AGO - 5000, THREE_DAYS_AGO);
+`).run(THREE_MONTHS_AGO, THREE_DAYS_AGO, THREE_DAYS_AGO - 5000, THREE_DAYS_AGO);
 
 // Pool C: add-only (no removal — total_removed = 0, stmtGetCandidates filters it)
 setupDb.prepare(`
@@ -94,16 +95,17 @@ setupDb.prepare(`
     (pool_address, mint, total_added_liquidity, total_removed_liquidity,
      add_count, remove_count, first_activity_ts, last_activity_ts, last_swap_ts)
   VALUES ('Pool3', 'MintNoRemove', 500, 0, 3, 0, ?, ?, ?)
-`).run(EIGHT_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
+`).run(THREE_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
 
-// Pool D: young token (3 months) — age guard should block
+// Pool D: stale pipeline observation (8 months) — age guard blocks
+// first_activity_ts = EIGHT_MONTHS_AGO — fails age guard (NOT > now-6months)
 setupDb.prepare(`
   INSERT INTO pool_activity
     (pool_address, mint, total_added_liquidity, total_removed_liquidity,
      add_count, remove_count, first_activity_ts, last_activity_ts,
      last_liquidity_remove_ts, last_swap_ts)
-  VALUES ('Pool4', 'MintYoung', 100, 200, 2, 3, ?, ?, ?, ?)
-`).run(THREE_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
+  VALUES ('Pool4', 'MintStale', 100, 200, 2, 3, ?, ?, ?, ?)
+`).run(EIGHT_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
 
 // Pool E: whitelisted mint — whitelist guard should block
 const WL_MINT = 'WHITELIST1111111111111111111111111111111111';
@@ -114,7 +116,27 @@ setupDb.prepare(`
      add_count, remove_count, first_activity_ts, last_activity_ts,
      last_liquidity_remove_ts, last_swap_ts)
   VALUES ('Pool5', ?, 100, 200, 2, 3, ?, ?, ?, ?)
-`).run(WL_MINT, EIGHT_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
+`).run(WL_MINT, THREE_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
+
+// Pool F (cross-row): Helius swap row + Bitquery removal row for same mint (bug_033)
+// Swap row: pool_address = DEX program ID (Helius style), no removal data
+setupDb.prepare(`
+  INSERT INTO pool_activity
+    (pool_address, mint, total_added_liquidity, total_removed_liquidity,
+     add_count, remove_count, first_activity_ts, last_activity_ts,
+     last_liquidity_remove_ts, last_swap_ts)
+  VALUES ('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8', 'MintCrossRow', 0, 0,
+          0, 0, ?, ?, NULL, ?)
+`).run(THREE_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO - 1000);
+// Removal row: pool_address = MarketAddress (Bitquery style), no swap data
+setupDb.prepare(`
+  INSERT INTO pool_activity
+    (pool_address, mint, total_added_liquidity, total_removed_liquidity,
+     add_count, remove_count, first_activity_ts, last_activity_ts,
+     last_liquidity_remove_ts, last_swap_ts)
+  VALUES ('MarketAddr1111111111111111111111111111111111', 'MintCrossRow', 100, 500,
+          2, 3, ?, ?, ?, NULL)
+`).run(THREE_MONTHS_AGO, EIGHT_DAYS_AGO, EIGHT_DAYS_AGO);
 
 setupDb.close();
 
@@ -138,22 +160,21 @@ const { scanForInactivity } = require('../../lib/inactivity-scanner');
 const _tests = [];
 function test(name, fn) { _tests.push({ name, fn }); }
 
-test('First scan: marks inactive pools and flags Pool A (rug pull candidate)', async () => {
+test('First scan: marks inactive pools and flags MintRug1 + MintCrossRow', async () => {
   const result = await scanForInactivity();
   assert.ok(!result.error, `scan returned error: ${result.error}`);
-  // stmtMarkInactive marks ALL eligible pools (A + young-token D + whitelisted E = 3)
   assert.ok(result.poolsMarkedInactive >= 1, `expected >= 1 inactive, got ${result.poolsMarkedInactive}`);
-  // Only Pool A passes all 3 guards → 1 flagged
-  assert.strictEqual(result.newRugPullsFlagged, 1, `expected 1 flagged, got ${result.newRugPullsFlagged}`);
+  // MintRug1 (single-row) + MintCrossRow (cross-row) both pass all guards → 2 flagged
+  assert.strictEqual(result.newRugPullsFlagged, 2, `expected 2 flagged, got ${result.newRugPullsFlagged}`);
 });
 
-test('First scan: skips young token and whitelisted mint', async () => {
+test('First scan: skips stale-observation token and whitelisted mint', async () => {
   // run already done above — check known_scams state
   const verifyDb = new Database(tmpDb, { readonly: true });
-  const young = verifyDb.prepare(`SELECT 1 FROM known_scams WHERE mint = 'MintYoung'`).get();
+  const stale = verifyDb.prepare(`SELECT 1 FROM known_scams WHERE mint = 'MintStale'`).get();
   const wl    = verifyDb.prepare(`SELECT 1 FROM known_scams WHERE mint = ?`).get(WL_MINT);
   verifyDb.close();
-  assert.strictEqual(young, undefined, 'MintYoung should NOT be flagged (age guard)');
+  assert.strictEqual(stale, undefined, 'MintStale should NOT be flagged (age guard — stale pipeline observation)');
   assert.strictEqual(wl,    undefined, `${WL_MINT.slice(0,8)}... should NOT be flagged (whitelist guard)`);
 });
 
@@ -173,6 +194,15 @@ test('Flagged entry has correct source, ratio, confidence, and flag_reasons', ()
   const reasons = JSON.parse(row.flag_reasons);
   assert.ok(Array.isArray(reasons), 'flag_reasons should be a JSON array');
   assert.ok(reasons.includes('age_ok'), 'flag_reasons should include age_ok');
+});
+
+test('Cross-row detection (bug_033): separate Helius swap row and Bitquery removal row for same mint', () => {
+  const verifyDb = new Database(tmpDb, { readonly: true });
+  const row = verifyDb.prepare(`SELECT * FROM known_scams WHERE mint = 'MintCrossRow'`).get();
+  verifyDb.close();
+  assert.ok(row, 'MintCrossRow should be in known_scams (cross-pool-address hybrid detection)');
+  assert.strictEqual(row.source, 'hybrid_realtime');
+  assert.ok(row.confidence >= 0.5, `confidence should be >= 0.5 (got ${row.confidence})`);
 });
 
 test('Recent pool (MintActive) is NOT flagged', () => {

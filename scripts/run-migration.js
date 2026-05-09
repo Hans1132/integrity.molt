@@ -63,6 +63,15 @@ for (const dex of DEX_PROGRAMS) {
   }
 }
 
+// Step 3b: Seed bitquery_dexpools row (V4 anchor required by inactivity scanner)
+const insertBitquery = db.prepare(`INSERT OR IGNORE INTO polling_state (dex_program_id, dex_name) VALUES (?, ?)`);
+const bqResult = insertBitquery.run('bitquery_dexpools', 'Bitquery DEXPools');
+if (bqResult.changes > 0) {
+  console.log('[migration] ✅ Seeded DEX: Bitquery DEXPools');
+} else {
+  console.log('[migration] ⏭  DEX already exists: Bitquery DEXPools');
+}
+
 // Step 4: Migration 002 — token_whitelist + false positive guard columns
 const sql002 = fs.readFileSync(path.join(__dirname, '..', 'migrations', '002_false_positive_guards.sql'), 'utf8');
 console.log('[migration] Running 002_false_positive_guards.sql...');
@@ -92,7 +101,7 @@ const ksInfo   = db.prepare("PRAGMA table_info(known_scams)").all().map(c => c.n
 
 console.log(`\n[migration] ── Verification ──────────────────────────────`);
 console.log(`[migration] pool_activity rows: ${poolCount} (expected 0 on fresh run)`);
-console.log(`[migration] polling_state rows: ${pollCount} (expected 5+)`);
+console.log(`[migration] polling_state rows: ${pollCount} (expected 6+)`);
 console.log(`[migration] token_whitelist rows: ${wlCount}`);
 console.log(`[migration] known_scams columns: ${ksInfo.join(', ')}`);
 
