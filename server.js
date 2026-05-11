@@ -3605,59 +3605,59 @@ function renderPaidScanPage(result) {
   // Build report HTML based on data type
   let reportHtml = '';
   if (isError) {
-    reportHtml = `<div style="padding:20px;background:#1a0808;border:1px solid #5a1a1a;border-left:4px solid #f85149;border-radius:8px;margin:20px 0">
-      <div style="font-family:monospace;font-size:13px;color:#f85149;margin-bottom:6px">Scan Error</div>
-      <div style="font-size:14px;color:#d0d8e8">${escapeHtml(result.error || 'Unknown error')}</div>
+    reportHtml = `<div style="padding:20px;background:#1a0808;border:1px solid #5a1a1a;border-left:4px solid #EF4444;border-radius:8px;margin:20px 0">
+      <div style="font-family:monospace;font-size:13px;color:#EF4444;margin-bottom:6px">Scan Error</div>
+      <div style="font-size:14px;color:#FAFAFA">${escapeHtml(result.error || 'Unknown error')}</div>
     </div>`;
   } else if (result.data && typeof result.data === 'object') {
     const d = result.data;
     const score = d.risk_score ?? d.aggregate_score ?? '?';
     const risk  = (d.risk_level || 'unknown').toLowerCase();
-    const RISK_COL = { low: '#3fb950', medium: '#d29922', high: '#f85149', critical: '#ff4444', unknown: '#6a7490' };
-    const col = RISK_COL[risk] || '#6a7490';
-    const RISK_BG  = { low: '#0d1f18', medium: '#1f180d', high: '#1f0d0d', critical: '#200808', unknown: '#12121e' };
-    const bg = RISK_BG[risk] || '#12121e';
+    const RISK_COL = { low: '#10B981', medium: '#F59E0B', high: '#EF4444', critical: '#EF4444', unknown: '#A1A1AA' };
+    const col = RISK_COL[risk] || '#A1A1AA';
+    const RISK_BG  = { low: '#0d1f18', medium: '#1f180d', high: '#1f0d0d', critical: '#200808', unknown: '#18181B' };
+    const bg = RISK_BG[risk] || '#18181B';
 
     reportHtml += `
-      <div style="display:flex;align-items:center;gap:16px;padding:20px;background:${bg};border:1px solid #1e1e2e;border-radius:10px;margin:20px 0;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:16px;padding:20px;background:${bg};border:1px solid #27272A;border-radius:10px;margin:20px 0;flex-wrap:wrap">
         <div style="width:64px;height:64px;border-radius:50%;background:${bg};border:3px solid ${col};display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:22px;font-weight:700;color:${col};flex-shrink:0">${score}</div>
         <div style="flex:1;min-width:0">
           <div style="font-family:monospace;font-size:11px;color:${col};text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${risk.toUpperCase()} RISK</div>
-          <div style="font-size:15px;color:#e6edf3">${escapeHtml(d.summary || '')}</div>
-          <div style="font-family:monospace;font-size:11px;color:#6a7490;margin-top:4px">${escapeHtml(result.address)}</div>
+          <div style="font-size:15px;color:#FAFAFA">${escapeHtml(d.summary || '')}</div>
+          <div style="font-family:monospace;font-size:11px;color:#A1A1AA;margin-top:4px">${escapeHtml(result.address)}</div>
         </div>
-        <div style="font-family:monospace;font-size:11px;padding:4px 10px;background:#0d1f18;border:1px solid #1e3a2f;color:#3fb950;border-radius:4px;flex-shrink:0">✓ Ed25519 Signed</div>
+        <div style="font-family:monospace;font-size:11px;padding:4px 10px;background:#0d1f18;border:1px solid #1e3a2f;color:#10B981;border-radius:4px;flex-shrink:0">✓ Ed25519 Signed</div>
       </div>`;
 
     if (d.checks && typeof d.checks === 'object') {
-      reportHtml += `<div style="font-family:monospace;font-size:11px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Security Checks</div>
+      reportHtml += `<div style="font-family:monospace;font-size:11px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Security Checks</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:20px">`;
       for (const [key, val] of Object.entries(d.checks)) {
         const rk = (val?.risk || '').toLowerCase();
-        const bcol = rk === 'high' ? '#f85149' : rk === 'medium' ? '#d29922' : '#3fb950';
+        const bcol = rk === 'high' ? '#EF4444' : rk === 'medium' ? '#F59E0B' : '#10B981';
         const bbg  = rk === 'high' ? '#1f0d0d'  : rk === 'medium' ? '#1f180d'  : '#0d1f18';
         const bbd  = rk === 'high' ? '#5a1a1a'  : rk === 'medium' ? '#3a2e1e'  : '#1e3a2f';
         const label = key.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
         const valueText = val?.status || val?.risk || '—';
-        reportHtml += `<div style="background:#0f0f18;border:1px solid #1e1e2e;border-left:3px solid ${bcol};border-radius:8px;padding:14px 16px">
-          <div style="font-family:monospace;font-size:11px;color:#6a7490;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">${escapeHtml(label)}</div>
-          <div style="font-size:14px;color:#d0d8e8">${escapeHtml(String(valueText))}</div>
+        reportHtml += `<div style="background:#18181B;border:1px solid #27272A;border-left:3px solid ${bcol};border-radius:8px;padding:14px 16px">
+          <div style="font-family:monospace;font-size:11px;color:#A1A1AA;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">${escapeHtml(label)}</div>
+          <div style="font-size:14px;color:#FAFAFA">${escapeHtml(String(valueText))}</div>
         </div>`;
       }
       reportHtml += '</div>';
     }
 
     if (d.evidence && d.evidence.length) {
-      reportHtml += `<div style="font-family:monospace;font-size:11px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Evidence — Recent Transactions</div>
+      reportHtml += `<div style="font-family:monospace;font-size:11px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Evidence — Recent Transactions</div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px">`;
       for (const ev of d.evidence) {
         const ts = ev.blockTime ? new Date(ev.blockTime * 1000).toLocaleString() : 'unknown';
-        const errBadge = ev.err ? `<span style="color:#f85149;font-size:10px;margin-left:6px">FAILED</span>` : '';
-        reportHtml += `<div style="background:#0f0f18;border:1px solid #1e1e2e;border-radius:6px;padding:10px 14px;font-family:monospace;font-size:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <a href="https://solscan.io/tx/${escapeHtml(ev.signature)}" target="_blank" style="color:#4da6ff;word-break:break-all;flex:1">${escapeHtml(ev.signature?.slice(0,20)+'…')}</a>
+        const errBadge = ev.err ? `<span style="color:#EF4444;font-size:10px;margin-left:6px">FAILED</span>` : '';
+        reportHtml += `<div style="background:#18181B;border:1px solid #27272A;border-radius:6px;padding:10px 14px;font-family:monospace;font-size:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <a href="https://solscan.io/tx/${escapeHtml(ev.signature)}" target="_blank" style="color:#06B6D4;word-break:break-all;flex:1">${escapeHtml(ev.signature?.slice(0,20)+'…')}</a>
           ${errBadge}
-          <span style="color:#3a3f54;font-size:11px;white-space:nowrap">${escapeHtml(ts)}</span>
-          <a href="https://explorer.solana.com/tx/${escapeHtml(ev.signature)}" target="_blank" style="color:#2a6aaa;font-size:11px;white-space:nowrap">Explorer ↗</a>
+          <span style="color:#71717A;font-size:11px;white-space:nowrap">${escapeHtml(ts)}</span>
+          <a href="https://explorer.solana.com/tx/${escapeHtml(ev.signature)}" target="_blank" style="color:#0891B2;font-size:11px;white-space:nowrap">Explorer ↗</a>
         </div>`;
       }
       reportHtml += '</div>';
@@ -3670,16 +3670,16 @@ function renderPaidScanPage(result) {
     const agents = d.agents ?? {};
     const sc = d.scorecard?.agents ?? {};
     const rugOverride = d.rug_override === true;
-    const DCOL = { safe: '#3fb950', caution: '#d29922', 'high-risk': '#f85149' };
+    const DCOL = { safe: '#10B981', caution: '#F59E0B', 'high-risk': '#EF4444' };
     const DBG  = { safe: '#052e16', caution: '#1f180d', 'high-risk': '#1f0d0d' };
-    const rCol = DCOL[dec] || '#d29922';
+    const rCol = DCOL[dec] || '#F59E0B';
     const rBg  = DBG[dec]  || '#1f180d';
     const DLBL = { safe: 'SAFE', caution: 'CAUTION', 'high-risk': 'HIGH RISK' };
 
-    function scoreCol(n) { return Number(n)>=80 ? '#3fb950' : Number(n)>=55 ? '#d29922' : '#f85149'; }
+    function scoreCol(n) { return Number(n)>=80 ? '#10B981' : Number(n)>=55 ? '#F59E0B' : '#EF4444'; }
     function ageBar(score, pct, contrib, conf) {
       const col = scoreCol(score);
-      return `<div style="flex:1;height:6px;border-radius:3px;background:#1e1e2e;overflow:hidden"><div style="height:100%;width:${score}%;background:${col};border-radius:3px"></div></div>`;
+      return `<div style="flex:1;height:6px;border-radius:3px;background:#27272A;overflow:hidden"><div style="height:100%;width:${score}%;background:${col};border-radius:3px"></div></div>`;
     }
 
     const agRows = [
@@ -3693,18 +3693,18 @@ function renderPaidScanPage(result) {
       const conf   = ag.confidence ?? 0;
       const contrib = Number(sca.contribution ?? (score * pct / 100)).toFixed(1);
       const col    = scoreCol(score);
-      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#0f0f18;border:1px solid #1e1e2e;border-radius:8px;margin-bottom:8px">
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#18181B;border:1px solid #27272A;border-radius:8px;margin-bottom:8px">
         <div style="min-width:130px">
-          <div style="font-size:13px;color:#d0d8e8;font-weight:500">${escapeHtml(label)}</div>
-          <div style="font-family:monospace;font-size:10px;color:#3a3f54;margin-top:2px">${escapeHtml(model)} · weight ${pct}%</div>
+          <div style="font-size:13px;color:#FAFAFA;font-weight:500">${escapeHtml(label)}</div>
+          <div style="font-family:monospace;font-size:10px;color:#71717A;margin-top:2px">${escapeHtml(model)} · weight ${pct}%</div>
         </div>
         <div style="flex:1">
-          <div style="height:6px;border-radius:3px;background:#1e1e2e;overflow:hidden"><div style="height:100%;width:${score}%;background:${col};border-radius:3px"></div></div>
-          <div style="font-family:monospace;font-size:10px;color:#3a3f54;margin-top:3px">confidence: ${conf}%</div>
+          <div style="height:6px;border-radius:3px;background:#27272A;overflow:hidden"><div style="height:100%;width:${score}%;background:${col};border-radius:3px"></div></div>
+          <div style="font-family:monospace;font-size:10px;color:#71717A;margin-top:3px">confidence: ${conf}%</div>
         </div>
         <div style="text-align:right;min-width:72px;flex-shrink:0">
-          <div style="font-size:18px;font-weight:700;color:${col};line-height:1">${score}<span style="font-size:10px;color:#3a3f54;font-weight:400">/100</span></div>
-          <div style="font-family:monospace;font-size:10px;color:#3a3f54;margin-top:2px">+${contrib} pts</div>
+          <div style="font-size:18px;font-weight:700;color:${col};line-height:1">${score}<span style="font-size:10px;color:#71717A;font-weight:400">/100</span></div>
+          <div style="font-family:monospace;font-size:10px;color:#71717A;margin-top:2px">+${contrib} pts</div>
         </div>
       </div>`;
     }).join('');
@@ -3718,85 +3718,85 @@ function renderPaidScanPage(result) {
     // Dimensions grid
     const dimMeta = { mint_authority_risk:'Mint Authority', freeze_authority_risk:'Freeze Authority', owner_trust:'Owner Trust', token_legitimacy:'Legitimacy' };
     const dimsHtml = Object.keys(dims).length ? `
-      <div style="font-family:monospace;font-size:11px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Risk Dimensions</div>
+      <div style="font-family:monospace;font-size:11px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Risk Dimensions</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px">
         ${Object.entries(dims).map(([k,v]) => {
           const n = Number(v)||0; const col = scoreCol(n);
-          return `<div style="background:#0f0f18;border:1px solid #1e1e2e;border-radius:8px;padding:14px 16px">
-            <div style="font-family:monospace;font-size:10px;color:#3a3f54;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${escapeHtml(dimMeta[k]||k)}</div>
-            <div style="font-size:18px;font-weight:700;color:${col};margin-bottom:6px">${n}<span style="font-size:10px;color:#3a3f54;font-weight:400">/100</span></div>
-            <div style="height:5px;border-radius:3px;background:#1e1e2e;overflow:hidden"><div style="height:100%;width:${n}%;background:${col};border-radius:3px"></div></div>
+          return `<div style="background:#18181B;border:1px solid #27272A;border-radius:8px;padding:14px 16px">
+            <div style="font-family:monospace;font-size:10px;color:#71717A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${escapeHtml(dimMeta[k]||k)}</div>
+            <div style="font-size:18px;font-weight:700;color:${col};margin-bottom:6px">${n}<span style="font-size:10px;color:#71717A;font-weight:400">/100</span></div>
+            <div style="height:5px;border-radius:3px;background:#27272A;overflow:hidden"><div style="height:100%;width:${n}%;background:${col};border-radius:3px"></div></div>
           </div>`;
         }).join('')}
       </div>` : '';
 
     // Key risks
     const risksHtml = keyRisks.length ? `
-      <div style="font-family:monospace;font-size:11px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Key Risks</div>
+      <div style="font-family:monospace;font-size:11px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Key Risks</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px">
-        ${keyRisks.map(r => `<div style="display:flex;gap:9px;align-items:flex-start;padding:8px 12px;background:#0f0f18;border:1px solid #1e1e2e;border-radius:6px">
-          <span style="color:#d29922;font-family:monospace;font-size:12px;flex-shrink:0">!</span>
-          <span style="font-size:12px;color:#6a7490;line-height:1.5">${escapeHtml(r)}</span>
+        ${keyRisks.map(r => `<div style="display:flex;gap:9px;align-items:flex-start;padding:8px 12px;background:#18181B;border:1px solid #27272A;border-radius:6px">
+          <span style="color:#F59E0B;font-family:monospace;font-size:12px;flex-shrink:0">!</span>
+          <span style="font-size:12px;color:#A1A1AA;line-height:1.5">${escapeHtml(r)}</span>
         </div>`).join('')}
       </div>` : '';
 
     // Reputation flags
     function rfCls(f) {
       const l = f.toLowerCase();
-      return (l.includes('renounced')||l.includes('trusted')) ? '#3fb950' : (l.includes('rug')||l.includes('unlimited')||l.includes('not_found')) ? '#f85149' : '#d29922';
+      return (l.includes('renounced')||l.includes('trusted')) ? '#10B981' : (l.includes('rug')||l.includes('unlimited')||l.includes('not_found')) ? '#EF4444' : '#F59E0B';
     }
     const flagsHtml = repFlags.length ? `
-      <div style="font-family:monospace;font-size:11px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Reputation Flags</div>
+      <div style="font-family:monospace;font-size:11px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Reputation Flags</div>
       <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:20px">
         ${repFlags.map(f => {
           const ci = f.indexOf(':');
           const key = ci>0 ? f.slice(0,ci).replace(/_/g,' ') : f;
           const desc = ci>0 ? f.slice(ci+1).trim() : '';
           const col = rfCls(f);
-          return `<div style="display:flex;gap:9px;padding:8px 12px;background:#0f0f18;border:1px solid #1e1e2e;border-radius:6px;font-size:12px">
-            <span style="color:${col};font-weight:700;flex-shrink:0">${col==='#3fb950'?'✓':col==='#f85149'?'!':'~'}</span>
-            <span><span style="color:#d0d8e8;font-weight:500">${escapeHtml(key)}</span>${desc?`<span style="color:#6a7490"> — ${escapeHtml(desc)}</span>`:''}</span>
+          return `<div style="display:flex;gap:9px;padding:8px 12px;background:#18181B;border:1px solid #27272A;border-radius:6px;font-size:12px">
+            <span style="color:${col};font-weight:700;flex-shrink:0">${col==='#10B981'?'✓':col==='#EF4444'?'!':'~'}</span>
+            <span><span style="color:#FAFAFA;font-weight:500">${escapeHtml(key)}</span>${desc?`<span style="color:#A1A1AA"> — ${escapeHtml(desc)}</span>`:''}</span>
           </div>`;
         }).join('')}
       </div>` : '';
 
     reportHtml = `
-      <div style="display:flex;align-items:center;gap:14px;padding:20px;background:${rBg};border:1px solid #1e1e2e;border-top:2px solid ${rCol};border-radius:10px;margin:20px 0;flex-wrap:wrap;position:relative">
+      <div style="display:flex;align-items:center;gap:14px;padding:20px;background:${rBg};border:1px solid #27272A;border-top:2px solid ${rCol};border-radius:10px;margin:20px 0;flex-wrap:wrap;position:relative">
         <div style="width:72px;height:72px;border-radius:50%;background:${rBg};border:3px solid ${rCol};display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:24px;font-weight:700;color:${rCol};flex-shrink:0">${agg}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
             <span style="font-family:monospace;font-size:12px;font-weight:700;color:${rCol};text-transform:uppercase;letter-spacing:1px">${escapeHtml(DLBL[dec]||dec)}</span>
-            <span style="font-family:monospace;font-size:10px;padding:2px 8px;background:rgba(78,166,255,.1);border:1px solid rgba(78,166,255,.2);color:#4da6ff;border-radius:4px">DEEP AUDIT · 3 AI AGENTS</span>
-            ${rugOverride ? '<span style="font-family:monospace;font-size:10px;padding:2px 8px;background:#ff4d4d22;color:#ff6b6b;border:1px solid #ff4d4d44;border-radius:4px">⚠ RUG OVERRIDE</span>' : ''}
+            <span style="font-family:monospace;font-size:10px;padding:2px 8px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.2);color:#06B6D4;border-radius:4px">DEEP AUDIT · 3 AI AGENTS</span>
+            ${rugOverride ? '<span style="font-family:monospace;font-size:10px;padding:2px 8px;background:rgba(239,68,68,0.13);color:#EF4444;border:1px solid rgba(239,68,68,0.27);border-radius:4px">⚠ RUG OVERRIDE</span>' : ''}
           </div>
-          <div style="font-size:13px;color:#6a7490">gemini-2.5-flash · gpt-4o-mini · reputation · weighted consensus</div>
-          <div style="font-family:monospace;font-size:11px;color:#3a3f54;margin-top:4px;word-break:break-all">${escapeHtml(result.address)}</div>
+          <div style="font-size:13px;color:#A1A1AA">gemini-2.5-flash · gpt-4o-mini · reputation · weighted consensus</div>
+          <div style="font-family:monospace;font-size:11px;color:#71717A;margin-top:4px;word-break:break-all">${escapeHtml(result.address)}</div>
         </div>
-        ${d.signed ? '<div style="font-family:monospace;font-size:11px;padding:4px 10px;background:#0d1f18;border:1px solid #1e3a2f;color:#3fb950;border-radius:4px;flex-shrink:0">✓ Ed25519 Signed</div>' : ''}
+        ${d.signed ? '<div style="font-family:monospace;font-size:11px;padding:4px 10px;background:#0d1f18;border:1px solid #1e3a2f;color:#10B981;border-radius:4px;flex-shrink:0">✓ Ed25519 Signed</div>' : ''}
       </div>
-      <div style="font-family:monospace;font-size:11px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Multi-Agent Scorecard</div>
+      <div style="font-family:monospace;font-size:11px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Multi-Agent Scorecard</div>
       ${agRows}
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#12121e;border:1px solid #1e1e2e;border-radius:8px;margin-top:4px;margin-bottom:20px">
-        <span style="font-family:monospace;font-size:11px;color:#6a7490">Weighted Aggregate</span>
-        <span style="font-size:20px;font-weight:700;color:${rCol}">${agg}<span style="font-size:11px;color:#3a3f54;font-weight:400"> / 100</span></span>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#18181B;border:1px solid #27272A;border-radius:8px;margin-top:4px;margin-bottom:20px">
+        <span style="font-family:monospace;font-size:11px;color:#A1A1AA">Weighted Aggregate</span>
+        <span style="font-size:20px;font-weight:700;color:${rCol}">${agg}<span style="font-size:11px;color:#71717A;font-weight:400"> / 100</span></span>
       </div>
-      ${analyst.analysis ? `<div style="font-family:monospace;font-size:11px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">AI Analysis</div>
-      <div style="background:#0f0f18;border:1px solid #1e1e2e;border-left:3px solid #2a6aaa;border-radius:8px;padding:14px 18px;margin-bottom:16px">
-        <div style="font-family:monospace;font-size:10px;color:#3a3f54;margin-bottom:7px">gpt-4o-mini · score ${analyst.score??'?'}/100</div>
-        <div style="font-size:13px;color:#6a7490;line-height:1.7">${escapeHtml(analyst.analysis)}</div>
+      ${analyst.analysis ? `<div style="font-family:monospace;font-size:11px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">AI Analysis</div>
+      <div style="background:#18181B;border:1px solid #27272A;border-left:3px solid #0891B2;border-radius:8px;padding:14px 18px;margin-bottom:16px">
+        <div style="font-family:monospace;font-size:10px;color:#71717A;margin-bottom:7px">gpt-4o-mini · score ${analyst.score??'?'}/100</div>
+        <div style="font-size:13px;color:#A1A1AA;line-height:1.7">${escapeHtml(analyst.analysis)}</div>
       </div>` : ''}
       ${risksHtml}${dimsHtml}${flagsHtml}`;
 
     if (d.report || result.report) {
       const rawReport = d.report || result.report;
-      reportHtml += `<div style="margin-top:12px"><details><summary style="font-family:monospace;font-size:11px;color:#3a3f54;cursor:pointer;text-transform:uppercase;letter-spacing:1px">Show raw signed report</summary>
-        <pre style="background:#0f0f18;border:1px solid #1e1e2e;border-radius:8px;padding:16px;font-family:monospace;font-size:11px;line-height:1.7;color:#6a7490;white-space:pre-wrap;word-break:break-all;margin-top:8px;max-height:400px;overflow-y:auto">${escapeHtml(rawReport)}</pre>
+      reportHtml += `<div style="margin-top:12px"><details><summary style="font-family:monospace;font-size:11px;color:#71717A;cursor:pointer;text-transform:uppercase;letter-spacing:1px">Show raw signed report</summary>
+        <pre style="background:#18181B;border:1px solid #27272A;border-radius:8px;padding:16px;font-family:monospace;font-size:11px;line-height:1.7;color:#A1A1AA;white-space:pre-wrap;word-break:break-all;margin-top:8px;max-height:400px;overflow-y:auto">${escapeHtml(rawReport)}</pre>
       </details></div>`;
     }
 
   } else if (result.report) {
-    reportHtml = `<div style="font-family:monospace;font-size:11px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Report</div>
-      <pre style="background:#0f0f18;border:1px solid #1e1e2e;border-radius:8px;padding:20px;font-family:monospace;font-size:12px;line-height:1.7;color:#6a7490;white-space:pre-wrap;word-break:break-all;max-height:600px;overflow-y:auto">${escapeHtml(result.report)}</pre>`;
+    reportHtml = `<div style="font-family:monospace;font-size:11px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Report</div>
+      <pre style="background:#18181B;border:1px solid #27272A;border-radius:8px;padding:20px;font-family:monospace;font-size:12px;line-height:1.7;color:#A1A1AA;white-space:pre-wrap;word-break:break-all;max-height:600px;overflow-y:auto">${escapeHtml(result.report)}</pre>`;
   }
 
   return `<!DOCTYPE html><html lang="en"><head>
@@ -3820,22 +3820,22 @@ ${!isError ? `<!-- Event snippet for Nákup conversion page -->
 </script>` : ''}
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#d0d8e8;padding:0;min-height:100vh;-webkit-font-smoothing:antialiased}
-a{color:#4da6ff;text-decoration:none}a:hover{text-decoration:underline}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0A0A0B;color:#FAFAFA;padding:0;min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:#06B6D4;text-decoration:none}a:hover{text-decoration:underline}
 .container{max-width:920px;margin:0 auto;padding:0 24px}
-.top-bar{border-bottom:1px solid #1e1e2e;padding:18px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.top-bar{border-bottom:1px solid #27272A;padding:18px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
 .logo{font-family:monospace;font-size:18px;font-weight:600;color:#fff}
-.logo span{color:#4da6ff}
-.scan-badge{font-family:monospace;font-size:11px;padding:3px 10px;border:1px solid ${isError ? '#5a1a1a' : '#1e3a2f'};color:${isError ? '#f85149' : '#3fb950'};border-radius:4px}
+.logo span{color:#06B6D4}
+.scan-badge{font-family:monospace;font-size:11px;padding:3px 10px;border:1px solid ${isError ? '#5a1a1a' : '#1e3a2f'};color:${isError ? '#EF4444' : '#10B981'};border-radius:4px}
 .page-title{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px}
-.page-meta{font-size:13px;color:#6a7490;font-family:monospace;margin-bottom:8px;word-break:break-all}
+.page-meta{font-size:13px;color:#A1A1AA;font-family:monospace;margin-bottom:8px;word-break:break-all}
 .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
-.btn{display:inline-block;padding:10px 20px;background:#4da6ff;color:#000;border-radius:6px;font-weight:600;font-size:13px;font-family:monospace;text-decoration:none}
-.btn-ghost{background:transparent;border:1px solid #1e1e2e;color:#6a7490}
-.btn-ghost:hover{border-color:#4da6ff;color:#4da6ff;text-decoration:none}
-.upsell{margin:20px 0;padding:16px 20px;background:#12121e;border:1px solid #2a2a3e;border-radius:8px;font-size:13px;color:#6a7490}
-.upsell strong{color:#4da6ff}
-footer{border-top:1px solid #1e1e2e;margin-top:60px;padding:24px 0;text-align:center;font-family:monospace;font-size:12px;color:#3a3f54}
+.btn{display:inline-block;padding:10px 20px;background:#06B6D4;color:#000;border-radius:6px;font-weight:600;font-size:13px;font-family:monospace;text-decoration:none}
+.btn-ghost{background:transparent;border:1px solid #27272A;color:#A1A1AA}
+.btn-ghost:hover{border-color:#06B6D4;color:#06B6D4;text-decoration:none}
+.upsell{margin:20px 0;padding:16px 20px;background:#18181B;border:1px solid #27272A;border-radius:8px;font-size:13px;color:#A1A1AA}
+.upsell strong{color:#06B6D4}
+footer{border-top:1px solid #27272A;margin-top:60px;padding:24px 0;text-align:center;font-family:monospace;font-size:12px;color:#71717A}
 </style>
 </head><body>
 <div class="container">
@@ -3854,15 +3854,15 @@ ${!isError ? (result.type === 'deep'
   : `<div class="upsell"><strong>Quick Scan</strong> — This was a basic on-chain check. Upgrade to <strong>Deep Audit ($5.00)</strong> for full AI vulnerability analysis, insider cluster detection, and wash trading signals. Or subscribe to <a href="/#plans">Pro Trader ($15/mo)</a> for unlimited access.</div>`)
 : ''}
 
-${result.reportFiles ? `<div style="margin:20px 0;padding:20px 24px;background:#0f0f18;border:1px solid #1e2e40;border-radius:10px">
-  <div style="font-family:monospace;font-size:10px;color:#3a3f54;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Download Premium Report</div>
+${result.reportFiles ? `<div style="margin:20px 0;padding:20px 24px;background:#18181B;border:1px solid rgba(6,182,212,0.08);border-radius:10px">
+  <div style="font-family:monospace;font-size:10px;color:#71717A;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Download Premium Report</div>
   <div style="display:flex;gap:10px;flex-wrap:wrap">
     <a href="/report/download?file=${encodeURIComponent(result.reportFiles.pngPath)}&name=integrity-molt-report.png"
-       class="btn" style="background:#1e3a2f;color:#3fb950;border:1px solid #2a5040;font-size:12px;padding:8px 16px">
+       class="btn" style="background:#1e3a2f;color:#10B981;border:1px solid #2a5040;font-size:12px;padding:8px 16px">
       ↓ report.png
     </a>
     <a href="/report/download?file=${encodeURIComponent(result.reportFiles.pdfPath)}&name=integrity-molt-report.pdf"
-       class="btn" style="background:#1a2a3f;color:#4da6ff;border:1px solid #253a55;font-size:12px;padding:8px 16px">
+       class="btn" style="background:rgba(6,182,212,0.08);color:#06B6D4;border:1px solid rgba(6,182,212,0.15);font-size:12px;padding:8px 16px">
       ↓ report.pdf
     </a>
   </div>
@@ -4035,9 +4035,9 @@ app.get('/subscribe/success', async (req, res) => {
   });
 </script>
 <style>
-body{font-family:system-ui,sans-serif;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
-.box{text-align:center;padding:48px;border:1px solid #30363d;border-radius:12px;max-width:480px}
-h2{color:#4da6ff;margin-bottom:16px}p{color:#8b949e;margin:8px 0}a{color:#4da6ff;text-decoration:none}
+body{font-family:system-ui,sans-serif;background:#0A0A0B;color:#FAFAFA;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+.box{text-align:center;padding:48px;border:1px solid #27272A;border-radius:12px;max-width:480px}
+h2{color:#06B6D4;margin-bottom:16px}p{color:#A1A1AA;margin:8px 0}a{color:#06B6D4;text-decoration:none}
 </style></head><body><div class="box">
 <h2>✓ Subscription active</h2>
 <p>Welcome, <strong>${escapeHtml(session.customer_email || 'subscriber')}</strong></p>
@@ -4053,10 +4053,10 @@ h2{color:#4da6ff;margin-bottom:16px}p{color:#8b949e;margin:8px 0}a{color:#4da6ff
 app.get('/unsubscribe', async (req, res) => {
   const email = (req.query.email || '').trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).send(`<html><body style="font-family:system-ui;background:#0a0a0f;color:#d0d8e8;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
-      <div style="text-align:center;padding:40px;border:1px solid #1e1e2e;border-radius:12px;max-width:400px">
-        <h2 style="color:#f85149">Neplatný email</h2>
-        <p style="color:#6a7490"><a href="/" style="color:#4da6ff">← Zpět</a></p>
+    return res.status(400).send(`<html><body style="font-family:system-ui;background:#0A0A0B;color:#FAFAFA;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
+      <div style="text-align:center;padding:40px;border:1px solid #27272A;border-radius:12px;max-width:400px">
+        <h2 style="color:#EF4444">Neplatný email</h2>
+        <p style="color:#A1A1AA"><a href="/" style="color:#06B6D4">← Zpět</a></p>
       </div></body></html>`);
   }
   try {
@@ -4066,13 +4066,13 @@ app.get('/unsubscribe', async (req, res) => {
     await db.logEvent({ name: 'digest_unsubscribed', resource: email, ip: req.ip }).catch(() => {});
     console.log(`[mailer] unsubscribe: ${email}`);
     res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Odhlášení — integrity.molt</title></head>
-<body style="font-family:system-ui,sans-serif;background:#0a0a0f;color:#d0d8e8;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
-<div style="text-align:center;padding:40px;border:1px solid #1e1e2e;border-radius:12px;max-width:420px">
+<body style="font-family:system-ui,sans-serif;background:#0A0A0B;color:#FAFAFA;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
+<div style="text-align:center;padding:40px;border:1px solid #27272A;border-radius:12px;max-width:420px">
   <div style="font-size:32px;margin-bottom:12px">✓</div>
   <h2 style="color:#fff;margin:0 0 10px">Odhlášení úspěšné</h2>
-  <p style="color:#6a7490;font-size:14px">Email <strong style="color:#d0d8e8">${escapeHtml(email)}</strong> nebude dostávat weekly digest.</p>
-  <p style="color:#6a7490;font-size:13px;margin-top:8px">Vaše předplatné zůstává aktivní — odhlásíte se jen z newsletteru.</p>
-  <p style="margin-top:24px"><a href="/" style="color:#4da6ff;text-decoration:none">← Zpět na integrity.molt</a></p>
+  <p style="color:#A1A1AA;font-size:14px">Email <strong style="color:#FAFAFA">${escapeHtml(email)}</strong> nebude dostávat weekly digest.</p>
+  <p style="color:#A1A1AA;font-size:13px;margin-top:8px">Vaše předplatné zůstává aktivní — odhlásíte se jen z newsletteru.</p>
+  <p style="margin-top:24px"><a href="/" style="color:#06B6D4;text-decoration:none">← Zpět na integrity.molt</a></p>
 </div></body></html>`);
   } catch (e) {
     res.status(500).send('Chyba — zkuste to prosím znovu.');
