@@ -4,11 +4,18 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-09 (validate-v4.js — správný INTEGER ms formát pro 24h dotazy)
+**Last updated:** 2026-05-11 (EVM free scan — L1/L2 cache opravy, EVM type routing fix)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-11: EVM free scan — 3 bugy opraveny po QA auditu — [guardian/backend]
+- **Změny:** `server.js` (1) cached.status discriminátor místo cached.data — EVM L1 nemá `.data` pole; (2) přidán `db.logScanToHistory` do EVM větve `/scan/free` — chyběl L2 DB cache; (3) guard 400 pro `0x...` s type=quick nebo type!=evm-token; `public/scan.html` const→let pro type/isEvm, auto-reassign při EVM detekci místo selectType() loop.
+- **Důvod:** EVM z L1 cache vracelo N/A meta (wrong wrapper). Po restartu žádný L2 hit (nikdy se neukládalo). 0x adresa s Quick Scan type → Solana sanitizace → Unknown RISK.
+- **Dopad:** L1, L2, a fresh cesty pro EVM všechny ověřeny end-to-end. result_json v DB = celý result objekt (se status), ne surový evmResult.
+- **Test:** test-gate.sh 11/11 PASS. L2 CACHE HIT ověřen v journalctl po restartu.
+- **Gotcha:** EVM L1 result nemá `.data` pole (flat struktura). Solana L1 má `{ status, data: scanData }`. L2 DB raw scanData (pro Solana) nemá `.status`. Discriminátor: `cached.status ? cached : wrap`.
 
 ### 2026-05-11: Visual redesign — Electric Cyan paleta, sdílený style.css — [conductor]
 - **Změny:** `public/style.css` (nový), `public/*.html` (Tier 1–2: index, scan, scan-view, pricing, docs, verify, login, dashboard, watchlist, scan-contract, scan-evm), `public/blog/*.html`, `public/demo/*.html`, `public/og-template.html` — odstraněny :root bloky, přidány Google Fonts + style.css; `server.js` (řádky 3601–4080: renderPaidScanPage + subscribe/success + unsubscribe inline HTML — hardcoded barvy → Electric Cyan)
