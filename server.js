@@ -4382,6 +4382,13 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
     }
     safeAddress = address.toLowerCase();
   } else {
+    // Detect 0x-prefixed EVM address sent to non-EVM scan type
+    if (/^0x[0-9a-fA-F]{40}$/i.test(address)) {
+      return res.status(400).json({
+        error: 'EVM address detected',
+        hint: `Use type="evm-token" with chain=base|ethereum|arbitrum for EVM addresses. Quick/Deep/Token/Wallet scans are Solana-only.`
+      });
+    }
     // Detect EVM address passed without 0x prefix (40 hex chars)
     if (/^[0-9a-fA-F]{40}$/.test(address)) {
       return res.status(400).json({
