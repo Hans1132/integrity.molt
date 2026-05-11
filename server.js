@@ -4468,8 +4468,12 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
   const cached = await getCachedScan(safeAddress, type, isEvm ? chain : 'solana');
   if (cached) {
     console.log(`[scan/free] CACHE HIT address=${safeAddress} type=${type} — skipping pipeline`);
+    // L2 (DB) cache vrací surová data bez `data` wrapperu — normalizuj pro UI
+    const cachedPayload = cached.data ? cached : {
+      status: 'complete', type, address: safeAddress, data: cached
+    };
     return res.json({
-      ...cached,
+      ...cachedPayload,
       scans_used:      used,
       scans_remaining: Math.max(0, FREE_SCAN_LIMIT - used),
       scans_limit:     FREE_SCAN_LIMIT,
