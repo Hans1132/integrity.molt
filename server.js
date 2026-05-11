@@ -1090,6 +1090,10 @@ app.get('/.well-known/jwks.json', (req, res) => {
   });
 });
 
+// Convenience redirects for discovery URLs (also referenced in skill.md / docs)
+app.get('/jwks.json', (req, res) => res.redirect(301, '/.well-known/jwks.json'));
+app.get('/x402.json', (req, res) => res.redirect(301, '/.well-known/x402.json'));
+
 // A2A JSON-RPC 2.0 endpoint — tasks/send, tasks/get, tasks/cancel
 const _a2aRL = new Map();
 const _a2aRLMiddleware = (req, res, next) => {
@@ -4334,8 +4338,20 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
     logAbuseEvent(req.ip, 'captcha_failed', { reason: 'invalid_answer' });
     return res.status(403).json({ error: 'CAPTCHA verification failed', captcha_required: true });
   }
-  if (!['quick', 'deep', 'token', 'wallet', 'pool', 'evm-token', 'contract'].includes(type)) {
+  if (!['quick', 'deep', 'token', 'wallet', 'pool', 'evm-token', 'contract', 'agent-token'].includes(type)) {
     return res.status(400).json({ error: 'Invalid scan type' });
+  }
+
+  // Agent token scan je vždy x402 only
+  if (type === 'agent-token') {
+    return res.status(402).json({
+      error:           'payment_required',
+      message:         'Agent Token Scan ($0.15 USDC) requires an x402-compatible client. Browser users: use /docs#agents for API access.',
+      payment_options: {
+        'agent-token': { endpoint: '/api/v1/scan/agent-token', price_usdc: PRICING['agent-token'] / 1_000_000, micro_usdc: PRICING['agent-token'], accepts: agentTokenPaymentAccepts }
+      },
+      docs_url: 'https://intmolt.org/docs#agents'
+    });
   }
 
   // Contract audit je vždy placený

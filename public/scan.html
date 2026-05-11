@@ -1130,12 +1130,13 @@
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────────
 const SCAN_TYPES = {
-  quick:       { desc: 'Multi-agent swarm scan, results in ~10s',                   priceUSD: 0.50, free: true,  addrType: 'solana' },
-  token:       { desc: 'Token rug risk analysis, ~15s',                             priceUSD: 0.75, free: true,  addrType: 'solana' },
-  wallet:      { desc: 'Wallet history & risk profile, ~15s',                       priceUSD: 0.75, free: true,  addrType: 'solana' },
-  pool:        { desc: 'DEX pool safety check, ~15s',                               priceUSD: 0.75, free: true,  addrType: 'solana' },
-  'evm-token': { desc: 'Honeypot + bytecode analysis on Base/ETH/Arbitrum, ~10s',   priceUSD: 0.75, free: true,  addrType: 'evm'    },
-  deep:        { desc: 'Full swarm audit, multi-agent AI analysis, ~30s',           priceUSD: 5.00, free: false, addrType: 'solana' }
+  quick:         { desc: 'Multi-agent swarm scan, results in ~10s',                   priceUSD: 0.50, free: true,  addrType: 'solana' },
+  token:         { desc: 'Token rug risk analysis, ~15s',                             priceUSD: 0.75, free: true,  addrType: 'solana' },
+  wallet:        { desc: 'Wallet history & risk profile, ~15s',                       priceUSD: 0.75, free: true,  addrType: 'solana' },
+  pool:          { desc: 'DEX pool safety check, ~15s',                               priceUSD: 0.75, free: true,  addrType: 'solana' },
+  'evm-token':   { desc: 'Honeypot + bytecode analysis on Base/ETH/Arbitrum, ~10s',   priceUSD: 0.75, free: true,  addrType: 'evm'    },
+  deep:          { desc: 'Full swarm audit, multi-agent AI analysis, ~30s',           priceUSD: 5.00, free: false, addrType: 'solana' },
+  'agent-token': { desc: 'Minimal signed output for AI agents via x402, ~5s',         priceUSD: 0.15, free: false, addrType: 'solana' }
 };
 
 // Steps: [label, cumulative seconds from start]
@@ -1146,7 +1147,8 @@ const SPINNER_STEPS = {
   wallet:      [['Fetching transaction history…', 2], ['Analyzing DeFi exposure…', 5], ['Running AI risk profile…', 10], ['Signing report…', 14]],
   pool:        [['Fetching pool data…', 2], ['Analyzing LP distribution…', 5], ['Running AI analysis…', 10], ['Signing report…', 14]],
   'evm-token': [['Fetching bytecode…', 1], ['Calling token metadata…', 3], ['Fetching source code from explorer…', 6], ['Running bytecode + pattern analysis…', 8], ['Simulating transfer (honeypot)…', 10]],
-  deep:        [['Initializing swarm agents…', 2], ['Scanner agent — on-chain data…', 8], ['Analyst + reputation agents…', 18], ['Compiling meta-scorecard…', 25], ['Signing report…', 30]]
+  deep:          [['Initializing swarm agents…', 2], ['Scanner agent — on-chain data…', 8], ['Analyst + reputation agents…', 18], ['Compiling meta-scorecard…', 25], ['Signing report…', 30]],
+  'agent-token': [['Verifying payment…', 1], ['Scanning token…', 3], ['Signing report…', 5]]
 };
 
 let quotaData = { scans_used: 0, scans_limit: 3, scans_remaining: 3 };
@@ -1405,6 +1407,12 @@ async function startScan() {
   // Deep scan je vždy placený — rovnou na paywall
   if (type === 'deep') {
     showPaywall(null, 'deep');
+    return;
+  }
+
+  // Agent token scan je x402 only — ukáž info kartu pro browser uživatele
+  if (type === 'agent-token') {
+    showAgentTokenInfo();
     return;
   }
 
@@ -2307,6 +2315,39 @@ function triggerDeepAudit() {
   showPaywall(null, 'deep');
   // Pre-fill adresu v paywallové sekci
   window._lastScanAddress = address;
+}
+
+// ── Agent Token Info (x402 only scan) ─────────────────────────────────────────
+function showAgentTokenInfo() {
+  const section = document.getElementById('resultSection');
+  section.style.display = 'block';
+  document.getElementById('spinnerWrap').style.display = 'none';
+  document.getElementById('resultContent').innerHTML = '';
+  document.getElementById('paywallContent').innerHTML = `
+    <div class="paywall-card">
+      <div class="paywall-header">
+        <div class="paywall-icon">🤖</div>
+        <div>
+          <div class="paywall-title">Agent Scan — x402 micropayments</div>
+          <div class="paywall-sub">$0.15 USDC · Designed for AI agents and programmatic clients</div>
+        </div>
+      </div>
+      <div class="paywall-body">
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">
+          This scan type is optimized for AI agents using the <strong style="color:var(--text)">x402 payment protocol</strong>.
+          It returns a minimal, Ed25519-signed JSON response suitable for automated pipelines.
+        </p>
+        <pre style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:14px;font-family:var(--mono);font-size:11px;color:var(--text-dim);overflow-x:auto;margin-bottom:16px">curl -s https://intmolt.org/api/v1/scan/agent-token \\
+  -H "x402-payment: &lt;signed_payment&gt;" \\
+  -H "Content-Type: application/json" \\
+  -d '{"address":"TOKEN_MINT_ADDRESS"}'</pre>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a href="/docs#agents" class="paywall-btn-primary" style="text-decoration:none">View API docs →</a>
+          <button class="paywall-btn-secondary" onclick="selectType('quick');startScan()">Run Quick Scan instead (free)</button>
+        </div>
+      </div>
+    </div>`;
+  section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ── Paywall ────────────────────────────────────────────────────────────────────
