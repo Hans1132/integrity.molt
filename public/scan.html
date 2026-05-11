@@ -1359,10 +1359,10 @@ function updateTypeUI() {
 // ── Scan ───────────────────────────────────────────────────────────────────────
 async function startScan() {
   const address = document.getElementById('addressInput').value.trim();
-  const type    = getSelectedType();
+  let   type    = getSelectedType();
   const chain   = document.getElementById('chainSelect').value;
   document.getElementById('cachedBadge').style.display = 'none';
-  const isEvm   = SCAN_TYPES[type]?.addrType === 'evm';
+  let   isEvm   = SCAN_TYPES[type]?.addrType === 'evm';
   window._lastScanAddress  = address;
   window._lastScanType     = type;
   window._lastScanChain    = chain;
@@ -1385,10 +1385,9 @@ async function startScan() {
   }
   // Auto-switch na evm-token pokud uživatel zadal EVM adresu s Solana typem
   if (!isEvm && /^0x[0-9a-fA-F]{40}$/i.test(address)) {
-    selectType('evm-token'); updateTypeUI();
-    showAddrHint('🔷 EVM address detected — switched to EVM Token Scan', 'evm');
-    setTimeout(startScan, 50);
-    return;
+    type  = 'evm-token';
+    isEvm = true;
+    showAddrHint('🔷 EVM address detected — scanning as EVM Token', 'evm');
   }
 
   // Validace CAPTCHA
