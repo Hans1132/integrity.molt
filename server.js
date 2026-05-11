@@ -4521,6 +4521,14 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
         timestamp:       new Date().toISOString()
       };
       setCachedScan(safeAddress, type, chain, result);
+      const evmHistEmail = (req.isAuthenticated && req.isAuthenticated() && req.user?.email)
+                        || req.apiKey?.email || null;
+      db.logScanToHistory({
+        email: evmHistEmail || null, address: safeAddress, scan_type: 'evm-token',
+        risk_score: evmResult.score ?? null, risk_level: null,
+        summary: evmAdv?.text?.slice(0, 500) || evmResult.recommendation || null,
+        cached: false, result_json: result
+      }).catch(() => {});
       res.json({ ...result, scans_used: newUsed, scans_remaining: Math.max(0, FREE_SCAN_LIMIT - newUsed), scans_limit: FREE_SCAN_LIMIT });
     } catch (err) {
       res.status(500).json({ error: 'EVM scan failed', detail: err.message });
