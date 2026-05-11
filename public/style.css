@@ -1,0 +1,235 @@
+/*
+ * integrity.molt — shared design system
+ * Electric Cyan palette · Space Grotesk + JetBrains Mono
+ *
+ * Include in each HTML file:
+ *   <link rel="preconnect" href="https://fonts.googleapis.com">
+ *   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ *   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+ *   <link rel="stylesheet" href="/style.css">
+ *
+ * Then remove the file's own :root {} block — this one takes over.
+ */
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg-primary:    #0A0A0B;
+  --bg-secondary:  #18181B;
+  --bg-elevated:   #1E1E22;
+
+  /* Backwards-compat aliases (old pages use --bg, --bg-card, --bg-alt) */
+  --bg:            #0A0A0B;
+  --bg-card:       #18181B;
+  --bg-alt:        #1E1E22;
+
+  /* Accent — Electric Cyan */
+  --accent:        #06B6D4;
+  --accent-hover:  #0891B2;
+  --accent-dim:    #0891B2;
+  --accent-glow:   rgba(6, 182, 212, 0.15);
+  --blue:          #06B6D4;  /* old --blue alias */
+
+  /* Text */
+  --text-primary:  #FAFAFA;
+  --text-muted:    #A1A1AA;
+  --text-dim-new:  #71717A;
+
+  /* Backwards-compat aliases */
+  --text:          #FAFAFA;
+  --text-dim:      #A1A1AA;
+  --text-faint:    #71717A;
+
+  /* Borders */
+  --border:        #27272A;
+  --border-hover:  rgba(6, 182, 212, 0.3);
+
+  /* Status */
+  --success:       #10B981;
+  --warning:       #F59E0B;
+  --danger:        #EF4444;
+  --danger-soft:   rgba(239, 68, 68, 0.15);
+  --success-soft:  rgba(16, 185, 129, 0.15);
+  --warning-soft:  rgba(245, 158, 11, 0.15);
+
+  /* Backwards-compat status aliases */
+  --green:         #10B981;
+  --yellow:        #F59E0B;
+  --red:           #EF4444;
+  --warn:          #F59E0B;
+
+  /* Typography */
+  --font-sans:     'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:     'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  /* Backwards-compat font aliases */
+  --sans:          'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono:          'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+/* ── Base reset ────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--border-hover); }
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 20px var(--accent-glow);
+  text-decoration: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.btn-secondary:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  text-decoration: none;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.btn-ghost:hover {
+  border-color: var(--border-hover);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ── Badge ─────────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* ── Risk labels ───────────────────────────────────────────────────────────── */
+.risk-high, .risk-critical {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.risk-medium {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+.risk-low, .risk-safe {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+/* ── Code / monospace ──────────────────────────────────────────────────────── */
+code, pre, .mono {
+  font-family: var(--mono);
+}
+
+pre {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.logo-text {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.logo-text span, .logo-text .dot { color: var(--accent); }
+
+/* ── Glow utilities ────────────────────────────────────────────────────────── */
+.glow-accent { box-shadow: 0 0 24px var(--accent-glow); }
+.glow-accent-sm { box-shadow: 0 0 12px var(--accent-glow); }
