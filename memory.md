@@ -4,11 +4,31 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-09 (IRIS scoring fixes — threshold, LP fallback, null-address filter)
+**Last updated:** 2026-05-09 (validate-v4.js — správný INTEGER ms formát pro 24h dotazy)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-11: Visual redesign — Electric Cyan paleta, sdílený style.css — [conductor]
+- **Změny:** `public/style.css` (nový), `public/*.html` (Tier 1–2: index, scan, scan-view, pricing, docs, verify, login, dashboard, watchlist, scan-contract, scan-evm), `public/blog/*.html`, `public/demo/*.html`, `public/og-template.html` — odstraněny :root bloky, přidány Google Fonts + style.css; `server.js` (řádky 3601–4080: renderPaidScanPage + subscribe/success + unsubscribe inline HTML — hardcoded barvy → Electric Cyan)
+- **Důvod:** Visual redesign před Frontier deadline 2026-05-11. Forest green/blue → Electric Cyan (#06B6D4), Space Grotesk + JetBrains Mono.
+- **Dopad:** Všechny user-facing stránky sdílejí CSS proměnné. Backwards-compat aliasy zachovány.
+- **Test:** test-gate.sh 11/11 PASS. Service restart OK.
+- **Fixy součástí:** agent-token přidán do /scan/free allowlistu; docs.html ceny opraveny (wallet/pool → 0.75); /jwks.json + /x402.json 301 redirecty.
+
+### 2026-05-09: validate-v4.js — 24h statistiky se správným INTEGER ms formátem
+- **Změny:** `scripts/validate-v4.js` — přidán blok 24h activity stats před hybrid signal coverage
+- **Důvod:** `spl_mints.created_at` a `pool_activity.updated_at` jsou INTEGER ms — dotaz `> datetime('now','-24 hours')` vrátí vždy 0. Správný formát: `(Math.floor(Date.now()/1000) - 86400) * 1000`
+- **Gotcha:** Dvě různé timestamp konvence v DB — TEXT `datetime('now')` (events, known_scams, scan_history) vs INTEGER ms `unixepoch()*1000` (spl_mints, pool_activity). Vždy zkontroluj schema před psaním WHERE filtru.
+- **Test:** `node scripts/validate-v4.js` — 250 nových mintů / 24h, 4370 pool updates ✓
+
+### 2026-05-09: Security fixes — 4 nálezy z code review — [guardian/conductor]
+- **Změny:** `src/middleware/free-quota.js` (getClientIp: odstraněny X-Forwarded-For a req.ip fallbacky — pouze CF-Connecting-IP); `server.js` (admin/abuse-stats: odstraněn req.query.token; /api/v1/admin/accuracy + /api/v1/admin/helius: přidán requireStatsToken; scan/contract output path: path.resolve + /root/ prefix check)
+- **Důvod:** X-Forwarded-For fallback umožňoval bypass IP quota spoofingem headeru. Token v query stringu padá do access logů a Cloudflare logů. Dva interní admin endpointy bez auth (mitigováno portem 127.0.0.1 — ale tech debt). Path z child process stdout bez validace.
+- **Dopad:** IP rate limiting nyní spolehlivě závisí jen na CF-Connecting-IP. Admin endpointy vyžadují STATS_TOKEN. Service restartován, gate 11/11 PASS.
+- **Gotcha:** requireStatsToken je function declaration (hoisted) — lze ji použít i na řádcích před její definicí v server.js.
+- **Test:** 11/11 gate PASS, `systemctl is-active` = active
 
 ### 2026-05-09: IRIS scoring fixes — threshold, LP fallback, null-address filter
 3 opravy schválené Hansem. Token 5pdyeWSC: IRIS 28/MEDIUM → 51/HIGH.
