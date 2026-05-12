@@ -39,7 +39,7 @@ function _recordDbFailure() {
   if (_dbFallbackCount === DB_FALLBACK_ALERT_THRESHOLD) {
     const adminChatId = process.env.ADMIN_CHAT_ID
       || (() => { try { return require('fs').readFileSync('/root/.secrets/admin_chat_id', 'utf8').trim(); } catch { return null; } })();
-    if (adminChatId) {
+    if (adminChatId && process.env.NODE_ENV !== 'test') {
       const alert = {
         severity:     'high',
         rule:         'db_fallback_watchlist',

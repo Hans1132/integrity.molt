@@ -10,6 +10,19 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-12: K5/S8 — DB fallback counter + Telegram alert v webhook-receiver.js — [qa]
+- **Změny:** `src/monitor/webhook-receiver.js` — přidán `_recordDbFailure()`, counter + window reset (1h), `sendAlert` high-severity při >= 3 failurách; volání v catch bloku `getWatchedAddresses()`; test-only exports. `tests/monitor/webhook-receiver-fallback.test.js` (nový).
+- **Důvod:** K5/S8 — tiché watchlist DB read failure bylo neviditelné, fallback na stale cache bez jakéhokoli signálu.
+- **Dopad:** Hans dostane Telegram alert (ADMIN_CHAT_ID) při >= 3 watchlist DB failurách za hodinu. NODE_ENV=test guard zabrání alertu v CI.
+- **Test:** 1/1 passed. Gate 11/11 PASS. Commit: d37562e + followup NODE_ENV guard.
+- **Gotcha:** `sendAlert` musí být gated `process.env.NODE_ENV !== 'test'` — jinak test odesílá reálný Telegram alert Hansovi.
+
+### 2026-05-12: K3 — LRU cap 1 000 na sentAlerts + rateWindows v notifications.js — [qa]
+- **Změny:** `src/monitor/notifications.js` — snížen cap z 10 000 na 1 000 pro `sentAlerts` (isDuplicate) a `rateWindows` (isRateLimited); `tests/monitor/notifications-lru.test.js` (nový).
+- **Důvod:** Chaos audit nález K3 — unbounded Maps pod alert storm → OOM → restart loop každých ~5 min.
+- **Dopad:** Memento per-adresa timestamp přijde o starší záznamy po ~1 000 unikátních adresách, ale produkční provoz toto nikdy nevyvolal. Rate limit window 1h zajišťuje TTL přirozené čistění.
+- **Test:** 2/2 passed. Gate 11/11 PASS. Commit: 973dd59.
+
 ### 2026-05-11: EVM free scan — 3 bugy opraveny po QA auditu — [guardian/backend]
 - **Změny:** `server.js` (1) cached.status discriminátor místo cached.data — EVM L1 nemá `.data` pole; (2) přidán `db.logScanToHistory` do EVM větve `/scan/free` — chyběl L2 DB cache; (3) guard 400 pro `0x...` s type=quick nebo type!=evm-token; `public/scan.html` const→let pro type/isEvm, auto-reassign při EVM detekci místo selectType() loop.
 - **Důvod:** EVM z L1 cache vracelo N/A meta (wrong wrapper). Po restartu žádný L2 hit (nikdy se neukládalo). 0x adresa s Quick Scan type → Solana sanitizace → Unknown RISK.
