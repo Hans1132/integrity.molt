@@ -50,10 +50,9 @@ function isDuplicate(alert) {
   const key = `${alert.tx_signature}:${alert.rule}`;
   if (sentAlerts.has(key)) return true;
   sentAlerts.set(key, true);
-  // Cleanup — udržuj map rozumně malý (max 10k záznamů)
-  if (sentAlerts.size > 10_000) {
-    const firstKey = sentAlerts.keys().next().value;
-    sentAlerts.delete(firstKey);
+  // K3: LRU cap 1 000 — ochrana před OOM pod alert storm
+  if (sentAlerts.size > 1_000) {
+    sentAlerts.delete(sentAlerts.keys().next().value);
   }
   return false;
 }
@@ -68,8 +67,8 @@ function isRateLimited(address) {
   if (hits.length >= RATE_LIMIT_MAX) return true;
   hits.push(now);
   rateWindows.set(address, hits);
-  // Safety cap pro případ alert storm — FIFO eviction, stejný pattern jako sentAlerts
-  if (rateWindows.size > 10_000) {
+  // K3: LRU cap 1 000 — ochrana před OOM pod alert storm
+  if (rateWindows.size > 1_000) {
     rateWindows.delete(rateWindows.keys().next().value);
   }
   return false;
