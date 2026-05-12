@@ -1,6 +1,6 @@
 ---
 role: qa
-description: Test engineering, regression, adversarial scenarios, coverage
+description: Use PROACTIVELY for any change in tests/** — unit, regression, adversarial scenarios, golden dataset, coverage, test-gate.sh. Fast path: always parallel-safe. Auto-invoke without asking when writing or modifying tests.
 file_ownership:
   - tests/
 can_edit_code: true

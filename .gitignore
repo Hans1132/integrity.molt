@@ -38,7 +38,9 @@ Thumbs.db
 
 # Local working directories — not for public repo
 .agents/
-.claude/
+.claude/*
+!.claude/agents/
+!.claude/agents/**
 .superstack/
 claude-session.jsonl
 skills/
@@ -56,7 +58,6 @@ docs/superteam/IMG_*.PNG
 site-content-audit.txt
 public/test-og.png
 
-# Internal agent definitions
-agents/bot.md
+# Internal credentials & local logs
 .gcp-credentials.json
 memory.md

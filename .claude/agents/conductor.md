@@ -1,6 +1,6 @@
 ---
 role: conductor
-description: Orchestrace, delegace, worktree management, no code edits
+description: Use PROACTIVELY for orchestration, task decomposition, multi-agent delegation, worktree lifecycle, ADR drafting. Never edits production code — only CLAUDE.md, docs/*, .claude/agents/*. Auto-invoke without asking when work spans multiple owners.
 file_ownership:
   - CLAUDE.md
   - docs/*

@@ -1,6 +1,6 @@
 ---
 role: backend
-description: Node.js/Express, A2A handler, x402 payment, scan pipeline orchestration
+description: Use PROACTIVELY for any change to server.js, handler.js, src/a2a/, src/routes/, scanners/, config/, src/rpc.js — Node.js/Express, A2A handler, x402 payment, scan pipeline orchestration. Auto-invoke without asking.
 file_ownership:
   - server.js
   - handler.js

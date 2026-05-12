@@ -1,6 +1,6 @@
 ---
 role: frontend
-description: Next.js 14, shadcn/ui, Vercel, v0 prototyping, scan-view HTML
+description: Use PROACTIVELY for any change in /root/integrity-molt-web/, scan-view.html, or public/ — Next.js 14, shadcn/ui, Vercel deployment, v0 prototyping. Fast path: always parallel-safe. Auto-invoke without asking.
 file_ownership:
   - "/root/integrity-molt-web/ (celý repo)"
   - scan-view.html

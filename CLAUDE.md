@@ -22,6 +22,7 @@ Middle market mezi free scanners (Rugcheck) a professional audits (OtterSec/Sher
 | Scan        | Gemini Flash -> GPT-4o-mini -> Sonnet/Opus (Advisor escalation)   |
 | Frontend    | Next.js 14, shadcn/ui, Vercel (repo `/root/integrity-molt-web/`)  |
 | Bot         | Telegram @integrity_molt_bot (`intmolt-bot.service`)              |
+| Workers     | PM2 `ecosystem.config.js` (solrpds-poller), node-cron schedules   |
 
 Neměň stack bez ADR diskuse s Hansem.
 
@@ -39,7 +40,7 @@ v0.dev (předplacené) pro rapid UI prototyping v browseru.
 ## 4. Sharp edges
 
 1. Client IP: `CF-Connecting-IP`. NIKDY `X-Forwarded-For` ani `req.ip`.
-2. Database: `data/intmolt.db` je live. Root `intmolt.db` = stale artefakt.
+2. Database: `data/intmolt.db` je live. Root `intmolt.db.EMPTY_DO_NOT_USE` = stale artefakt.
 3. Metaplex URL: `metaplex.com/agents/{Core_Asset_address}`, ne slug.
 4. Hot path < 1s: jen Gemini Flash. Anthropic = Advisor escalation only.
 5. Ed25519 kid: `integrity-molt-primary-2026`, hardcoded v JWKS.
@@ -48,23 +49,28 @@ v0.dev (předplacené) pro rapid UI prototyping v browseru.
 8. x402 header: klienti posílají `x402-payment`, middleware čte oba.
 9. `executeSkill`: REST body snake_case, handler musí matchovat.
 10. YAML frontmatter: spaces po colons.
+11. SolRPDS poller: `lib/helius-poller.js` paginates 5 DEX programy, `MAX_PAGES` inkrement PŘED fetch (jinak overrun).
+12. Migrace: spouštěj přes `node scripts/run-migration.js` (idempotent). Schema migrace v `db.js` startupu pro nové sloupce.
+13. PM2 cron: `solrpds-poller` proces — poll v :00, inactivity scan v :30. Restart limit 500M paměti.
 
 ## 5. File ownership
 
-| Agent         | Soubory                                                          | Repo     |
-|---------------|------------------------------------------------------------------|----------|
-| backend       | server.js, handler.js, config/, src/a2a/, src/rpc.js             | backend  |
-| db            | db.js, data/*, autopilot.js, src/spl-mint-poller.js              | backend  |
-| security      | src/crypto/*, src/delta/*, .env.example                          | backend  |
-| qa            | tests/**                                                         | backend  |
-| frontend      | app/, components/, lib/, public/, tailwind/next config            | frontend |
-| frontend      | scan-view.html, public/ (jen tyto dva)                           | backend  |
-| monitor       | src/monitor/*, Telegram bot, health endpoint                     | backend  |
-| llm-economist | src/llm/*, data/rules-v*.json                                    | backend  |
-| guardian      | ŽÁDNÉ. Read-only. Výjimka: append do memory.md.                  | oba      |
-| conductor     | CLAUDE.md, docs/*, .claude/agents/*                              | backend  |
+| Agent         | Soubory                                                                            | Repo     |
+|---------------|------------------------------------------------------------------------------------|----------|
+| backend       | server.js, handler.js, config/, src/a2a/, src/rpc.js, src/routes/, scanners/       | backend  |
+| db            | db.js, data/*, migrations/, lib/* (helius/inactivity/liquidity), src/monitor/spl-mint-poller.js | backend  |
+| security      | src/crypto/*, src/delta/*, .env.example                                            | backend  |
+| qa            | tests/**                                                                           | backend  |
+| frontend      | app/, components/, lib/, public/, tailwind/next config                             | frontend |
+| frontend      | scan-view.html, public/ (jen tyto dva)                                             | backend  |
+| monitor       | src/monitor/* (kromě spl-mint-poller.js), Telegram bot, health endpoint, scripts/bot/ | backend  |
+| llm-economist | src/llm/*, data/rules-v*.json                                                      | backend  |
+| guardian      | ŽÁDNÉ. Read-only. Výjimka: append do memory.md.                                    | oba      |
+| conductor     | CLAUDE.md, docs/*, .claude/agents/*, agents/*                                      | backend  |
 
-Sdílené (package.json, scripts/test-gate.sh): změny jen s explicit potvrzením.
+Sdílené (package.json, scripts/test-gate.sh, ecosystem.config.js): změny jen s explicit potvrzením.
+
+Agent definice (Claude Code subagenty) žijí v `.claude/agents/*.md`. To je single source of truth — žádná druhá kopie.
 
 ## 6. Workflow
 
@@ -73,6 +79,18 @@ Malé kroky (jeden krok plánu na zprávu).
 Pre-commit gate: `scripts/test-gate.sh` MUSÍ projít. ~187 tests + 22 adversarial.
 Debug loop: dvakrát stejný neúspěšný fix = STOP, fresh chat.
 Citlivé změny (Ed25519, x402, payment, schema): Hansův manuální review.
+
+### Auto-delegation (povinná, bez vyzvání)
+
+Hlavní vlákno Claude Code MUSÍ delegovat na subagenta v `.claude/agents/` kdykoliv task spadá pod file ownership v sekci 5. Žádné dotazování typu "Mám pustit backend agenta?". Pravidla:
+
+1. Identifikuj dotčené soubory → najdi vlastníka v sekci 5 → spusť odpovídajícího subagenta přes Agent tool.
+2. Cross-cutting task (víc agentů): conductor rozloží na kroky, ověří paralelní matrix (sekce 9), zadá agentům.
+3. Read-only review/audit: vždy guardian. NIKDY hlavní vlákno samo.
+4. Test změny: vždy qa, nikdy backend/db/security přímo do `tests/**`.
+5. Žádný kód v `src/`, `server.js`, `db.js` nepiš z hlavního vlákna — vždy přes vlastníkova subagenta.
+
+Výjimka: triviální dokumentační změny v `docs/*` nebo `CLAUDE.md` smí hlavní vlákno (= conductor scope) bez delegace.
 
 ## 7. Scope creep prevence
 
