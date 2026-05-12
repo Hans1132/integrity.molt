@@ -292,6 +292,9 @@ module.exports = {
   isDuplicate,
   isRateLimited,
   formatAlertMessage,
-  _sentAlerts:   sentAlerts,
-  _rateWindows:  rateWindows,
 };
+
+if (process.env.NODE_ENV === 'test') {
+  module.exports._rateWindows = rateWindows;
+  module.exports._sentAlerts = sentAlerts;
+}
