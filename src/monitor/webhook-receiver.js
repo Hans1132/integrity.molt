@@ -19,6 +19,40 @@ function registerRescanCallback(fn) { _rescanCallback = fn; }
 // Dedup cache — zabrání zpracování stejné signatury vícekrát (Helius retry, flood)
 // Max 50 000 položek, TTL 1h; při překročení se smaže celý Set (jednoduchý GC)
 const _dedupCache = new Set();
+
+// ── DB fallback counter — trackuje watchlist DB read failures ────────────────
+// Při >= 3 failurách za 1 hodinu odešle Telegram alert Hansovi.
+// "Fallback" = watchlist se četl z DB, DB selhal, vrací se stale cache / [].
+let _dbFallbackCount = 0;
+let _dbFallbackWindowStart = Date.now();
+const DB_FALLBACK_ALERT_THRESHOLD = 3;
+const DB_FALLBACK_WINDOW_MS = 3_600_000; // 1 hodina
+
+function _recordDbFailure() {
+  const now = Date.now();
+  if (now - _dbFallbackWindowStart > DB_FALLBACK_WINDOW_MS) {
+    _dbFallbackCount = 0;
+    _dbFallbackWindowStart = now;
+  }
+  _dbFallbackCount++;
+  console.warn(`[webhook] DB fallback #${_dbFallbackCount} — watchlist read failed, pouzivam stale cache`);
+  if (_dbFallbackCount === DB_FALLBACK_ALERT_THRESHOLD) {
+    const adminChatId = process.env.ADMIN_CHAT_ID
+      || (() => { try { return require('fs').readFileSync('/root/.secrets/admin_chat_id', 'utf8').trim(); } catch { return null; } })();
+    if (adminChatId) {
+      const alert = {
+        severity:     'high',
+        rule:         'db_fallback_watchlist',
+        message:      `DB fallback: ${_dbFallbackCount}x za posledni hodinu — watchlist se neda cist z DB, pouzivam stale cache`,
+        address:      'system',
+        tx_signature: null,
+        timestamp:    Date.now(),
+        id:           `db_fallback_${Date.now()}`,
+      };
+      sendAlert(alert, [{ type: 'telegram', chatId: adminChatId }]).catch(() => {});
+    }
+  }
+}
 let _dedupClearedAt = Date.now();
 function isDuplicate(sig) {
   if (!sig) return false;
@@ -208,6 +242,7 @@ async function getWatchedAddresses() {
     return _watchlistCache;
   } catch (e) {
     console.error('[monitor] Cannot load watchlist:', e.message);
+    _recordDbFailure();
     return _watchlistCache || []; // při chybě vrať stará data
   }
 }
@@ -319,3 +354,12 @@ async function handleHeliusWebhook(req, res) {
 }
 
 module.exports = { verifyWebhookAuth, handleHeliusWebhook, parseEnhancedTransaction, registerRescanCallback };
+
+if (process.env.NODE_ENV === 'test') {
+  module.exports._recordDbFailure    = _recordDbFailure;
+  module.exports._getDbFallbackCount = () => _dbFallbackCount;
+  module.exports._resetDbFailureCount = () => {
+    _dbFallbackCount = 0;
+    _dbFallbackWindowStart = Date.now();
+  };
+}
