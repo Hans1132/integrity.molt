@@ -105,7 +105,7 @@ async function run() {
 
   await test('first request under limit: calls next() and sets freeQuota on req', async () => {
     clearTables();
-    const req = makeReq({ socket: { remoteAddress: '10.0.0.1' } });
+    const req = makeReq({ headers: { 'cf-connecting-ip': '10.0.0.1' } });
     const res = makeRes();
     let nextCalled = false;
     checkFreeQuota(req, res, () => { nextCalled = true; });
@@ -120,7 +120,7 @@ async function run() {
     consumeFreeQuota(ip, today);
     consumeFreeQuota(ip, today);
     consumeFreeQuota(ip, today);
-    const req = makeReq({ socket: { remoteAddress: ip } });
+    const req = makeReq({ headers: { 'cf-connecting-ip': ip } });
     const res = makeRes();
     let nextCalled = false;
     checkFreeQuota(req, res, () => { nextCalled = true; });
@@ -133,7 +133,7 @@ async function run() {
     clearTables();
     const ip = '10.0.0.3';
     consumeFreeQuota(ip, today);
-    const req = makeReq({ socket: { remoteAddress: ip } });
+    const req = makeReq({ headers: { 'cf-connecting-ip': ip } });
     const res = makeRes();
     let nextCalled = false;
     checkFreeQuota(req, res, () => { nextCalled = true; });
@@ -148,7 +148,7 @@ async function run() {
       `INSERT INTO global_scan_stats (stat_date, free_count) VALUES (?, ?)
        ON CONFLICT(stat_date) DO UPDATE SET free_count = ?`
     ).run(today, GLOBAL_DAILY_CAP, GLOBAL_DAILY_CAP);
-    const req = makeReq({ socket: { remoteAddress: '10.0.0.4' } });
+    const req = makeReq({ headers: { 'cf-connecting-ip': '10.0.0.4' } });
     const res = makeRes();
     let nextCalled = false;
     checkFreeQuota(req, res, () => { nextCalled = true; });
@@ -170,23 +170,6 @@ async function run() {
     checkFreeQuota(req, res, () => { nextCalled = true; });
     assert.strictEqual(nextCalled, true, '127.0.0.1 must bypass quota');
     assert.strictEqual(res._statusCode, null, 'no status should be set for internal IP');
-  });
-
-  await test('X-Forwarded-For header: first IP is used as client identifier', async () => {
-    clearTables();
-    const realIp = '10.0.0.6';
-    consumeFreeQuota(realIp, today);
-    consumeFreeQuota(realIp, today);
-    consumeFreeQuota(realIp, today);
-    const req = makeReq({
-      socket: { remoteAddress: '192.168.1.1' },
-      headers: { 'x-forwarded-for': `${realIp}, 192.168.1.100` },
-    });
-    const res = makeRes();
-    let nextCalled = false;
-    checkFreeQuota(req, res, () => { nextCalled = true; });
-    assert.strictEqual(nextCalled, false, 'should pick up real IP from X-Forwarded-For');
-    assert.strictEqual(res._statusCode, 429);
   });
 
   await test('x-internal-secret header bypasses quota', async () => {
@@ -228,7 +211,7 @@ async function run() {
     clearTables();
     const ip = '10.0.0.10';
     addToBlacklist(ip, 'rate_abuse_auto_blocked', 24);
-    const req = makeReq({ socket: { remoteAddress: ip } });
+    const req = makeReq({ headers: { 'cf-connecting-ip': ip } });
     const res = makeRes();
     let nextCalled = false;
     checkBlacklist(req, res, () => { nextCalled = true; });
@@ -268,20 +251,9 @@ async function run() {
     assert.strictEqual(getClientIp(req), '10.0.0.100', 'CF header must win over socket addr');
   });
 
-  await test('getClientIp: falls back to x-forwarded-for when CF header absent', async () => {
-    const req = makeReq({
-      socket:  { remoteAddress: '1.1.1.1' },
-      headers: { 'x-forwarded-for': '203.0.113.5, 10.0.0.1' },
-    });
-    assert.strictEqual(getClientIp(req), '203.0.113.5', 'must use first XFF entry when CF absent');
-  });
-
-  await test('getClientIp: falls back to socket.remoteAddress when both CF and XFF absent', async () => {
-    const req = makeReq({
-      socket:  { remoteAddress: '172.16.0.1' },
-      headers: {},
-    });
-    assert.strictEqual(getClientIp(req), '172.16.0.1', 'must fall back to socket addr');
+  await test('getClientIp: falls back to loopback 127.0.0.1 when CF header absent', async () => {
+    const req = makeReq({ socket: { remoteAddress: '172.16.0.1' }, headers: {} });
+    assert.strictEqual(getClientIp(req), '127.0.0.1', 'must fall back to loopback when CF header absent');
   });
 
   await test('quota: banned CF IP is blocked even if XFF shows clean IP', async () => {

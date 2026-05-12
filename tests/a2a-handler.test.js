@@ -17,9 +17,11 @@ try {
 
 // Must be set BEFORE requiring handler.js so that:
 //   PORT = 3402 → INTERNAL_BASE = http://127.0.0.1:3402 (mini-server)
+//   NODE_ENV = 'test' → validateCallbackUrl skips SSRF deny-list (allows 127.0.0.1 callback receivers)
 process.env.SQLITE_DB_PATH = ':memory:';
 process.env.SOLANA_WALLET_ADDRESS = 'TestWalletAddressForTestSuiteOnly';
 process.env.PORT = '3402';  // handler reads this at require time
+process.env.NODE_ENV = 'test';
 
 // Initialize DB schema before requiring any module that calls db.prepare() at load time.
 // ottersec.js calls db.prepare('SELECT * FROM ottersec_verifications ...') at module-load,
@@ -328,6 +330,71 @@ async function main() {
       }));
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.body.error?.code, -32602);
+    });
+
+    await test('tasks/send webhook callback — receiver gets correct payload within 2s', async () => {
+      const CALLBACK_PORT = 13403;
+
+      // Promise that resolves when the callback POST arrives (or rejects on timeout).
+      let _cbResolve, _cbReject;
+      const callbackArrived = new Promise((resolve, reject) => {
+        _cbResolve = resolve;
+        _cbReject  = reject;
+      });
+      const timeoutHandle = setTimeout(() => _cbReject(new Error('Callback not received within 2000ms')), 2000);
+
+      // Start a local callback receiver server.
+      const cbServer = http.createServer((req, res) => {
+        let raw = '';
+        req.on('data', c => { raw += c; });
+        req.on('end', () => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+          let payload = {};
+          try { payload = JSON.parse(raw); } catch { /* ignore */ }
+          clearTimeout(timeoutHandle);
+          _cbResolve(payload);
+        });
+      });
+
+      await new Promise((resolve, reject) => {
+        cbServer.on('error', reject);
+        cbServer.listen(CALLBACK_PORT, '127.0.0.1', resolve);
+      });
+
+      try {
+        // Send task with callbackUrl pointing to local receiver.
+        const sendRes = await httpPost(TEST_PORT, '/a2a', rpc('tasks/send', {
+          message:  { role: 'user', parts: [{ type: 'text', text: VALID_ADDRESS }] },
+          metadata: { skill: 'quick_scan', callbackUrl: `http://127.0.0.1:${CALLBACK_PORT}/cb` },
+        }));
+        assert.strictEqual(sendRes.statusCode, 200, `tasks/send HTTP status should be 200`);
+        assert.ok(sendRes.body.result, 'Expected result field in tasks/send response');
+        const sentTaskId = sendRes.body.result.id;
+        assert.ok(sentTaskId, 'Task id missing from tasks/send response');
+
+        // Wait for callback payload (max 2s).
+        const cbPayload = await callbackArrived;
+
+        // Validate payload fields.
+        assert.ok(cbPayload.taskId, `Callback payload missing taskId. Got: ${JSON.stringify(cbPayload)}`);
+        assert.strictEqual(
+          cbPayload.taskId,
+          sentTaskId,
+          `Callback taskId mismatch: expected ${sentTaskId}, got ${cbPayload.taskId}`
+        );
+        assert.ok(
+          cbPayload.status?.state === 'completed' || cbPayload.status?.state === 'callback_sent',
+          `Expected status.state completed or callback_sent, got: ${cbPayload.status?.state}`
+        );
+        assert.ok(
+          Array.isArray(cbPayload.artifacts),
+          `Expected artifacts to be an array, got: ${typeof cbPayload.artifacts}`
+        );
+      } finally {
+        clearTimeout(timeoutHandle);
+        await new Promise(resolve => cbServer.close(resolve));
+      }
     });
 
     // ── tasks/get ─────────────────────────────────────────────────────────────
