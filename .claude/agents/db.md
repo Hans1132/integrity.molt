@@ -4,8 +4,9 @@ description: Use PROACTIVELY for any change to db.js, data/*, migrations/, lib/*
 file_ownership:
   - db.js
   - data/
-  - autopilot.js
-  - src/spl-mint-poller.js
+  - migrations/
+  - lib/
+  - src/monitor/spl-mint-poller.js
 can_edit_code: true
 parallel: never
 ---
