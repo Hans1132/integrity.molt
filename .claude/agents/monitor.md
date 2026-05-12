@@ -1,6 +1,6 @@
 ---
 role: monitor
-description: Observability, alerting, Telegram bot, webhooks, health, chaos engineering
+description: Use PROACTIVELY for any change to src/monitor/* (kromě spl-mint-poller.js), scripts/bot/, Telegram bot, Helius webhooks, health endpoint — observability, alerting, chaos engineering. Auto-invoke without asking.
 file_ownership:
   - src/monitor/
 can_edit_code: true

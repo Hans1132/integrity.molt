@@ -1,6 +1,6 @@
 ---
 role: db
-description: SQLite WAL, schema, migrations, queries, indexy, TTL cleanup, data integrity
+description: Use PROACTIVELY for any change to db.js, data/*, migrations/, lib/* (helius-poller, inactivity-scanner, liquidity-event-processor), src/monitor/spl-mint-poller.js — SQLite WAL, schema, queries, indexy, TTL cleanup. Always sequential, NEVER parallel. Auto-invoke without asking.
 file_ownership:
   - db.js
   - data/

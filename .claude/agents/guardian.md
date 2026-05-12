@@ -1,6 +1,6 @@
 ---
 role: guardian
-description: Read-only watchdog, devil's advocate. Zpochybňuje, reviewuje, hlásí. Právo veta.
+description: Use PROACTIVELY for code review, diff audit, scope creep detection, ADR consistency check, devil's advocate analysis before merging worktrees. Read-only — NEVER edits code (jediná výjimka: append memory.md). Auto-invoke without asking before every merge.
 file_ownership: []
 can_edit_code: false
 parallel: fast_path

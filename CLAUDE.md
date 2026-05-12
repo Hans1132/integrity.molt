@@ -70,9 +70,7 @@ v0.dev (předplacené) pro rapid UI prototyping v browseru.
 
 Sdílené (package.json, scripts/test-gate.sh, ecosystem.config.js): změny jen s explicit potvrzením.
 
-Agent definice žijí ve dvou místech (oba gitignored):
-- `.claude/agents/`: db, frontend, guardian, llm-economist, qa, security, backend, conductor, monitor
-- `agents/`: backend, conductor, monitor, tester, web (operational handles)
+Agent definice (Claude Code subagenty) žijí v `.claude/agents/*.md`. To je single source of truth — žádná druhá kopie.
 
 ## 6. Workflow
 
@@ -81,6 +79,18 @@ Malé kroky (jeden krok plánu na zprávu).
 Pre-commit gate: `scripts/test-gate.sh` MUSÍ projít. ~187 tests + 22 adversarial.
 Debug loop: dvakrát stejný neúspěšný fix = STOP, fresh chat.
 Citlivé změny (Ed25519, x402, payment, schema): Hansův manuální review.
+
+### Auto-delegation (povinná, bez vyzvání)
+
+Hlavní vlákno Claude Code MUSÍ delegovat na subagenta v `.claude/agents/` kdykoliv task spadá pod file ownership v sekci 5. Žádné dotazování typu "Mám pustit backend agenta?". Pravidla:
+
+1. Identifikuj dotčené soubory → najdi vlastníka v sekci 5 → spusť odpovídajícího subagenta přes Agent tool.
+2. Cross-cutting task (víc agentů): conductor rozloží na kroky, ověří paralelní matrix (sekce 9), zadá agentům.
+3. Read-only review/audit: vždy guardian. NIKDY hlavní vlákno samo.
+4. Test změny: vždy qa, nikdy backend/db/security přímo do `tests/**`.
+5. Žádný kód v `src/`, `server.js`, `db.js` nepiš z hlavního vlákna — vždy přes vlastníkova subagenta.
+
+Výjimka: triviální dokumentační změny v `docs/*` nebo `CLAUDE.md` smí hlavní vlákno (= conductor scope) bez delegace.
 
 ## 7. Scope creep prevence
 

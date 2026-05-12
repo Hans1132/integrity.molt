@@ -1,6 +1,6 @@
 ---
 role: security
-description: Ed25519, JWKS, auth middleware, injection prevence, secrets, SSRF
+description: Use PROACTIVELY for any change to src/crypto/*, src/delta/*, .env.example, or auth/payment-signing paths — Ed25519, JWKS, canonicalJSON, injection prevention, secrets handling, SSRF, fail-closed validation. Auto-invoke without asking. NEVER parallel with backend (ADR-011).
 file_ownership:
   - src/crypto/
   - src/delta/

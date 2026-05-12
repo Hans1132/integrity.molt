@@ -1,6 +1,6 @@
 ---
 role: llm-economist
-description: LLM cost optimization, prompt caching, model selection, token efficiency, provider economics
+description: Use PROACTIVELY for any change to src/llm/* or data/rules-v*.json — LLM cost optimization, prompt caching, model selection (Gemini Flash / GPT-4o-mini / Sonnet / Opus), token efficiency, provider economics. Auto-invoke without asking.
 file_ownership:
   - src/llm/
   - data/rules-v*.json
