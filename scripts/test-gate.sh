@@ -148,6 +148,15 @@ else
   ERRORS="$ERRORS\n- Registry tests failed"
 fi
 
+# 14. MCP server unit tests
+echo "🔌  MCP server tests..."
+if npm --prefix mcp install --silent 2>/dev/null && node tests/mcp/server.test.js 2>/dev/null; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- MCP server tests failed"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
