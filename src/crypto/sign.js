@@ -2,54 +2,89 @@
 /**
  * src/crypto/sign.js — Async Ed25519 signing utility
  *
- * Shared by server.js and src/delta/signing.js.
  * Wraps the existing Python/PyNaCl sign-report.py pipeline asynchronously.
  * No execSync — does not block the event loop.
  *
  * Usage:
- *   const { asyncSign } = require('./src/crypto/sign');
- *   const envelope = await asyncSign(reportTextOrJSON);
- *   // envelope: { report, signature, verify_key, key_id, signed_at, signer, algorithm }
+ *   const { asyncSign, SignPipelineError } = require('./src/crypto/sign');
+ *   try { envelope = await asyncSign(reportText); }
+ *   catch (e) { if (e instanceof SignPipelineError) return res.status(503)... }
  */
 
 const { spawn } = require('child_process');
 
 const SIGN_SCRIPT = '/root/scanner/sign-report.py';
 const SIGN_TIMEOUT_MS = 10_000;
-const SIGN_CONCURRENCY = 8; // max concurrent python3 processes
+const SIGN_CONCURRENCY = 8;
 
-// Simple counting semaphore to bound concurrent subprocesses.
+// ── Typed error ───────────────────────────────────────────────────────────────
+class SignPipelineError extends Error {
+  constructor(msg) {
+    super(msg);
+    this.name = 'SignPipelineError';
+  }
+}
+
+// ── Semaphore ─────────────────────────────────────────────────────────────────
 let _active = 0;
 const _queue = [];
 function _acquireSemaphore() {
-  if (_active < SIGN_CONCURRENCY) {
-    _active++;
-    return Promise.resolve();
-  }
+  if (_active < SIGN_CONCURRENCY) { _active++; return Promise.resolve(); }
   return new Promise(resolve => _queue.push(resolve));
 }
 function _releaseSemaphore() {
   _active--;
-  if (_queue.length > 0) {
-    _active++;
-    _queue.shift()();
+  if (_queue.length > 0) { _active++; _queue.shift()(); }
+}
+
+// ── Failure tracking for Telegram alert ──────────────────────────────────────
+let _failCount = 0;
+let _failWindowStart = 0;
+const FAIL_ALERT_THRESHOLD = 1; // alert on first failure in window
+const FAIL_WINDOW_MS = 3_600_000; // 1 hour
+
+function _recordFailure(errMsg) {
+  const now = Date.now();
+  if (now - _failWindowStart > FAIL_WINDOW_MS) {
+    _failCount = 0;
+    _failWindowStart = now;
+  }
+  _failCount++;
+  if (_failCount === FAIL_ALERT_THRESHOLD && process.env.NODE_ENV !== 'test') {
+    const adminChatId = process.env.ADMIN_CHAT_ID
+      || (() => { try { return require('fs').readFileSync('/root/.secrets/admin_chat_id', 'utf8').trim(); } catch { return null; } })();
+    if (adminChatId) {
+      const { sendAlert } = require('../monitor/notifications');
+      sendAlert({
+        severity:     'critical',
+        rule:         'sign_pipeline_failure',
+        message:      `sign-report.py SPOF: ${errMsg.slice(0, 200)} — paid receipts unavailable until resolved`,
+        address:      'system',
+        tx_signature: null,
+        timestamp:    Date.now(),
+        id:           `sign_fail_${Date.now()}`,
+      }, [{ type: 'telegram', chatId: adminChatId }]).catch(() => {});
+    }
   }
 }
 
 /**
  * asyncSign — pass reportText via stdin to sign-report.py, return parsed JSON envelope.
+ * Throws SignPipelineError on any failure (spawn error, timeout, bad JSON, non-zero exit).
  *
- * @param {string} reportText  The text to sign. For JSON payloads, caller must
- *                             JSON.stringify before passing — the signature covers
- *                             the raw UTF-8 bytes of this string.
- * @returns {Promise<object>}  Envelope from sign-report.py:
- *   { report, signature, verify_key, key_id, signed_at, signer, algorithm }
+ * @param {string} reportText   UTF-8 bytes to sign.
+ * @param {string} [scriptPath] Override path to sign-report.py (test use only).
  */
-async function asyncSign(reportText) {
+async function asyncSign(reportText, scriptPath) {
   await _acquireSemaphore();
   return new Promise((resolve, reject) => {
-    const done = (fn, val) => { _releaseSemaphore(); fn(val); };
-    const proc = spawn('python3', [SIGN_SCRIPT], { timeout: SIGN_TIMEOUT_MS });
+    const script = scriptPath || SIGN_SCRIPT;
+    const fail = (msg) => {
+      _releaseSemaphore();
+      _recordFailure(msg);
+      reject(new SignPipelineError(msg));
+    };
+    const proc = spawn('python3', [script], { timeout: SIGN_TIMEOUT_MS });
     let stdout = '';
     let stderr = '';
     proc.stdout.on('data', d => { stdout += d; });
@@ -57,16 +92,17 @@ async function asyncSign(reportText) {
     proc.on('close', code => {
       if (code === 0) {
         try {
-          done(resolve, JSON.parse(stdout.trim()));
-        } catch (e) {
-          done(reject, new Error('sign-report.py invalid JSON: ' + stdout.slice(0, 200)));
+          _releaseSemaphore();
+          resolve(JSON.parse(stdout.trim()));
+        } catch {
+          fail('sign-report.py invalid JSON: ' + stdout.slice(0, 200));
         }
       } else {
-        done(reject, new Error('sign-report.py exited ' + code + ': ' + stderr.slice(0, 200)));
+        fail('sign-report.py exited ' + code + ': ' + stderr.slice(0, 200));
       }
     });
-    proc.on('error', e => done(reject, e));
-    proc.stdin.on('error', e => done(reject, e)); // EPIPE if sign-report.py dies before reading stdin
+    proc.on('error', e => fail(e.message));
+    proc.stdin.on('error', e => fail('stdin EPIPE: ' + e.message));
     proc.stdin.write(reportText);
     proc.stdin.end();
   });
@@ -74,23 +110,12 @@ async function asyncSign(reportText) {
 
 /**
  * canonicalJSON — deterministic JSON serialization with sorted keys.
- * Both sign and verify sides must use this to ensure byte-identical output
- * regardless of key insertion order or consumer language.
- *
- * @param {*} obj  Any JSON-serializable value
- * @returns {string}
  */
 function canonicalJSON(obj) {
-  if (obj === null || typeof obj !== 'object') {
-    return JSON.stringify(obj);
-  }
-  if (Array.isArray(obj)) {
-    return '[' + obj.map(canonicalJSON).join(',') + ']';
-  }
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(canonicalJSON).join(',') + ']';
   const keys = Object.keys(obj).sort();
-  return '{' + keys.map(k =>
-    JSON.stringify(k) + ':' + canonicalJSON(obj[k])
-  ).join(',') + '}';
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k])).join(',') + '}';
 }
 
-module.exports = { asyncSign, canonicalJSON, SIGN_SCRIPT };
+module.exports = { asyncSign, canonicalJSON, SignPipelineError, SIGN_SCRIPT };
