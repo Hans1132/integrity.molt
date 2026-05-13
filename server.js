@@ -1755,6 +1755,9 @@ app.post('/api/v1/feedback', express.json(), (req, res) => {
 // Calls enrichment + calculateIRIS without shell scripts or LLM — safe for internal bot use.
 // 127.0.0.1 is exempt from rate limit (Moltbook heartbeat).
 const _freeScanRL = new Map(); // IP → { count, windowStart }
+const _SCAN_PAGE_RL_LIMIT = 30; // req/min/IP pro GET /scan/:address
+const _SCAN_PAGE_RL_MAX   = 5000; // LRU cap — zabrání RAM leaku při botnetu
+const _scanPageRL = new Map();
 const _legitTokens = (() => {
   try {
     const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/legit-tokens.json'), 'utf8'));
@@ -4763,6 +4766,23 @@ app.get('/scan/:address', async (req, res) => {
 
   if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
     return res.status(400).send('Invalid Solana address');
+  }
+
+  // Rate limit: 30 req/min/IP — každý request interně volá Gemini Flash
+  const _pageIp = req.headers['cf-connecting-ip'] || '127.0.0.1';
+  if (_pageIp !== '127.0.0.1' && _pageIp !== '::1') {
+    if (_scanPageRL.size >= _SCAN_PAGE_RL_MAX) {
+      let _toDel = Math.floor(_SCAN_PAGE_RL_MAX * 0.1);
+      for (const _k of _scanPageRL.keys()) { _scanPageRL.delete(_k); if (--_toDel <= 0) break; }
+    }
+    const _pageNow = Date.now();
+    const _pageEntry = _scanPageRL.get(_pageIp) || { count: 0, windowStart: _pageNow };
+    if (_pageNow - _pageEntry.windowStart >= 60_000) { _pageEntry.count = 0; _pageEntry.windowStart = _pageNow; }
+    _pageEntry.count++;
+    _scanPageRL.set(_pageIp, _pageEntry);
+    if (_pageEntry.count > _SCAN_PAGE_RL_LIMIT) {
+      return res.status(429).type('html').send('<h1>429 Too Many Requests</h1><p>Max 30 scans/min. Try again later.</p>');
+    }
   }
 
   const shortAddr = address.slice(0, 8) + '…';
