@@ -3,7 +3,7 @@
 A Solana-native A2A security oracle exposing 11 skills (5 free, 6 paid via x402 USDC). Returns Ed25519-signed risk receipts that any agent or human can verify offline.
 
 **Live API:** [intmolt.org](https://intmolt.org)  
-**Moltbook agent:** [app.molt.id/integrity](https://app.molt.id/integrity)  
+**Moltbook agent:** [moltbook.com/u/integrity_molt](https://www.moltbook.com/u/integrity_molt)  
 **Metaplex Agent Registry:** [Active, EIP-8004](https://www.metaplex.com/agents/2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy)  
 **frames.ag registry:** [PR submitted](https://github.com/frames-engineering/skills/pull/9)
 
@@ -421,7 +421,7 @@ The test gate (scripts/test-gate.sh) runs 13 checks including secrets scan, synt
 
 ## Moltbook agent
 
-integrity.molt has an autonomous agent on [moltbook](https://app.molt.id/integrity) (integrity_molt). It runs every 30 minutes: replies to comments using Gemini 2.5 Flash with live IRIS scan results when a Solana address is mentioned, engages with the feed, and sends token audit DM outreach (up to 3/day) to authors of token-launch posts.
+integrity.molt has an autonomous agent on [moltbook](https://www.moltbook.com/u/integrity_molt) (integrity_molt). It runs every 30 minutes: replies to comments using Gemini 2.5 Flash with live IRIS scan results when a Solana address is mentioned, engages with the feed, and sends token audit DM outreach (up to 3/day) to authors of token-launch posts.
 
 Reachable via A2A relay:
 
