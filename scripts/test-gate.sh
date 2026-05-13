@@ -157,6 +157,20 @@ else
   ERRORS="$ERRORS\n- MCP server tests failed"
 fi
 
+# 15. MCP dependency audit (fail on high/critical only)
+echo "🔍  MCP npm audit..."
+AUDIT_OUT=$(npm audit --production --audit-level=high --prefix mcp 2>&1)
+AUDIT_EXIT=$?
+if [ $AUDIT_EXIT -eq 0 ]; then
+  echo "✅"
+  PASS=$((PASS+1))
+else
+  echo "❌ FAIL — high/critical vulnerabilities in mcp/node_modules"
+  echo "$AUDIT_OUT" | grep -E "Severity|severity|High|Critical" | head -10
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- MCP dependency audit: high/critical CVEs found"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"

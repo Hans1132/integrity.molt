@@ -25,6 +25,7 @@ const TOOLS = [
       'Returns iris_score (0–100, higher = riskier), risk_level (low/medium/high/critical), ' +
       'risk_factors array, and an Ed25519-signed receipt for tamper-proof audit. Free, rate-limited. ' +
       '[Network: sends address to https://intmolt.org — informational only, not financial advice.]',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     inputSchema: {
       type: 'object',
       properties: {
@@ -45,6 +46,7 @@ const TOOLS = [
       'Verify an Ed25519-signed oracle receipt from integrity.molt. ' +
       'Confirms the receipt was issued by this oracle and has not been tampered with. ' +
       'Does NOT re-validate the underlying risk assessment, which may be outdated. Free.',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     inputSchema: {
       type: 'object',
       properties: {
@@ -61,14 +63,21 @@ const TOOLS = [
     name: 'get_new_spl_tokens',
     description:
       'Feed of new SPL token mint creation events on Solana (last 24h by default). ' +
-      'Useful for monitoring new token launches before they appear on DEXes. Free. ' +
-      '[Network: queries https://intmolt.org]',
+      'Useful for monitoring new token launches before they appear on DEXes. ' +
+      'Results capped at 500 per call. Free. [Network: queries https://intmolt.org]',
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: {
       type: 'object',
       properties: {
         since: {
           type: 'string',
           description: 'ISO8601 timestamp — return tokens created after this time',
+        },
+        limit: {
+          type: 'integer',
+          description: 'Maximum number of tokens to return (1–500, default 100)',
+          minimum: 1,
+          maximum: 500,
         },
       },
     },
@@ -79,6 +88,7 @@ const TOOLS = [
       'Lightweight IRIS risk scan of a Solana address. ' +
       'Faster than scan_solana_address — no signed receipt. Use for quick risk checks. Free, rate-limited. ' +
       '[Network: sends address to https://intmolt.org — informational only, not financial advice.]',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     inputSchema: {
       type: 'object',
       properties: {
@@ -100,6 +110,7 @@ const TOOLS = [
       'confirms deployed bytecode matches a public source repository. ' +
       'Returns is_verified, repo_url, and last_verified_at. Free, cached 1h. ' +
       'Bytecode match does not imply the program is safe or free of malicious logic.',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     inputSchema: {
       type: 'object',
       properties: {
@@ -148,7 +159,16 @@ async function handleTool(name, args) {
             throw new Error('since must be an ISO8601 timestamp string');
           }
         }
-        const qs = args.since ? `?since=${encodeURIComponent(args.since)}` : '';
+        if (args.limit !== undefined) {
+          const lim = Number(args.limit);
+          if (!Number.isInteger(lim) || lim < 1 || lim > 500) {
+            throw new Error('limit must be an integer between 1 and 500');
+          }
+        }
+        const params = new URLSearchParams();
+        if (args.since) params.set('since', args.since);
+        if (args.limit !== undefined) params.set('limit', String(Math.trunc(Number(args.limit))));
+        const qs = params.size ? `?${params.toString()}` : '';
         data = await get(`/feed/v1/new-spl-tokens${qs}`);
         break;
       }
