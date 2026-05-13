@@ -111,11 +111,12 @@ async function asyncSign(reportText, scriptPath) {
 /**
  * canonicalJSON — deterministic JSON serialization with sorted keys.
  */
-function canonicalJSON(obj) {
+function canonicalJSON(obj, depth = 0) {
+  if (depth > 32) throw new Error('envelope structure too deep (max 32)');
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
-  if (Array.isArray(obj)) return '[' + obj.map(canonicalJSON).join(',') + ']';
+  if (Array.isArray(obj)) return '[' + obj.map(v => canonicalJSON(v, depth + 1)).join(',') + ']';
   const keys = Object.keys(obj).sort();
-  return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k])).join(',') + '}';
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k], depth + 1)).join(',') + '}';
 }
 
 module.exports = { asyncSign, canonicalJSON, SignPipelineError, SIGN_SCRIPT };
