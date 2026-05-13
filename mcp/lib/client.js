@@ -1,13 +1,11 @@
 'use strict';
 
 // Loopback HTTP client — wraps fetch calls to integrity.molt backend.
-// Reads INTEGRITY_MOLT_BASE_URL at call time (not require time) so tests can override it.
+// M4: BASE_URL frozen at module-load time to prevent TOCTOU via env mutation mid-request.
 
 const MAX_BODY_BYTES = 5 * 1024 * 1024; // 5 MB — guards against OOM on large responses
 
-function baseUrl() {
-  return (process.env.INTEGRITY_MOLT_BASE_URL || 'https://intmolt.org').replace(/\/$/, '');
-}
+const BASE_URL = (process.env.INTEGRITY_MOLT_BASE_URL || 'https://intmolt.org').replace(/\/$/, '');
 
 async function readBody(res) {
   const reader = res.body.getReader();
@@ -57,7 +55,7 @@ async function parseResponse(res) {
 }
 
 async function get(path, timeoutMs = 30_000) {
-  const res = await fetch(`${baseUrl()}${path}`, {
+  const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'X-MCP-Caller': '1' }, // informational only — NOT used for auth decisions
     redirect: 'error',
     signal: AbortSignal.timeout(timeoutMs),
@@ -66,7 +64,7 @@ async function get(path, timeoutMs = 30_000) {
 }
 
 async function post(path, body, timeoutMs = 30_000) {
-  const res = await fetch(`${baseUrl()}${path}`, {
+  const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-MCP-Caller': '1' },
     body: JSON.stringify(body),

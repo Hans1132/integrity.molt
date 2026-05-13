@@ -131,7 +131,7 @@ const TOOLS = [
 async function handleTool(name, args) {
   if (_inflight >= MAX_INFLIGHT) {
     return {
-      content: [{ type: 'text', text: 'Error: too many concurrent requests, please retry' }],
+      content: [{ type: 'text', text: 'Error: semaphore at capacity — concurrent request limit reached' }],
       isError: true,
     };
   }

@@ -1,6 +1,6 @@
 # ADR-012: Ed25519 Local Verification at MCP Boundary
 
-**Status:** Accepted (2026-05-13)
+**Status:** Accepted (2026-05-13); amended 2026-05-14 (H5 — default flip to opt-out)
 **Decider:** Hans Lička
 **Context:** MCP security audit — architect-reviewer HIGH-2 finding
 
@@ -18,17 +18,30 @@ The trust anchor today is the **URL**. It should be the **Ed25519 key**.
 
 Add opt-in local Ed25519 verification at the MCP boundary via `mcp/lib/verifier.js`.
 
-### Activation
+### Activation (amended 2026-05-14 — H5 default flip)
+
+Local verification is now **on by default** (opt-out). To disable:
+
+```
+INTEGRITY_MOLT_LOCAL_VERIFY=0
+```
+
+When set to `0` AND `INTEGRITY_MOLT_BASE_URL` points to the canonical backend
+(`https://intmolt.org`), the tool falls back to the remote call.
+
+**Custom BASE_URL always forces local verification on**, regardless of
+`INTEGRITY_MOLT_LOCAL_VERIFY`. This prevents circular trust when the backend URL
+is redirected.
+
+To explicitly opt back in (redundant with default, but explicit):
 
 ```
 INTEGRITY_MOLT_LOCAL_VERIFY=1
 ```
 
-When set, `verify_signed_receipt` verifies the envelope locally using the pinned
-public key for `kid: integrity-molt-primary-2026`. No network round-trip to the
-backend. The trust anchor becomes the key, not the URL.
-
-When unset (default), the existing backend call is preserved (backward compatible).
+Prior behaviour (opt-in via `=1`) was the original decision. The default flip was
+made in P1 hardening because leaving the attack surface open by default contradicts
+the security goal of ADR-012.
 
 ### Pinned public key
 
@@ -68,7 +81,7 @@ Same as `/verify/v1/signed-receipt` plus:
 - **No new dependency**: uses Node.js built-in `crypto` (Ed25519 support in 18+).
 - **Key rotation risk**: on key rotation, old MCP installs will reject new receipts
   until updated. Mitigate by publishing `kid` mismatch in error response.
-- **Opt-in**: default remains backward compatible.
+- **Default-on** (since 2026-05-14 amendment): opt-out via `INTEGRITY_MOLT_LOCAL_VERIFY=0`.
 
 ## Key rotation protocol (follow-up)
 

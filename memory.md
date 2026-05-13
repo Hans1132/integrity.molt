@@ -5,11 +5,31 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-13 (ADR-011, MCP server implementace)
+**Last updated:** 2026-05-14 (MCP P1 — H5 default flip + M4-M9 fixes + 29 QA testů)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-14: MCP P1 hardening — H5 default flip, M4-M9 fixes, 29 QA testů — [security]
+- **Změny:** `mcp/lib/verifier.js` (H5: isLocalVerifyEnabled opt-out default + custom URL force; M5: METADATA += __proto__/constructor/prototype; M6: key_id null na error; M7: mathematically_valid skryt při key_pinned:false); `mcp/lib/client.js` (M4: BASE_URL frozen constant); `mcp/lib/tools.js` (M8: semaphore text bez "please retry"); `mcp/package.json` (M9: SDK pin 1.29.0); `tests/mcp/server.test.js` (+29 nových testů, 4 aktualizovány); `docs/adr-012-mcp-local-verify.md` (H5 amendment).
+- **Důvod:** Post-audit P1 batch — zbývající medium/high findings z 9-agent auditu.
+- **Dopad:** 61/61 MCP testů, Gate 13/13 PASS. Local verify je nyní výchozí (opt-out). Custom BASE_URL vždy vynutí local verify.
+- **Gotcha:** Test `příliš krátký verify_key` vyžaduje non-METADATA pole v envelope — jinak `no_verifiable_payload` přijde před length check. Po H5 flipu všechny testy s verify_signed_receipt musí buď mít platný pinned envelope nebo nastavit LOCAL_VERIFY=0 + smazat BASE_URL.
+
+### 2026-05-13: MCP Phase 4 — P0 security hardening po druhém 9-agent auditu — [security]
+- **Změny:** `mcp/lib/verifier.js` (C1: `INTEGRITY_MOLT_TEST_VERIFY_KEY` gated za `NODE_ENV=test`; H2: `canonicalJSON` depth limit ≤32; H3: `algorithm` typeof guard; H4: `BASE64_RE` typeof check; M3: odstraněn `detail: e.message`); `mcp/server.js` (M1: `server.onerror`+`unhandledRejection`+`uncaughtException`; M2: `stdout.on('error')` EPIPE handler; soft 5s drain na stdin close); `src/crypto/sign.js` (H2 mirror: stejný depth limit); `tests/mcp/server.test.js` (`NODE_ENV=test` na začátku — nutné pro C1).
+- **Důvod:** Druhý 9-agent audit (architect, code, pentest, security, chaos, compliance, qa, perf, error-detective) po Phase 3. Nový CRITICAL: test key v produkci bez NODE_ENV guardu — 3 řádky fix, ale kolapss celého ADR-012 trust modelu.
+- **Dopad:** Gate 13/13 PASS. Commity: 2dc1d0b (MCP), c0c7fa2 (backend). Zbývá P1 týden (H5 default local verify, M4–M9) + P2 compliance (Privacy, ToS, package.json).
+- **Gotcha:** `INTEGRITY_MOLT_TEST_VERIFY_KEY` bez NODE_ENV guardu = backdoor: útočník v Claude Desktop config snippetu nahradí pinned klíč vlastním → `valid:true, key_pinned:true` pro forged receipty. `process.env.NODE_ENV` musí být explicitně nastaveno v test souboru (`process.env.NODE_ENV = 'test'` na řádku 1 před jakýmkoliv require).
+- **Gotcha:** `canonicalJSON` stack overflow: depth ~2400 = pouhých 14 KB JSON — pod 64 KB envelope capem. Cap na velikost nezachytí depth attack. Fixnout na OBOU stranách (MCP + backend).
+
+### 2026-05-13: ADR-012 — MCP security hardening Phases 1–3 + Ed25519 local verify — [security/qa]
+- **Změny:** `mcp/lib/client.js` (5 MB cap, redirect:error, 2xx non-JSON throws, 5xx msg scrub, default URL→https://intmolt.org); `mcp/lib/tools.js` (MAX_INFLIGHT=4 semaphore, base58 regex, array/type guards, ISO8601 check, tool annotations, limit param); `mcp/lib/verifier.js` (nový — pinned Ed25519, canonicalJSON, flat+wrapped format); `docs/adr-012-mcp-local-verify.md` (nový); `tests/mcp/server.test.js` (18→31 testů); `scripts/test-gate.sh` (krok 15: npm audit high/critical); `mcp/LICENSE` (MIT).
+- **Důvod:** 9-agent security audit odhalil: circular trust (verify→backend→self), fetch failed na ext. sítích (default URL byl loopback), semaphore chyběl, base64 validace permissivní.
+- **Dopad:** INTEGRITY_MOLT_LOCAL_VERIFY=1 aktivuje lokální verifikaci bez backend round-tripu. Default URL https://intmolt.org — Claude Desktop/Codex CLI funguje bez lokálního backendu.
+- **Test:** 31/31 MCP testů, Gate 13/13 PASS. Commity: b165b94, 1cce4fb, 7fe86f8, ca29221.
+- **Gotcha:** Node.js `Buffer.from('###', 'base64')` NIKDY nehodí — vrátí 0 bytů. Base64 charset musí být validován explicitní regex `/^[A-Za-z0-9+/]*={0,2}$/` PŘED rekonstrukcí payloadu (jinak padne na `no_verifiable_payload` dřív).
 
 ### 2026-05-13: MCP server implementace — 5 free skills jako MCP tools — [conductor]
 - **Změny:** `mcp/` subpackage (package.json, server.js, lib/client.js, lib/tools.js, README.md, .env.example); `src/routes/a2a-oracle.js` (+import getVerificationStatus, +GET /monitor/v1/program-verification/:address ~15 řádků); `tests/mcp/server.test.js` (18 testů, mock HTTP server); `scripts/test-gate.sh` (krok 14); `package.json` (npm test rozšířen).

@@ -10,7 +10,7 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.0"
+    "@modelcontextprotocol/sdk": "1.29.0"
   },
   "engines": {
     "node": ">=18"

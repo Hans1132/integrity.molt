@@ -10,8 +10,12 @@ const PINNED_KEY_B64URL = 'qzppeeRmbyQ4hE4BYOW-4VbQ5muyplTP4GP4uxIhVwY';
 // SubjectPublicKeyInfo DER header for Ed25519 (OID 1.3.101.112) — matches backend line 307
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 
-// Metadata keys stripped before signing — must match backend METADATA set exactly
-const METADATA = new Set(['signature', 'verify_key', 'key_id', 'signed_at', 'signer', 'algorithm', 'report']);
+// Metadata keys stripped before signing — must match backend METADATA set exactly.
+// M5: __proto__, constructor, prototype added as defense-in-depth against prototype pollution.
+const METADATA = new Set([
+  'signature', 'verify_key', 'key_id', 'signed_at', 'signer', 'algorithm', 'report',
+  '__proto__', 'constructor', 'prototype',
+]);
 
 function canonicalJSON(obj, depth = 0) {
   if (depth > 32) throw new Error('envelope structure too deep (max 32)');
@@ -46,15 +50,15 @@ function verifyLocally(envelope) {
   const { payload, signature, verify_key, key_id, signed_at, signer, algorithm } = envelope;
 
   if (!signature || !verify_key) {
-    return { valid: false, verified_locally: true, reason: 'missing_signature_or_verify_key' };
+    return { valid: false, verified_locally: true, key_id: null, reason: 'missing_signature_or_verify_key' };
   }
 
   if (algorithm !== undefined) {
     if (typeof algorithm !== 'string') {
-      return { valid: false, verified_locally: true, reason: 'invalid_algorithm_type' };
+      return { valid: false, verified_locally: true, key_id: null, reason: 'invalid_algorithm_type' };
     }
     if (algorithm.toLowerCase() !== 'ed25519') {
-      return { valid: false, verified_locally: true, reason: 'unsupported_algorithm', algorithm };
+      return { valid: false, verified_locally: true, key_id: null, reason: 'unsupported_algorithm', algorithm };
     }
   }
 
@@ -62,7 +66,7 @@ function verifyLocally(envelope) {
   const BASE64_RE = /^[A-Za-z0-9+/]+=*$/;
   if (typeof verify_key !== 'string' || typeof signature !== 'string' ||
       !BASE64_RE.test(verify_key) || !BASE64_RE.test(signature)) {
-    return { valid: false, verified_locally: true, reason: 'invalid_base64_encoding' };
+    return { valid: false, verified_locally: true, key_id: null, reason: 'invalid_base64_encoding' };
   }
 
   // Reconstruct canonical signed payload (mirrors backend verification logic)
@@ -74,7 +78,7 @@ function verifyLocally(envelope) {
       Object.entries(envelope).filter(([k]) => !METADATA.has(k))
     );
     if (Object.keys(payloadObj).length === 0) {
-      return { valid: false, verified_locally: true, reason: 'no_verifiable_payload' };
+      return { valid: false, verified_locally: true, key_id: null, reason: 'no_verifiable_payload' };
     }
   }
 
@@ -85,14 +89,14 @@ function verifyLocally(envelope) {
     keyBytes = Buffer.from(verify_key, 'base64');
     sigBytes = Buffer.from(signature, 'base64');
   } catch {
-    return { valid: false, verified_locally: true, reason: 'invalid_base64_encoding' };
+    return { valid: false, verified_locally: true, key_id: null, reason: 'invalid_base64_encoding' };
   }
 
   if (keyBytes.length !== 32) {
-    return { valid: false, verified_locally: true, reason: 'invalid_verify_key_length', got: keyBytes.length };
+    return { valid: false, verified_locally: true, key_id: null, reason: 'invalid_verify_key_length', got: keyBytes.length };
   }
   if (sigBytes.length !== 64) {
-    return { valid: false, verified_locally: true, reason: 'invalid_signature_length', got: sigBytes.length };
+    return { valid: false, verified_locally: true, key_id: null, reason: 'invalid_signature_length', got: sigBytes.length };
   }
 
   const keyPinned = getPinnedKeyBytes().equals(keyBytes);
@@ -111,31 +115,36 @@ function verifyLocally(envelope) {
       sigBytes,
     );
   } catch {
-    return { valid: false, verified_locally: true, reason: 'verification_error' };
+    return { valid: false, verified_locally: true, key_id: null, reason: 'verification_error' };
   }
 
   const attested = mathematicallyValid && keyPinned;
   const expectedKeyId = verify_key.slice(0, 16);
 
   return {
-    valid:                attested,
-    key_pinned:           keyPinned,
-    mathematically_valid: mathematicallyValid,
-    key_id:               key_id || expectedKeyId,
-    signed_at:            signed_at || null,
-    issuer:               signer || null,
-    verified_locally:     true,
-    local_verify_kid:     PINNED_KID,
+    valid:            attested,
+    key_pinned:       keyPinned,
+    // M7: hide mathematically_valid when key is not pinned — prevents oracle data leak
+    ...(keyPinned ? { mathematically_valid: mathematicallyValid } : {}),
+    // M6: key_id null on error — do not leak attacker-controlled key_id when valid:false
+    key_id:           attested ? (key_id || expectedKeyId) : null,
+    signed_at:        signed_at || null,
+    issuer:           signer || null,
+    verified_locally: true,
+    local_verify_kid: PINNED_KID,
     ...(attested ? {} : { reason: mathematicallyValid ? 'key_not_pinned' : 'invalid_signature' }),
   };
 }
 
 /**
- * Returns true when local verification is opted in via INTEGRITY_MOLT_LOCAL_VERIFY=1.
+ * H5: opt-out default — local verify is ON unless INTEGRITY_MOLT_LOCAL_VERIFY=0.
+ * Custom BASE_URL always forces ON (prevents circular trust when backend is redirected — ADR-012).
  * Read at call time so tests can override per-test.
  */
 function isLocalVerifyEnabled() {
-  return process.env.INTEGRITY_MOLT_LOCAL_VERIFY === '1';
+  const customBase = process.env.INTEGRITY_MOLT_BASE_URL;
+  if (customBase && customBase.replace(/\/$/, '') !== 'https://intmolt.org') return true;
+  return process.env.INTEGRITY_MOLT_LOCAL_VERIFY !== '0';
 }
 
 module.exports = { verifyLocally, isLocalVerifyEnabled, canonicalJSON, PINNED_KID };
