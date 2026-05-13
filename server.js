@@ -64,7 +64,7 @@ function safeCompare(a, b) {
 
 // ── Async Ed25519 signer — shared utility (src/crypto/sign.js) ───────────────
 // Neblokuje event loop. Použij asyncSign() všude místo execSync sign-report.py.
-const { asyncSign } = require('./src/crypto/sign');
+const { asyncSign, SignPipelineError } = require('./src/crypto/sign');
 
 // ── Async scan runner — nahrazuje execSync, neblokuje event loop ──────────────
 // Spustí shell skript jako child_process, vrátí Promise<{ stdout, stderr }>.
@@ -2514,7 +2514,17 @@ app.post('/scan/evm-token', trackFunnel('evm-token'), requireApiKey, requirePaym
   // Sign: pokud advisor běžel, podepíše jeho text; jinak původní reportText
   let signedEnvelope = adv?.signed || null;
   if (!signedEnvelope) {
-    try { signedEnvelope = await asyncSign(reportText); } catch {}
+    try {
+      signedEnvelope = await asyncSign(reportText);
+    } catch (e) {
+      if (e instanceof SignPipelineError) {
+        return res.status(503).set('Retry-After', '60').json({
+          error: 'Signing pipeline unavailable',
+          message: 'Ed25519 receipt cannot be issued. Payment will not be charged. Retry in 60s.',
+          retry_after: 60,
+        });
+      }
+    }
   }
   console.log(`[scan/evm-token] address=${address} chain=${chain} advisor=${adv?.advisorUsed ?? 'skip'}`);
 
@@ -2601,7 +2611,17 @@ app.get('/scan/evm/:address', trackFunnel('evm-scan'), evmPreValidate, requireAp
 
   let signedEnvelope = adv2?.signed || null;
   if (!signedEnvelope) {
-    try { signedEnvelope = await asyncSign(reportText); } catch {}
+    try {
+      signedEnvelope = await asyncSign(reportText);
+    } catch (e) {
+      if (e instanceof SignPipelineError) {
+        return res.status(503).set('Retry-After', '60').json({
+          error: 'Signing pipeline unavailable',
+          message: 'Ed25519 receipt cannot be issued. Payment will not be charged. Retry in 60s.',
+          retry_after: 60,
+        });
+      }
+    }
   }
   console.log(`[scan/evm] address=${address} chain=${chain} advisor=${adv2?.advisorUsed ?? 'skip'}`);
 
@@ -2802,6 +2822,13 @@ app.post(
         signedEnvelope = await asyncSign(reportText);
       } catch (e) {
         console.error('[scan/token-audit] signing failed:', e.message);
+        if (e instanceof SignPipelineError) {
+          return res.status(503).set('Retry-After', '60').json({
+            error: 'Signing pipeline unavailable',
+            message: 'Ed25519 receipt cannot be issued. Payment will not be charged. Retry in 60s.',
+            retry_after: 60,
+          });
+        }
       }
       console.log(`[scan/token-audit] mint=${safeMint} signing=${Date.now()-_tSign}ms`);
 
@@ -2968,6 +2995,13 @@ app.post(
         signedEnvelope = await asyncSign(reportText);
       } catch (e) {
         console.error('[scan/agent-token] signing failed:', e.message);
+        if (e instanceof SignPipelineError) {
+          return res.status(503).set('Retry-After', '60').json({
+            error: 'Signing pipeline unavailable',
+            message: 'Ed25519 receipt cannot be issued. Payment will not be charged. Retry in 60s.',
+            retry_after: 60,
+          });
+        }
       }
 
       const _agentResponse = {
