@@ -9,6 +9,14 @@ const express  = require('express');
 const session  = require('express-session');
 const bcrypt   = require('bcrypt');
 
+function isSafeNext(next) {
+  return typeof next === 'string'
+    && next.startsWith('/')
+    && !next.startsWith('//')
+    && !next.startsWith('/\\')
+    && !/^\/[a-z]+:/i.test(next);
+}
+
 const {
   SqliteStore,
   findOrCreateUser, findUserById, findUserByEmail,
@@ -182,16 +190,18 @@ function registerAuthRoutes(app) {
   // Helper: redirect to ?next= after login, or /dashboard
   function afterLoginRedirect(req, res) {
     const next = req.session?.authNext;
-    if (next) {
+    if (isSafeNext(next)) {
       delete req.session.authNext;
       return res.redirect(next);
+    } else if (next) {
+      delete req.session.authNext; // smaž i nevalidní next
     }
     res.redirect('/dashboard');
   }
 
   // Google
   app.get('/auth/google', (req, res, next) => {
-    if (req.query.next) req.session.authNext = req.query.next;
+    if (isSafeNext(req.query.next)) req.session.authNext = req.query.next;
     passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
   });
   app.get('/auth/google/callback',
@@ -201,7 +211,7 @@ function registerAuthRoutes(app) {
 
   // GitHub
   app.get('/auth/github', (req, res, next) => {
-    if (req.query.next) req.session.authNext = req.query.next;
+    if (isSafeNext(req.query.next)) req.session.authNext = req.query.next;
     passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
   });
   app.get('/auth/github/callback',
@@ -211,7 +221,7 @@ function registerAuthRoutes(app) {
 
   // Twitter
   app.get('/auth/twitter', (req, res, next) => {
-    if (req.query.next) req.session.authNext = req.query.next;
+    if (isSafeNext(req.query.next)) req.session.authNext = req.query.next;
     passport.authenticate('twitter')(req, res, next);
   });
   app.get('/auth/twitter/callback',
