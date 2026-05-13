@@ -368,23 +368,23 @@ function extractSkillFromMessage(message) {
 
 // Returns an error string if the URL is invalid or targets internal infrastructure,
 // null if valid. Prevents SSRF via callback POSTs to cloud metadata or localhost.
-const _SSRF_DENY = /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/i;
+const _SSRF_DENY = /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.0\.0\.0|0177\.|2130706433$)/i;
+const _SSRF_IPV6_DENY = /^(::1$|::$|0:0:0:0:0:0:0:1$|::ffff:|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:)/i;
 
 function validateCallbackUrl(callbackUrl) {
   if (!callbackUrl) return null;
   let u;
-  try {
-    u = new URL(callbackUrl);
-  } catch {
-    return 'Invalid callbackUrl — must be http(s):// URL';
+  try { u = new URL(callbackUrl); } catch { return 'invalid URL'; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return 'protocol must be http or https';
+
+  // Odstranění IPv6 závorek pro matching
+  const hostname = u.hostname.replace(/^\[|\]$/g, '');
+
+  if (process.env.NODE_ENV !== 'test' && _SSRF_DENY.test(hostname)) {
+    return `SSRF deny-list: ${hostname}`;
   }
-  if (!['http:', 'https:'].includes(u.protocol)) {
-    return 'Invalid callbackUrl — must be http(s):// URL';
-  }
-  // Test-only bypass: skip SSRF deny-list when running under test harness.
-  // NODE_ENV === 'test' (exact match) enables localhost callback receivers.
-  if (process.env.NODE_ENV !== 'test' && _SSRF_DENY.test(u.hostname)) {
-    return 'Invalid callbackUrl — internal/private addresses are not allowed';
+  if (_SSRF_IPV6_DENY.test(hostname)) {
+    return `SSRF deny-list IPv6: ${hostname}`;
   }
   return null;
 }
