@@ -41,42 +41,50 @@ function createQuotaMiddleware(db) {
     VALUES (?, 1)
     ON CONFLICT(stat_date) DO UPDATE SET free_count = free_count + 1
   `);
-  const consumeTx = db.transaction((ip, today) => {
+
+  // Atomická transakce: zkontroluj + spotřebuj v jednom kroku → eliminuje race condition
+  const checkAndConsumeTx = db.transaction((ip, today) => {
+    const globalRow  = stmtGlobal.get(today);
+    const globalUsed = globalRow ? globalRow.free_count : 0;
+    if (globalUsed >= GLOBAL_DAILY_CAP) return { denied: 'global', globalUsed };
+
+    const ipRow = stmtIp.get(ip, today);
+    const used  = ipRow ? ipRow.count : 0;
+    if (used >= PER_IP_DAILY_LIMIT) return { denied: 'ip', used };
+
     stmtConsumeIp.run(ip, today);
     stmtConsumeGlobal.run(today);
+    return { ok: true, used, remaining: PER_IP_DAILY_LIMIT - used - 1 };
   });
 
-  const stmtLogAbuse = db.prepare(`
-    INSERT INTO abuse_events (ip, event_type, details) VALUES (?, ?, ?)
-  `);
+  const stmtLogAbuse = db.prepare(
+    `INSERT INTO abuse_events (ip, event_type, details) VALUES (?, ?, ?)`
+  );
 
   function checkFreeQuota(req, res, next) {
     if (isInternalCall(req)) return next();
 
     const ip    = getClientIp(req);
     const today = new Date().toISOString().slice(0, 10);
+    let result;
+    try { result = checkAndConsumeTx(ip, today); } catch { return next(); } // non-fatal DB error
 
-    const globalRow  = stmtGlobal.get(today);
-    const globalUsed = globalRow ? globalRow.free_count : 0;
-    if (globalUsed >= GLOBAL_DAILY_CAP) {
-      try { stmtLogAbuse.run(ip, 'global_cap_hit', JSON.stringify({ global_used: globalUsed })); } catch {}
+    if (result.denied === 'global') {
+      try { stmtLogAbuse.run(ip, 'global_cap_hit', JSON.stringify({ global_used: result.globalUsed })); } catch {}
       return res.status(429).json({
         error:        'Daily free scan capacity exhausted',
         message:      'Free tier limit reached globally. Try again tomorrow or upgrade for unlimited scans.',
         global_limit: GLOBAL_DAILY_CAP,
-        global_used:  globalUsed,
+        global_used:  result.globalUsed,
         upgrade_url:  'https://intmolt.org/scan',
       });
     }
-
-    const ipRow = stmtIp.get(ip, today);
-    const used  = ipRow ? ipRow.count : 0;
-    if (used >= PER_IP_DAILY_LIMIT) {
-      try { stmtLogAbuse.run(ip, 'quota_exceeded', JSON.stringify({ used, limit: PER_IP_DAILY_LIMIT })); } catch {}
+    if (result.denied === 'ip') {
+      try { stmtLogAbuse.run(ip, 'quota_exceeded', JSON.stringify({ used: result.used, limit: PER_IP_DAILY_LIMIT })); } catch {}
       return res.status(429).json({
         error:       'Daily free scan limit reached',
-        message:     `You've used ${used}/${PER_IP_DAILY_LIMIT} free scans today. Limit resets at midnight UTC.`,
-        used,
+        message:     `You've used ${result.used}/${PER_IP_DAILY_LIMIT} free scans today. Limit resets at midnight UTC.`,
+        used:        result.used,
         limit:       PER_IP_DAILY_LIMIT,
         remaining:   0,
         resets_at:   'midnight UTC',
@@ -84,13 +92,14 @@ function createQuotaMiddleware(db) {
       });
     }
 
-    req.freeQuota = { ip, today, used, remaining: PER_IP_DAILY_LIMIT - used };
+    req.freeQuota = { ip, today, used: result.used, remaining: result.remaining };
     next();
   }
 
-  function consumeFreeQuota(ip, today) {
-    today = today || new Date().toISOString().slice(0, 10);
-    try { consumeTx(ip, today); } catch { /* non-fatal */ }
+  // consumeFreeQuota zůstává jako no-op pro backward compat s callers
+  // (transakce ji již spotřebovala v checkFreeQuota)
+  function consumeFreeQuota(_ip, _today) {
+    // no-op: quota již spotřebována atomicky v checkFreeQuota
   }
 
   function getQuotaStatus(ip) {

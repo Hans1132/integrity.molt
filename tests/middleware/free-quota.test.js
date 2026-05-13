@@ -110,16 +110,19 @@ async function run() {
     let nextCalled = false;
     checkFreeQuota(req, res, () => { nextCalled = true; });
     assert.strictEqual(nextCalled, true, 'next() should be called');
+    // Atomic check-and-consume: used reflects count BEFORE this request, remaining after
     assert.strictEqual(req.freeQuota.used, 0);
-    assert.strictEqual(req.freeQuota.remaining, PER_IP_DAILY_LIMIT);
+    assert.strictEqual(req.freeQuota.remaining, PER_IP_DAILY_LIMIT - 1);
   });
 
-  await test('after 3 consumeFreeQuota calls, 4th request returns 429', async () => {
+  await test('after 3 checkFreeQuota calls, 4th request returns 429', async () => {
     clearTables();
     const ip = '10.0.0.2';
-    consumeFreeQuota(ip, today);
-    consumeFreeQuota(ip, today);
-    consumeFreeQuota(ip, today);
+    // Atomic check-and-consume: each checkFreeQuota call consumes 1 quota
+    for (let i = 0; i < 3; i++) {
+      const r = makeReq({ headers: { 'cf-connecting-ip': ip } });
+      checkFreeQuota(r, makeRes(), () => {});
+    }
     const req = makeReq({ headers: { 'cf-connecting-ip': ip } });
     const res = makeRes();
     let nextCalled = false;
@@ -132,14 +135,17 @@ async function run() {
   await test('quota response has correct used/remaining counts after 1 use', async () => {
     clearTables();
     const ip = '10.0.0.3';
-    consumeFreeQuota(ip, today);
+    // First call consumes 1 (atomic) — used=0, remaining=2
+    const req1 = makeReq({ headers: { 'cf-connecting-ip': ip } });
+    checkFreeQuota(req1, makeRes(), () => {});
+    // Second call — used=1, remaining=1
     const req = makeReq({ headers: { 'cf-connecting-ip': ip } });
     const res = makeRes();
     let nextCalled = false;
     checkFreeQuota(req, res, () => { nextCalled = true; });
     assert.strictEqual(nextCalled, true);
     assert.strictEqual(req.freeQuota.used, 1);
-    assert.strictEqual(req.freeQuota.remaining, PER_IP_DAILY_LIMIT - 1);
+    assert.strictEqual(req.freeQuota.remaining, PER_IP_DAILY_LIMIT - 2);
   });
 
   await test('global cap exhausted returns 429 with global_limit field', async () => {
@@ -199,12 +205,17 @@ async function run() {
     assert.strictEqual(status.global_limit, GLOBAL_DAILY_CAP);
   });
 
-  await test('consumeFreeQuota increments on repeated calls (ON CONFLICT DO UPDATE)', async () => {
+  await test('checkFreeQuota increments quota on repeated calls (ON CONFLICT DO UPDATE)', async () => {
     clearTables();
     const ip = '10.0.0.9';
-    for (let i = 0; i < 5; i++) consumeFreeQuota(ip, today);
+    // Use a separate IP to not conflict with other tests via global cap
+    // Call checkFreeQuota 2 times (within limit of 3)
+    for (let i = 0; i < 2; i++) {
+      const r = makeReq({ headers: { 'cf-connecting-ip': ip } });
+      checkFreeQuota(r, makeRes(), () => {});
+    }
     const status = getQuotaStatus(ip);
-    assert.strictEqual(status.used, 5, `expected used=5, got ${status.used}`);
+    assert.strictEqual(status.used, 2, `expected used=2, got ${status.used}`);
   });
 
   await test('checkBlacklist: blacklisted IP returns 403 with reason field', async () => {
@@ -260,9 +271,11 @@ async function run() {
     clearTables();
     const bannedIp  = '10.5.5.5';
     const cleanIp   = '8.8.8.8';
-    consumeFreeQuota(bannedIp, today);
-    consumeFreeQuota(bannedIp, today);
-    consumeFreeQuota(bannedIp, today);
+    // Exhaust quota via checkFreeQuota (atomic — consumeFreeQuota is now no-op)
+    for (let i = 0; i < 3; i++) {
+      const r = makeReq({ headers: { 'cf-connecting-ip': bannedIp } });
+      checkFreeQuota(r, makeRes(), () => {});
+    }
 
     const req = makeReq({
       socket:  { remoteAddress: '1.1.1.1' }, // Cloudflare edge
