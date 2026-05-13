@@ -8,6 +8,8 @@ const { sendAlert }           = require('./notifications');
 const EVENTS_FILE    = path.join(__dirname, '../../data/monitor/events.jsonl');
 const PAYMENTS_FILE  = path.join(__dirname, '../../data/monitor/wallet-payments.jsonl');
 const NOTIFY_FILE    = path.join(__dirname, '../../data/monitor/new-payment.flag');
+const DEAD_LETTER_FILE = process.env.DEAD_LETTER_FILE
+  || path.join(__dirname, '../../data/monitor/dead-letter.jsonl');
 const WEBHOOK_SECRET = process.env.HELIUS_WEBHOOK_SECRET || null;
 const OWN_WALLET     = process.env.SOLANA_WALLET_ADDRESS || null;
 
@@ -289,6 +291,23 @@ function detectOwnWalletPayment(parsed) {
 }
 
 /**
+ * Zapíše seznam transakcí do dead-letter JSONL souboru.
+ * Sync zápis — nechceme async race v catch bloku.
+ */
+function _writeDeadLetter(txList, errorMsg) {
+  try {
+    const lines = txList.map(tx => JSON.stringify({
+      ...tx,
+      _deadLetterAt: new Date().toISOString(),
+      _error: errorMsg,
+    })).join('\n') + '\n';
+    fs.appendFileSync(DEAD_LETTER_FILE, lines, 'utf-8');
+  } catch (writeErr) {
+    console.error('[monitor] dead-letter write failed:', writeErr.message);
+  }
+}
+
+/**
  * Hlavní handler pro Helius webhook.
  * Helius posílá POST s polem transakcí (enhanced format).
  */
@@ -304,8 +323,15 @@ async function handleHeliusWebhook(req, res) {
 
   if (!txList.length) return;
 
-  // Načti watchlist pro korelaci
-  const watched = await getWatchedAddresses();
+  // Načti watchlist pro korelaci — chyba zapíše celý batch do dead-letter
+  let watched;
+  try {
+    watched = await getWatchedAddresses();
+  } catch (e) {
+    console.error('[monitor] getWatchedAddresses failed, skipping batch:', e.message);
+    _writeDeadLetter(txList, e.message);
+    return;
+  }
   const watchedSet = new Map(watched.map(w => [w.address, w.entry]));
 
   for (const rawTx of txList) {
@@ -348,12 +374,13 @@ async function handleHeliusWebhook(req, res) {
         }
       }
     } catch (e) {
-      console.error('[monitor] Error processing tx:', e.message);
+      console.error(`[monitor] processing failed for tx ${rawTx?.signature}: ${e.message}`);
+      _writeDeadLetter([rawTx], e.message);
     }
   }
 }
 
-module.exports = { verifyWebhookAuth, handleHeliusWebhook, parseEnhancedTransaction, registerRescanCallback };
+module.exports = { verifyWebhookAuth, handleHeliusWebhook, parseEnhancedTransaction, registerRescanCallback, _writeDeadLetter };
 
 if (process.env.NODE_ENV === 'test') {
   module.exports._recordDbFailure    = _recordDbFailure;
