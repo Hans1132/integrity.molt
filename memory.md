@@ -1,14 +1,30 @@
 # integrity.molt - memory.md
 
+
 > Living log Claude Code. Sem se zapisují rozhodnutí, fixed bugs, gotchas, recent changes, scope creep precedents.
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-13 (VoltAgent audit hardening — K1, K4, H1–H6, M3, M6, A1 komplet)
+**Last updated:** 2026-05-13 (ADR-011, MCP server implementace)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-13: MCP server implementace — 5 free skills jako MCP tools — [conductor]
+- **Změny:** `mcp/` subpackage (package.json, server.js, lib/client.js, lib/tools.js, README.md, .env.example); `src/routes/a2a-oracle.js` (+import getVerificationStatus, +GET /monitor/v1/program-verification/:address ~15 řádků); `tests/mcp/server.test.js` (18 testů, mock HTTP server); `scripts/test-gate.sh` (krok 14); `package.json` (npm test rozšířen).
+- **Důvod:** ADR-011 — MCP jako třetí distribuční kanál. Claude Desktop one-snippet config pro externí testery.
+- **Dopad:** 5 MCP tools: scan_solana_address, quick_scan, verify_signed_receipt, get_new_spl_tokens, check_program_verification. Stdio transport, loopback HTTP, no daemon. Gate 12/12 PASS, MCP testy 18/18.
+- **Gotcha:** `/monitor/v1/program-verification` endpoint neexistoval — handler.js volal getVerificationStatus() přes require, ne HTTP. Přidán do a2a-oracle.js (Option A), ne do server.js.
+- **SDK:** @modelcontextprotocol/sdk 1.29.0 — StdioServerTransport importovat přes `./server/stdio.js` (wildcard export `./*`), ne `./server` (exportuje jen `Server`).
+
+### 2026-05-13: ADR-011 — Open MCP server as třetí distribuční kanál
+Frames.ag rejection (2026-05-13) uzavřel ADR-010 distribuční vrstvu #1. SendAI 
+research ukázal 153-star MCP precedent (sendaifun/solana-mcp) a prázdnou Security 
+kategorii v Solana MCP ekosystému. Decision: thin MCP wrapper kolem 5 free A2A 
+skills, paid skills A2A-only. Cíl: lowest-friction distribuce pro externí user 
+testování. Implementace přes Claude Code prompt v single-prompt consolidation. 
+Re-eval 30 dní po npm publish, threshold 10 unique installs + 1 externí interaction.
 
 ### 2026-05-13: K2 — Dead-letter JSONL pro failed Helius webhook processing — [monitor]
 - **Změny:** `src/monitor/webhook-receiver.js` — přidán `DEAD_LETTER_FILE` constant, `_writeDeadLetter()` helper (sync appendFileSync), per-tx try/catch v `handleHeliusWebhook` (watchlist load failure = celý batch do DL, per-tx failure = jen ta tx). `tests/monitor/webhook-dead-letter.test.js` (nový).
