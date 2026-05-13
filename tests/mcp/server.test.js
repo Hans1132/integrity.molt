@@ -3,6 +3,9 @@
 // Run: node tests/mcp/server.test.js
 // Spouští mock HTTP server místo produkčního backendu.
 
+// Required for INTEGRITY_MOLT_TEST_VERIFY_KEY override in verifier.js (C1 security fix).
+process.env.NODE_ENV = 'test';
+
 const http = require('http');
 const assert = require('assert');
 const crypto = require('crypto');

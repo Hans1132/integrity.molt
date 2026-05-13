@@ -40,13 +40,33 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
+  // Log SDK-layer errors (parse failures, transport errors) — without this they're silently swallowed.
+  server.onerror = (err) => console.error('[integrity-molt MCP] sdk-error:', err?.message ?? String(err));
+
   // Exit cleanly when host closes stdin (e.g. Claude Desktop restarts).
-  process.stdin.on('close', () => process.exit(0));
+  // Soft drain: give in-flight tool calls up to 5s to finish before exit.
+  process.stdin.on('close', () => setTimeout(() => process.exit(0), 5_000).unref());
+
+  // EPIPE on stdout (host pipe closed mid-write) — log and exit cleanly rather than crashing.
+  process.stdout.on('error', (err) => {
+    if (err.code === 'EPIPE') { console.error('[integrity-molt MCP] stdout closed (EPIPE)'); process.exit(0); }
+    console.error('[integrity-molt MCP] stdout error:', err?.message);
+    process.exit(1);
+  });
 
   console.error(`[integrity-molt MCP] ready — backend: ${base}`);
 }
 
 main().catch(err => {
   console.error('[integrity-molt MCP] fatal:', err?.message || String(err));
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('[integrity-molt MCP] unhandledRejection:', err?.message || String(err));
+  process.exit(1);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[integrity-molt MCP] uncaughtException:', err?.message || String(err));
   process.exit(1);
 });

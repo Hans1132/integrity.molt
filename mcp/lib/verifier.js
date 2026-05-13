@@ -13,18 +13,19 @@ const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 // Metadata keys stripped before signing — must match backend METADATA set exactly
 const METADATA = new Set(['signature', 'verify_key', 'key_id', 'signed_at', 'signer', 'algorithm', 'report']);
 
-function canonicalJSON(obj) {
+function canonicalJSON(obj, depth = 0) {
+  if (depth > 32) throw new Error('envelope structure too deep (max 32)');
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
-  if (Array.isArray(obj)) return '[' + obj.map(canonicalJSON).join(',') + ']';
+  if (Array.isArray(obj)) return '[' + obj.map(v => canonicalJSON(v, depth + 1)).join(',') + ']';
   const keys = Object.keys(obj).sort();
-  return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k])).join(',') + '}';
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k], depth + 1)).join(',') + '}';
 }
 
 function getPinnedKeyBytes() {
   // INTEGRITY_MOLT_TEST_VERIFY_KEY allows test suites to inject a known keypair.
-  // Never set in production — read at call time so tests can override per-test.
+  // Gated behind NODE_ENV=test — production never honors this override.
   const testKey = process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
-  if (testKey) return Buffer.from(testKey, 'base64url');
+  if (testKey && process.env.NODE_ENV === 'test') return Buffer.from(testKey, 'base64url');
   return Buffer.from(PINNED_KEY_B64URL, 'base64url');
 }
 
@@ -48,13 +49,19 @@ function verifyLocally(envelope) {
     return { valid: false, verified_locally: true, reason: 'missing_signature_or_verify_key' };
   }
 
-  if (algorithm && algorithm.toLowerCase() !== 'ed25519') {
-    return { valid: false, verified_locally: true, reason: 'unsupported_algorithm', algorithm };
+  if (algorithm !== undefined) {
+    if (typeof algorithm !== 'string') {
+      return { valid: false, verified_locally: true, reason: 'invalid_algorithm_type' };
+    }
+    if (algorithm.toLowerCase() !== 'ed25519') {
+      return { valid: false, verified_locally: true, reason: 'unsupported_algorithm', algorithm };
+    }
   }
 
-  // Node.js Buffer.from('base64') never throws on bad input — check alphabet explicitly
-  const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
-  if (!BASE64_RE.test(verify_key) || !BASE64_RE.test(signature)) {
+  // Node.js Buffer.from('base64') never throws on bad input — explicit string + alphabet check
+  const BASE64_RE = /^[A-Za-z0-9+/]+=*$/;
+  if (typeof verify_key !== 'string' || typeof signature !== 'string' ||
+      !BASE64_RE.test(verify_key) || !BASE64_RE.test(signature)) {
     return { valid: false, verified_locally: true, reason: 'invalid_base64_encoding' };
   }
 
@@ -103,8 +110,8 @@ function verifyLocally(envelope) {
       keyObj,
       sigBytes,
     );
-  } catch (e) {
-    return { valid: false, verified_locally: true, reason: 'verification_error', detail: e.message.slice(0, 100) };
+  } catch {
+    return { valid: false, verified_locally: true, reason: 'verification_error' };
   }
 
   const attested = mathematicallyValid && keyPinned;
