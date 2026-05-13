@@ -4,11 +4,18 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-11 (EVM free scan — L1/L2 cache opravy, EVM type routing fix)
+**Last updated:** 2026-05-13 (VoltAgent audit hardening — K1, K4, H1–H6, M3, M6, A1 komplet)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-13: VoltAgent audit — Backend Security Hardening komplet (10 tasků) — [security/backend]
+- **Změny:** `src/crypto/sign.js` (SignPipelineError + Telegram alert, scriptPath param); `src/rpc.js` (export PUBLIC_FALLBACK); `server.js` (rpcPost fallback, H1 scan-page RL, H2 CF-IP rate limitery, M3 safeCompare, A1 LRU caps, K1 callers 503); `src/a2a/handler.js` (H6 SSRF IPv6+decimal+octal); `src/middleware/free-quota.js` (H2 getClientIp export, H5 timingSafeEqual, M6 atomická tx); `auth.js` (H4 isSafeNext open redirect). Nové testy: `tests/rpc-failover.test.js`, `tests/security/{scan-page-ratelimit,open-redirect,ssrf-deny-list}.test.js`, `tests/crypto/sign-spof.test.js`.
+- **Důvod:** VoltAgent chaos/security audit nalezl 11 nálezů (K1–K5, H1–H6, M3/M6, A1, S8). K3+K5/S8 opraveny 2026-05-12, zbývající dnes.
+- **Dopad:** Paid endpointy vracejí 503+Retry-After při sign outage. Rate limity používají CF-Connecting-IP. Free quota atomická (no race). SSRF blokuje IPv6/decimal/octal. Open redirect uzavřen.
+- **Test:** Gate 11/11 PASS. Commity: 6c6e95c (K1), 9910f12 (K4), d0dd30b–482d229 (H1–A1).
+- **Gotcha:** M6 — `consumeFreeQuota` je nyní no-op; quota se spotřebuje v `checkFreeQuota`. Existující testy upraveny.
 
 ### 2026-05-12: K5/S8 — DB fallback counter + Telegram alert v webhook-receiver.js — [qa]
 - **Změny:** `src/monitor/webhook-receiver.js` — přidán `_recordDbFailure()`, counter + window reset (1h), `sendAlert` high-severity při >= 3 failurách; volání v catch bloku `getWatchedAddresses()`; test-only exports. `tests/monitor/webhook-receiver-fallback.test.js` (nový).
