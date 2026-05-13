@@ -1,6 +1,6 @@
 # integrity-molt MCP Server
 
-Solana security oracle as MCP tools for Claude Desktop. Wraps 5 free skills from [integrity.molt](https://intmolt.org) — no API key required.
+Solana security oracle as MCP tools for Claude Desktop and Codex CLI. Wraps 5 free skills from [integrity.molt](https://intmolt.org) — no API key required.
 
 | Tool | What it does |
 |------|-------------|
@@ -10,6 +10,17 @@ Solana security oracle as MCP tools for Claude Desktop. Wraps 5 free skills from
 | `get_new_spl_tokens` | Feed of new SPL token mints (last 24h) |
 | `check_program_verification` | OtterSec bytecode verification status for a program |
 
+## Quick install
+
+```bash
+git clone https://github.com/Hans1132/integrity.molt.git
+cd integrity.molt/mcp
+npm install
+node server.js   # verify it starts (stderr: "[integrity-molt MCP] ready")
+```
+
+Then configure Claude Desktop or Codex CLI as shown below.
+
 ## Prerequisites
 
 - Node.js ≥ 18
@@ -18,7 +29,7 @@ Solana security oracle as MCP tools for Claude Desktop. Wraps 5 free skills from
 ## Install
 
 ```bash
-cd /path/to/x402-server/mcp
+cd /path/to/integrity.molt/mcp
 npm install
 ```
 
@@ -34,7 +45,7 @@ Add to your Claude Desktop config file:
   "mcpServers": {
     "integrity-molt": {
       "command": "node",
-      "args": ["/path/to/x402-server/mcp/server.js"]
+      "args": ["/path/to/integrity.molt/mcp/server.js"]
     }
   }
 }
@@ -49,7 +60,7 @@ Restart Claude Desktop after saving. The 5 tools will appear in the tool picker.
   "mcpServers": {
     "integrity-molt": {
       "command": "node",
-      "args": ["/path/to/x402-server/mcp/server.js"],
+      "args": ["/path/to/integrity.molt/mcp/server.js"],
       "type": "stdio"
     }
   }
@@ -65,6 +76,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | node server.
 ```
 
 Expected output (5 tool names):
+
 ```
 "scan_solana_address"
 "verify_signed_receipt"
@@ -89,6 +101,36 @@ Expected output (5 tool names):
 **verify_signed_receipt**: By default this tool verifies receipts **locally** using a pinned Ed25519 public key — no data is sent to any server. Set `INTEGRITY_MOLT_LOCAL_VERIFY=0` to use the remote endpoint instead.
 
 **Not financial advice**: IRIS scores are informational risk indicators. They do not constitute investment advice or a guarantee of safety.
+
+## Verification & Security
+
+All scan results from `scan_solana_address` include an Ed25519-signed receipt:
+
+```
+kid:  integrity-molt-primary-2026
+x:    qzppeeRmbyQ4hE4BYOW-4VbQ5muyplTP4GP4uxIhVwY  (base64url, Ed25519)
+src:  https://intmolt.org/.well-known/jwks.json
+```
+
+The `verify_signed_receipt` tool checks this receipt locally using the pinned public key. No round-trip to the oracle is required — the trust anchor is the key, not the URL.
+
+Receipt format: [ADR-012 — Ed25519 Local Verification at MCP Boundary](docs/adr-012-mcp-local-verify.md)
+
+## Troubleshooting
+
+**Tools not showing in Claude Desktop**: Restart Claude Desktop after editing the config file. Check for JSON syntax errors in the config.
+
+**`[integrity-molt MCP] fatal: INTEGRITY_MOLT_BASE_URL "..." is not a valid URL`**: The env var is set to a malformed URL. Unset it to use the default (`https://intmolt.org`).
+
+**`Error: backend error (HTTP 429)`**: Rate limit hit. Wait a minute and retry. Free tier is limited to protect the oracle.
+
+**`Error: backend error (HTTP 5xx)`**: Transient backend error. Retry in a few seconds. Check [intmolt.org](https://intmolt.org) if the problem persists.
+
+**`verified_locally: false` in verify_signed_receipt**: The receipt's `verify_key` does not match the pinned key. The receipt may have been issued by a different oracle instance or tampered with.
+
+## Contributing
+
+This is an open MCP wrapper around the free tier of [integrity.molt](https://intmolt.org). Bug reports and suggestions welcome at [GitHub Issues](https://github.com/Hans1132/integrity.molt/issues).
 
 ## Paid skills
 

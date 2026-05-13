@@ -5,16 +5,27 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-14 (MCP P1 — H5 default flip + M4-M9 fixes + 29 QA testů)
+**Last updated:** 2026-05-14 (MCP P1+P2+P3 — post-audit hardening komplet, verze 0.1.0)
 
 ---
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-14: MCP P3 — pre-publish hygiene, README, CHANGELOG, version 0.1.0 — [conductor]
+- **Změny:** `mcp/README.md` (Quick install, Verification & Security, Troubleshooting, Contributing sekce); `mcp/CHANGELOG.md` (nový, [0.1.0] entry); `mcp/package.json` (version 1.0.0 → 0.1.0).
+- **Důvod:** Pre-publish hygiene batch — package připraven na npm publish (pending Hansovo schválení).
+- **Dopad:** Gate 13/13 PASS. Commit: viz P3 commit hash. Tři commity: P1=838a79a, P2=51779b4, P3=viz git log.
+
+### 2026-05-14: MCP P2 compliance — package metadata, disclaimers, output wrapping — [security]
+- **Změny:** `mcp/lib/tools.js` (H1: sanitizeControlChars + oracle_output wrapper; B3: privacy links; destructiveHint:false; additionalProperties:false); `mcp/package.json` (B2: author/repo/homepage/bugs/files/keywords); `mcp/README.md` (B4: Privacy & Data sekce); `tests/mcp/server.test.js` (unwrapOutput helper + 9 P2 testů).
+- **Důvod:** Post-audit P2 batch — compliance, prompt injection mitigation, schema hardening.
+- **Dopad:** 70/70 MCP testů, Gate 13/13 PASS. Commit: 51779b4.
+- **Gotcha:** sanitizeControlChars regex musí být literal Unicode escape sekvence (ne `/[char range]/`) — Write tool může správně preservovat byty i když display je nečitelný.
+
 ### 2026-05-14: MCP P1 hardening — H5 default flip, M4-M9 fixes, 29 QA testů — [security]
 - **Změny:** `mcp/lib/verifier.js` (H5: isLocalVerifyEnabled opt-out default + custom URL force; M5: METADATA += __proto__/constructor/prototype; M6: key_id null na error; M7: mathematically_valid skryt při key_pinned:false); `mcp/lib/client.js` (M4: BASE_URL frozen constant); `mcp/lib/tools.js` (M8: semaphore text bez "please retry"); `mcp/package.json` (M9: SDK pin 1.29.0); `tests/mcp/server.test.js` (+29 nových testů, 4 aktualizovány); `docs/adr-012-mcp-local-verify.md` (H5 amendment).
 - **Důvod:** Post-audit P1 batch — zbývající medium/high findings z 9-agent auditu.
-- **Dopad:** 61/61 MCP testů, Gate 13/13 PASS. Local verify je nyní výchozí (opt-out). Custom BASE_URL vždy vynutí local verify.
+- **Dopad:** 61/61 MCP testů, Gate 13/13 PASS. Local verify je nyní výchozí (opt-out). Custom BASE_URL vždy vynutí local verify. Commit: 838a79a.
 - **Gotcha:** Test `příliš krátký verify_key` vyžaduje non-METADATA pole v envelope — jinak `no_verifiable_payload` přijde před length check. Po H5 flipu všechny testy s verify_signed_receipt musí buď mít platný pinned envelope nebo nastavit LOCAL_VERIFY=0 + smazat BASE_URL.
 
 ### 2026-05-13: MCP Phase 4 — P0 security hardening po druhém 9-agent auditu — [security]
