@@ -1,6 +1,7 @@
 'use strict';
 
 const { get, post } = require('./client');
+const { verifyLocally, isLocalVerifyEnabled } = require('./verifier');
 
 const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
@@ -150,7 +151,11 @@ async function handleTool(name, args) {
         }
         const serialized = JSON.stringify(env);
         if (serialized.length > 64 * 1024) throw new Error('envelope too large (max 64KB)');
-        data = await post('/verify/v1/signed-receipt', { envelope: env });
+        // INTEGRITY_MOLT_LOCAL_VERIFY=1 → verify with pinned Ed25519 key, no backend round-trip.
+        // Eliminates circular trust when INTEGRITY_MOLT_BASE_URL is redirected (ADR-012).
+        data = isLocalVerifyEnabled()
+          ? verifyLocally(env)
+          : await post('/verify/v1/signed-receipt', { envelope: env });
         break;
       }
       case 'get_new_spl_tokens': {

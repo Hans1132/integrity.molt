@@ -5,6 +5,7 @@
 
 const http = require('http');
 const assert = require('assert');
+const crypto = require('crypto');
 
 let passed = 0;
 let failed = 0;
@@ -265,6 +266,123 @@ console.log('\ntests/mcp/server.test.js\n');
     const result = await handleTool('scan_solana_address', { address: 'tooshort' });
     assert.strictEqual(result.isError, true);
     assert.ok(result.content[0].text.includes('base58'));
+  });
+
+  // ── Local Ed25519 verifier tests (ADR-012) ──────────────────────────────────
+  console.log('\n── local verifier (ADR-012) ──');
+
+  const { verifyLocally, canonicalJSON, PINNED_KID } = require('../../mcp/lib/verifier');
+
+  // Helper: generate test Ed25519 keypair + create signed flat-format envelope
+  function makeTestEnvelope(payload, { useAsPinned = false } = {}) {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
+    const spkiDer = publicKey.export({ type: 'spki', format: 'der' });
+    const keyBytes = spkiDer.subarray(12); // strip 12-byte DER header → raw 32-byte key
+    const keyB64 = keyBytes.toString('base64');
+    if (useAsPinned) {
+      process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY = keyBytes.toString('base64url');
+    }
+    const canonicalText = canonicalJSON(payload);
+    const sig = crypto.sign(null, Buffer.from(canonicalText, 'utf-8'), privateKey);
+    return {
+      ...payload,
+      signature: sig.toString('base64'),
+      verify_key: keyB64,
+      key_id: keyB64.slice(0, 16),
+      signer: 'test-oracle',
+      algorithm: 'Ed25519',
+      signed_at: new Date().toISOString(),
+    };
+  }
+
+  const TEST_PAYLOAD = { address: 'So11111111111111111111111111111111111111112', iris_score: 5, risk_level: 'low' };
+
+  test('verifyLocally — platný podpis + pinned key → valid:true', () => {
+    const envelope = makeTestEnvelope(TEST_PAYLOAD, { useAsPinned: true });
+    const result = verifyLocally(envelope);
+    assert.strictEqual(result.valid, true, 'valid musí být true');
+    assert.strictEqual(result.key_pinned, true, 'key_pinned musí být true');
+    assert.strictEqual(result.mathematically_valid, true);
+    assert.strictEqual(result.verified_locally, true);
+    assert.strictEqual(result.local_verify_kid, PINNED_KID);
+    delete process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
+  });
+
+  test('verifyLocally — platný podpis ale cizí klíč → valid:false, key_not_pinned', () => {
+    delete process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
+    const envelope = makeTestEnvelope(TEST_PAYLOAD, { useAsPinned: false });
+    const result = verifyLocally(envelope);
+    assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.key_pinned, false);
+    assert.strictEqual(result.mathematically_valid, true, 'matematicky validní');
+    assert.strictEqual(result.reason, 'key_not_pinned');
+  });
+
+  test('verifyLocally — pozměněný payload → invalid_signature', () => {
+    const envelope = makeTestEnvelope(TEST_PAYLOAD, { useAsPinned: true });
+    // Tamper with payload after signing
+    const tampered = { ...envelope, iris_score: 99 };
+    const result = verifyLocally(tampered);
+    assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.mathematically_valid, false);
+    assert.strictEqual(result.reason, 'invalid_signature');
+    delete process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
+  });
+
+  test('verifyLocally — chybějící signature → missing_signature_or_verify_key', () => {
+    const result = verifyLocally({ verify_key: 'abc' });
+    assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.reason, 'missing_signature_or_verify_key');
+  });
+
+  test('verifyLocally — neplatný base64 → invalid_base64_encoding', () => {
+    const result = verifyLocally({ signature: '!!!', verify_key: '###' });
+    assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.reason, 'invalid_base64_encoding');
+  });
+
+  test('verifyLocally — wrapped format (payload field) funguje', () => {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
+    const spkiDer = publicKey.export({ type: 'spki', format: 'der' });
+    const keyBytes = spkiDer.subarray(12);
+    process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY = keyBytes.toString('base64url');
+    const inner = { address: 'So11111111111111111111111111111111111111112', iris_score: 3 };
+    const sig = crypto.sign(null, Buffer.from(canonicalJSON(inner), 'utf-8'), privateKey);
+    const envelope = {
+      payload: inner,
+      signature: sig.toString('base64'),
+      verify_key: keyBytes.toString('base64'),
+      algorithm: 'Ed25519',
+    };
+    const result = verifyLocally(envelope);
+    assert.strictEqual(result.valid, true, 'wrapped format musí projít');
+    assert.strictEqual(result.verified_locally, true);
+    delete process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
+  });
+
+  await testAsync('handleTool verify_signed_receipt — INTEGRITY_MOLT_LOCAL_VERIFY=1 vrátí verified_locally', async () => {
+    const envelope = makeTestEnvelope(TEST_PAYLOAD, { useAsPinned: true });
+    process.env.INTEGRITY_MOLT_LOCAL_VERIFY = '1';
+    try {
+      const result = await handleTool('verify_signed_receipt', { envelope });
+      assert.strictEqual(result.isError, undefined, 'nesmí být isError');
+      const data = JSON.parse(result.content[0].text);
+      assert.strictEqual(data.verified_locally, true);
+      assert.strictEqual(data.valid, true);
+    } finally {
+      process.env.INTEGRITY_MOLT_LOCAL_VERIFY = undefined;
+      delete process.env.INTEGRITY_MOLT_LOCAL_VERIFY;
+      delete process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
+    }
+  });
+
+  await testAsync('handleTool verify_signed_receipt — bez LOCAL_VERIFY volá backend (mock)', async () => {
+    delete process.env.INTEGRITY_MOLT_LOCAL_VERIFY;
+    const result = await handleTool('verify_signed_receipt', { envelope: { payload: 'test', signature: 'abc' } });
+    assert.strictEqual(result.isError, undefined, 'mock backend vrátí valid:true');
+    const data = JSON.parse(result.content[0].text);
+    assert.strictEqual(data.valid, true);
+    assert.strictEqual(data.verified_locally, undefined, 'backend response nemá verified_locally');
   });
 
   await stopMockServer();
