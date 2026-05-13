@@ -26,6 +26,7 @@ const { lookupScamDb, lookupScamCreator } = require('../scam-db/lookup');
 const { evaluateTransaction, parseEnhancedTransaction } = _requireParseEnhancedTx();
 const { PRICING } = require('../../config/pricing');
 const { recordReceiptFeedback, getReceiptFeedbackSummary, getCachedScanFromDb, logScanToHistory } = require('../../db');
+const { getVerificationStatus } = require('../lib/ottersec');
 
 const A2A_SCAN_CACHE_TTL_MS = 30 * 60 * 1000;  // 30 minut
 const GOV_CACHE_TTL_MS      = 15 * 60 * 1000;  // 15 minut
@@ -718,6 +719,20 @@ router.get('/feedback/v1/summary', async (req, res) => {
   } catch (e) {
     console.error('[a2a-oracle] getReceiptFeedbackSummary error:', e.message);
     return res.status(500).json({ error: 'db_error' });
+  }
+});
+
+// ── GET /monitor/v1/program-verification/:address — free, OtterSec bytecode check ──
+// Thin wrapper around getVerificationStatus for MCP and external loopback callers.
+// Results cached 1h inside getVerificationStatus (LRU).
+const _pvRL = makeRateLimiter(10);
+router.get('/monitor/v1/program-verification/:address', _pvRL, validateSolanaParam('address'), async (req, res) => {
+  try {
+    const result = await getVerificationStatus(req.params.address);
+    return res.json(result);
+  } catch (e) {
+    console.error('[a2a-oracle] program-verification error:', e.message);
+    return res.status(502).json({ error: 'upstream_error', message: e.message });
   }
 });
 
