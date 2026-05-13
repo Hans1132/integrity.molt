@@ -29,7 +29,7 @@ const splMintPoller          = require('./src/monitor/spl-mint-poller');
 const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 const { lookupScamDb }       = require('./src/scam-db/lookup');
-const { createQuotaMiddleware, createBlacklistMiddleware, GLOBAL_DAILY_CAP } = require('./src/middleware/free-quota');
+const { createQuotaMiddleware, createBlacklistMiddleware, GLOBAL_DAILY_CAP, getClientIp: _getClientIp } = require('./src/middleware/free-quota');
 // Initialized after db is required at line 7; db.db is the raw better-sqlite3 instance
 const _rawDb = db.db;
 const _stmtAbuseGlobalToday  = _rawDb.prepare('SELECT free_count, paid_count FROM global_scan_stats WHERE stat_date = ?');
@@ -1113,9 +1113,8 @@ app.get('/x402.json', (req, res) => res.redirect(301, '/.well-known/x402.json'))
 // A2A JSON-RPC 2.0 endpoint — tasks/send, tasks/get, tasks/cancel
 const _a2aRL = new Map();
 const _a2aRLMiddleware = (req, res, next) => {
-  const ip = req.ip || '127.0.0.1';
-  // 127.0.0.1 = internal calls from own services — exempt
-  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return next();
+  const ip = _getClientIp(req);
+  if (ip === '127.0.0.1') return next();
   const now = Date.now();
   const entry = _a2aRL.get(ip) || { count: 0, windowStart: now };
   if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }
@@ -1785,8 +1784,8 @@ const validateSolanaAddress = (req, res, next) => {
 };
 
 app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, async (req, res) => {
-  const ip = req.ip || '127.0.0.1';
-  if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
+  const ip = _getClientIp(req);
+  if (ip !== '127.0.0.1') {
     const now = Date.now();
     const entry = _freeScanRL.get(ip) || { count: 0, windowStart: now };
     if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }
@@ -1912,10 +1911,10 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
 
   // ── FREE TIER: rate limit + quota + IRIS-only ────────────────────────────────
   if (!isPaid) {
-    const ip = req.ip || '127.0.0.1';
+    const ip = _getClientIp(req);
 
     // Rate limit: 10 req/min/IP (shares _freeScanRL with /scan/iris)
-    if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
+    if (ip !== '127.0.0.1') {
       const now = Date.now();
       const entry = _freeScanRL.get(ip) || { count: 0, windowStart: now };
       if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }

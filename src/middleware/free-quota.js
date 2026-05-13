@@ -154,4 +154,4 @@ function createBlacklistMiddleware(db) {
   return { checkBlacklist, logAbuseEvent, addToBlacklist };
 }
 
-module.exports = { createQuotaMiddleware, createBlacklistMiddleware, PER_IP_DAILY_LIMIT, GLOBAL_DAILY_CAP };
+module.exports = { createQuotaMiddleware, createBlacklistMiddleware, PER_IP_DAILY_LIMIT, GLOBAL_DAILY_CAP, getClientIp };
