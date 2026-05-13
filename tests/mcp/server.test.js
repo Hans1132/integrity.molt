@@ -234,6 +234,39 @@ console.log('\ntests/mcp/server.test.js\n');
     assert.ok(result.content[0].text.startsWith('Error:'));
   });
 
+  // ── Security regression tests (bugs confirmed by audit) ─────────────────────
+
+  await testAsync('verify_signed_receipt — array jako envelope vrátí isError (regression H5)', async () => {
+    const result = await handleTool('verify_signed_receipt', { envelope: [] });
+    assert.strictEqual(result.isError, true);
+    assert.ok(result.content[0].text.includes('plain object'), 'chybí plain object hint: ' + result.content[0].text);
+  });
+
+  await testAsync('scan_solana_address — číslo jako address vrátí isError bez interního TypeError (regression H6)', async () => {
+    const result = await handleTool('scan_solana_address', { address: 12345 });
+    assert.strictEqual(result.isError, true);
+    assert.ok(!result.content[0].text.includes('.trim is not a function'), 'nesmí leakovat interní JS error');
+    assert.ok(result.content[0].text.startsWith('Error:'));
+  });
+
+  await testAsync('quick_scan — array jako address vrátí isError bez interního TypeError (regression H6)', async () => {
+    const result = await handleTool('quick_scan', { address: ['inject'] });
+    assert.strictEqual(result.isError, true);
+    assert.ok(!result.content[0].text.includes('.trim is not a function'), 'nesmí leakovat interní JS error');
+  });
+
+  await testAsync('get_new_spl_tokens — since jako objekt vrátí isError (regression H6)', async () => {
+    const result = await handleTool('get_new_spl_tokens', { since: { bad: true } });
+    assert.strictEqual(result.isError, true);
+    assert.ok(result.content[0].text.includes('ISO8601'));
+  });
+
+  await testAsync('scan_solana_address — base58 validace odmítne krátký string', async () => {
+    const result = await handleTool('scan_solana_address', { address: 'tooshort' });
+    assert.strictEqual(result.isError, true);
+    assert.ok(result.content[0].text.includes('base58'));
+  });
+
   await stopMockServer();
 
   // ── Summary ─────────────────────────────────────────────────────────────────

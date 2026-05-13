@@ -2,19 +2,38 @@
 
 const { get, post } = require('./client');
 
+const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+function validateAddress(val, fieldName = 'address') {
+  if (typeof val !== 'string') throw new Error(`${fieldName} must be a string`);
+  const addr = val.trim();
+  if (!addr) throw new Error(`${fieldName} is required`);
+  if (!BASE58_RE.test(addr)) throw new Error(`${fieldName} must be a valid Solana base58 public key (32–44 chars)`);
+  return addr;
+}
+
+// Concurrency semaphore — caps in-flight requests to prevent memory exhaustion
+// from LLM loops or prompt-injection-driven bursts.
+let _inflight = 0;
+const MAX_INFLIGHT = 4;
+
 const TOOLS = [
   {
     name: 'scan_solana_address',
     description:
       'IRIS security scan of a Solana token mint or wallet address. ' +
       'Returns iris_score (0–100, higher = riskier), risk_level (low/medium/high/critical), ' +
-      'risk_factors array, and an Ed25519-signed receipt for tamper-proof audit. Free, rate-limited.',
+      'risk_factors array, and an Ed25519-signed receipt for tamper-proof audit. Free, rate-limited. ' +
+      '[Network: sends address to https://intmolt.org — informational only, not financial advice.]',
     inputSchema: {
       type: 'object',
       properties: {
         address: {
           type: 'string',
           description: 'Solana base58 address — token mint or wallet public key',
+          minLength: 32,
+          maxLength: 44,
+          pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$',
         },
       },
       required: ['address'],
@@ -24,13 +43,15 @@ const TOOLS = [
     name: 'verify_signed_receipt',
     description:
       'Verify an Ed25519-signed oracle receipt from integrity.molt. ' +
-      'Confirms the receipt was issued by this oracle and has not been tampered with. Free.',
+      'Confirms the receipt was issued by this oracle and has not been tampered with. ' +
+      'Does NOT re-validate the underlying risk assessment, which may be outdated. Free.',
     inputSchema: {
       type: 'object',
       properties: {
         envelope: {
           type: 'object',
           description: 'The signed receipt object returned by scan_solana_address',
+          required: ['payload', 'signature', 'kid'],
         },
       },
       required: ['envelope'],
@@ -40,7 +61,8 @@ const TOOLS = [
     name: 'get_new_spl_tokens',
     description:
       'Feed of new SPL token mint creation events on Solana (last 24h by default). ' +
-      'Useful for monitoring new token launches before they appear on DEXes. Free.',
+      'Useful for monitoring new token launches before they appear on DEXes. Free. ' +
+      '[Network: queries https://intmolt.org]',
     inputSchema: {
       type: 'object',
       properties: {
@@ -55,13 +77,17 @@ const TOOLS = [
     name: 'quick_scan',
     description:
       'Lightweight IRIS risk scan of a Solana address. ' +
-      'Faster than scan_solana_address — no signed receipt. Use for quick risk checks. Free, rate-limited.',
+      'Faster than scan_solana_address — no signed receipt. Use for quick risk checks. Free, rate-limited. ' +
+      '[Network: sends address to https://intmolt.org — informational only, not financial advice.]',
     inputSchema: {
       type: 'object',
       properties: {
         address: {
           type: 'string',
           description: 'Solana base58 address',
+          minLength: 32,
+          maxLength: 44,
+          pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$',
         },
       },
       required: ['address'],
@@ -72,13 +98,17 @@ const TOOLS = [
     description:
       'Check if a Solana program is verified on OtterSec verify.osec.io — ' +
       'confirms deployed bytecode matches a public source repository. ' +
-      'Returns is_verified, repo_url, and last_verified_at. Free, cached 1h.',
+      'Returns is_verified, repo_url, and last_verified_at. Free, cached 1h. ' +
+      'Bytecode match does not imply the program is safe or free of malicious logic.',
     inputSchema: {
       type: 'object',
       properties: {
         program_id: {
           type: 'string',
           description: 'Solana program address',
+          minLength: 32,
+          maxLength: 44,
+          pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$',
         },
       },
       required: ['program_id'],
@@ -87,48 +117,66 @@ const TOOLS = [
 ];
 
 async function handleTool(name, args) {
+  if (_inflight >= MAX_INFLIGHT) {
+    return {
+      content: [{ type: 'text', text: 'Error: too many concurrent requests, please retry' }],
+      isError: true,
+    };
+  }
+  _inflight++;
   try {
     let data;
     switch (name) {
       case 'scan_solana_address': {
-        const addr = (args.address || '').trim();
-        if (!addr) throw new Error('address is required');
+        const addr = validateAddress(args.address);
         data = await get(`/scan/v1/${encodeURIComponent(addr)}`);
         break;
       }
       case 'verify_signed_receipt': {
-        if (!args.envelope || typeof args.envelope !== 'object') {
-          throw new Error('envelope must be an object');
+        const env = args.envelope;
+        if (!env || typeof env !== 'object' || Array.isArray(env)) {
+          throw new Error('envelope must be a plain object');
         }
-        data = await post('/verify/v1/signed-receipt', { envelope: args.envelope });
+        const serialized = JSON.stringify(env);
+        if (serialized.length > 64 * 1024) throw new Error('envelope too large (max 64KB)');
+        data = await post('/verify/v1/signed-receipt', { envelope: env });
         break;
       }
       case 'get_new_spl_tokens': {
+        if (args.since !== undefined) {
+          if (typeof args.since !== 'string' || Number.isNaN(Date.parse(args.since))) {
+            throw new Error('since must be an ISO8601 timestamp string');
+          }
+        }
         const qs = args.since ? `?since=${encodeURIComponent(args.since)}` : '';
         data = await get(`/feed/v1/new-spl-tokens${qs}`);
         break;
       }
       case 'quick_scan': {
-        const addr = (args.address || '').trim();
-        if (!addr) throw new Error('address is required');
+        const addr = validateAddress(args.address);
         data = await post('/scan/iris', { address: addr });
         break;
       }
       case 'check_program_verification': {
-        const programId = (args.program_id || '').trim();
-        if (!programId) throw new Error('program_id is required');
+        const programId = validateAddress(args.program_id, 'program_id');
         data = await get(`/monitor/v1/program-verification/${encodeURIComponent(programId)}`);
         break;
       }
-      default:
-        throw new Error(`Unknown tool: ${name}`);
+      default: {
+        const safeName = String(name).replace(/[^\w-]/g, '_').slice(0, 64);
+        throw new Error(`Unknown tool: ${safeName}`);
+      }
     }
     return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[mcp] tool=${name} error=${msg}`);
     return {
-      content: [{ type: 'text', text: `Error: ${err.message}` }],
+      content: [{ type: 'text', text: `Error: ${msg || 'unknown error'}` }],
       isError: true,
     };
+  } finally {
+    _inflight--;
   }
 }
 
