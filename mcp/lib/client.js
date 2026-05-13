@@ -4,7 +4,7 @@
 // Reads INTEGRITY_MOLT_BASE_URL at call time (not require time) so tests can override it.
 
 function baseUrl() {
-  return (process.env.INTEGRITY_MOLT_BASE_URL || 'http://127.0.0.1:3402').replace(/\/$/, '');
+  return (process.env.INTEGRITY_MOLT_BASE_URL || 'https://intmolt.org').replace(/\/$/, '');
 }
 
 async function get(path, timeoutMs = 30_000) {

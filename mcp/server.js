@@ -21,7 +21,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  const base = process.env.INTEGRITY_MOLT_BASE_URL || 'http://127.0.0.1:3402';
+  const base = process.env.INTEGRITY_MOLT_BASE_URL || 'https://intmolt.org';
   console.error(`[integrity-molt MCP] ready — backend: ${base}`);
 }
 

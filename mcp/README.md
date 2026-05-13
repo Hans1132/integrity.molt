@@ -12,8 +12,8 @@ Solana security oracle as MCP tools for Claude Desktop. Wraps 5 free skills from
 
 ## Prerequisites
 
-- integrity.molt backend running on `127.0.0.1:3402` (the `integrity-x402.service` systemd unit)
 - Node.js ≥ 18
+- Internet connection (calls `https://intmolt.org` by default — no local backend needed)
 
 ## Install
 
@@ -34,16 +34,27 @@ Add to your Claude Desktop config file:
   "mcpServers": {
     "integrity-molt": {
       "command": "node",
-      "args": ["/root/x402-server/mcp/server.js"],
-      "env": {
-        "INTEGRITY_MOLT_BASE_URL": "http://127.0.0.1:3402"
-      }
+      "args": ["/path/to/x402-server/mcp/server.js"]
     }
   }
 }
 ```
 
 Restart Claude Desktop after saving. The 5 tools will appear in the tool picker.
+
+## Codex CLI configuration
+
+```json
+{
+  "mcpServers": {
+    "integrity-molt": {
+      "command": "node",
+      "args": ["/path/to/x402-server/mcp/server.js"],
+      "type": "stdio"
+    }
+  }
+}
+```
 
 ## Manual test (stdio pipe)
 
@@ -66,7 +77,7 @@ Expected output (5 tool names):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `INTEGRITY_MOLT_BASE_URL` | `http://127.0.0.1:3402` | URL of the integrity.molt backend |
+| `INTEGRITY_MOLT_BASE_URL` | `https://intmolt.org` | URL of the integrity.molt backend. Override to `http://127.0.0.1:3402` only when running on the VPS itself. |
 
 ## Paid skills
 
