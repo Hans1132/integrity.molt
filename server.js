@@ -1111,10 +1111,15 @@ app.get('/jwks.json', (req, res) => res.redirect(301, '/.well-known/jwks.json'))
 app.get('/x402.json', (req, res) => res.redirect(301, '/.well-known/x402.json'));
 
 // A2A JSON-RPC 2.0 endpoint — tasks/send, tasks/get, tasks/cancel
+const _A2A_RL_MAX = 5000;
 const _a2aRL = new Map();
 const _a2aRLMiddleware = (req, res, next) => {
   const ip = _getClientIp(req);
   if (ip === '127.0.0.1') return next();
+  if (_a2aRL.size >= _A2A_RL_MAX) {
+    let n = Math.floor(_A2A_RL_MAX * 0.1);
+    for (const k of _a2aRL.keys()) { _a2aRL.delete(k); if (--n <= 0) break; }
+  }
   const now = Date.now();
   const entry = _a2aRL.get(ip) || { count: 0, windowStart: now };
   if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }
@@ -1754,6 +1759,7 @@ app.post('/api/v1/feedback', express.json(), (req, res) => {
 // Calls enrichment + calculateIRIS without shell scripts or LLM — safe for internal bot use.
 // 127.0.0.1 is exempt from rate limit (Moltbook heartbeat).
 const _freeScanRL = new Map(); // IP → { count, windowStart }
+const _FREE_SCAN_RL_MAX = 5000;
 const _SCAN_PAGE_RL_LIMIT = 30; // req/min/IP pro GET /scan/:address
 const _SCAN_PAGE_RL_MAX   = 5000; // LRU cap — zabrání RAM leaku při botnetu
 const _scanPageRL = new Map();
@@ -1786,6 +1792,10 @@ const validateSolanaAddress = (req, res, next) => {
 app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, async (req, res) => {
   const ip = _getClientIp(req);
   if (ip !== '127.0.0.1') {
+    if (_freeScanRL.size >= _FREE_SCAN_RL_MAX) {
+      let n = Math.floor(_FREE_SCAN_RL_MAX * 0.1);
+      for (const k of _freeScanRL.keys()) { _freeScanRL.delete(k); if (--n <= 0) break; }
+    }
     const now = Date.now();
     const entry = _freeScanRL.get(ip) || { count: 0, windowStart: now };
     if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }
@@ -1915,6 +1925,10 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
 
     // Rate limit: 10 req/min/IP (shares _freeScanRL with /scan/iris)
     if (ip !== '127.0.0.1') {
+      if (_freeScanRL.size >= _FREE_SCAN_RL_MAX) {
+        let n = Math.floor(_FREE_SCAN_RL_MAX * 0.1);
+        for (const k of _freeScanRL.keys()) { _freeScanRL.delete(k); if (--n <= 0) break; }
+      }
       const now = Date.now();
       const entry = _freeScanRL.get(ip) || { count: 0, windowStart: now };
       if (now - entry.windowStart >= 60_000) { entry.count = 0; entry.windowStart = now; }
