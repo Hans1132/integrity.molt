@@ -10,6 +10,13 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-13: K2 — Dead-letter JSONL pro failed Helius webhook processing — [monitor]
+- **Změny:** `src/monitor/webhook-receiver.js` — přidán `DEAD_LETTER_FILE` constant, `_writeDeadLetter()` helper (sync appendFileSync), per-tx try/catch v `handleHeliusWebhook` (watchlist load failure = celý batch do DL, per-tx failure = jen ta tx). `tests/monitor/webhook-dead-letter.test.js` (nový).
+- **Důvod:** K2 — processing po 200 ACK házel výjimky tiše; event byl ztracen bez záznamu.
+- **Dopad:** Failed transakce zachovány v `data/monitor/dead-letter.jsonl` s `_deadLetterAt` + `_error`. Jeden tx failure nezastaví zbytek batche.
+- **Test:** 1/1 passed. Gate 11/11 PASS. Commit: b3cd816.
+- **Gotcha:** `appendFileSync` (sync) záměrný — async race v catch bloku je nebezpečný. `DEAD_LETTER_FILE` env override umožňuje testování bez zásahu do live dat.
+
 ### 2026-05-13: VoltAgent audit — Backend Security Hardening komplet (10 tasků) — [security/backend]
 - **Změny:** `src/crypto/sign.js` (SignPipelineError + Telegram alert, scriptPath param); `src/rpc.js` (export PUBLIC_FALLBACK); `server.js` (rpcPost fallback, H1 scan-page RL, H2 CF-IP rate limitery, M3 safeCompare, A1 LRU caps, K1 callers 503); `src/a2a/handler.js` (H6 SSRF IPv6+decimal+octal); `src/middleware/free-quota.js` (H2 getClientIp export, H5 timingSafeEqual, M6 atomická tx); `auth.js` (H4 isSafeNext open redirect). Nové testy: `tests/rpc-failover.test.js`, `tests/security/{scan-page-ratelimit,open-redirect,ssrf-deny-list}.test.js`, `tests/crypto/sign-spof.test.js`.
 - **Důvod:** VoltAgent chaos/security audit nalezl 11 nálezů (K1–K5, H1–H6, M3/M6, A1, S8). K3+K5/S8 opraveny 2026-05-12, zbývající dnes.
