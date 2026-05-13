@@ -56,6 +56,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0,        // free — config/pricing.js: quick = 500_000 (paid REST), A2A uses /scan/free
     tags:        ['solana', 'security', 'free'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
   'token_audit': {
     name:        'Token Audit',
@@ -64,6 +65,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0.75,     // config/pricing.js: token = 750_000
     tags:        ['solana', 'token', 'security'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
   'agent_token_scan': {
     name:        'Agent Token Scan',
@@ -72,6 +74,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0.15,     // config/pricing.js: agent-token = 150_000
     tags:        ['solana', 'metaplex', 'agent-token', 'nft', 'security'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
   'wallet_profile': {
     name:        'Wallet Profile',
@@ -80,6 +83,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0.75,     // config/pricing.js: wallet = 750_000 (was incorrectly 0.50)
     tags:        ['solana', 'wallet', 'security'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
   'deep_audit': {
     name:        'Deep Audit',
@@ -88,6 +92,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   5.00,     // config/pricing.js: deep = 5_000_000
     tags:        ['solana', 'program', 'security', 'audit'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
   'adversarial_sim': {
     name:        'Adversarial Simulation',
@@ -96,6 +101,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:    4.00,    // config/pricing.js: adversarial = 4_000_000 (under AutoPilot 5 USDC limit)
     tags:        ['solana', 'program', 'security', 'simulation'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
 
   // ── A2A Oracle MVP skills ──────────────────────────────────────────────────
@@ -106,6 +112,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0,
     tags:        ['oracle', 'verification', 'free'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
   'scan_address': {
     name:        'Scan Address (Oracle)',
@@ -114,6 +121,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0,
     tags:        ['solana', 'oracle', 'security', 'free'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
   'governance_change': {
     name:        'Governance Change Detection',
@@ -122,6 +130,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0.15,     // config/pricing.js: governance-change = 150_000
     tags:        ['solana', 'oracle', 'governance', 'monitoring'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
   'new_spl_feed': {
     name:        'New SPL Token Feed',
@@ -130,6 +139,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0,
     tags:        ['solana', 'oracle', 'spl', 'feed', 'free'],
+    annotations: { readOnlyHint: true, openWorldHint: true },
   },
   'program_verification_status': {
     name:        'Program Verification Status',
@@ -138,6 +148,7 @@ const SKILLS = {
     outputModes: ['application/json'],
     priceUSDC:   0,
     tags:        ['solana', 'verification', 'ottersec', 'free', 'oracle'],
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   },
 };
 
