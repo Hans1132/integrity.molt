@@ -1664,8 +1664,8 @@ app.get('/api/v1/stats/advisor', (req, res) => {
 
 // Abuse monitoring dashboard — requires ADMIN_TOKEN header
 app.get('/admin/abuse-stats', (req, res) => {
-  const token = req.headers['x-admin-token'];
-  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
+  const token = req.headers['x-admin-token'] || '';
+  if (!process.env.ADMIN_TOKEN || !safeCompare(token, process.env.ADMIN_TOKEN)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   const today = new Date().toISOString().slice(0, 10);
