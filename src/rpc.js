@@ -69,4 +69,4 @@ const connection = new Connection(SOLANA_RPC_URL, {
   disableRetryOnRateLimit:          false,
 });
 
-module.exports = { SOLANA_RPC_URL, connection, rpcProvider };
+module.exports = { SOLANA_RPC_URL, connection, rpcProvider, PUBLIC_FALLBACK };

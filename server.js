@@ -162,7 +162,7 @@ function loadLatestReport(reportsDir, slug, prefix) {
 const VERIFY_KEY_PATH = '/root/.secrets/verify_key.bin';
 const _jwksKeyBytes = fs.readFileSync(VERIFY_KEY_PATH);
 const _scanViewTemplate = fs.readFileSync(path.join(__dirname, 'public', 'scan-view.html'), 'utf8');
-const { SOLANA_RPC_URL: SOLANA_RPC } = require('./src/rpc');
+const { SOLANA_RPC_URL: SOLANA_RPC, PUBLIC_FALLBACK: SOLANA_RPC_FALLBACK } = require('./src/rpc');
 
 // ── Konstanty pro quick-rpc scan ──────────────────────────────────────────────
 const USDC_MINT       = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
@@ -506,27 +506,43 @@ function _rpcAcquire() {
   return Math.ceil((1 - _rpcBucket.tokens) / _rpcBucket.refillRate * 1000);
 }
 
-function rpcPost(body) {
+function rpcPost(body, _urlOverride) {
+  const primaryUrl = _urlOverride || SOLANA_RPC;
   return new Promise((resolve, reject) => {
     const wait = _rpcAcquire();
-    const doRequest = () => {
+    const attempt = (url, isFallback) => {
       const data = JSON.stringify(body);
-      const req = https.request(SOLANA_RPC, {
+      const req = https.request(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
-        agent: rpcAgent,
+        agent: isFallback ? undefined : rpcAgent,
       }, res => {
         let buf = '';
         res.on('data', c => buf += c);
         res.on('end', () => { try { resolve(JSON.parse(buf)); } catch { resolve(null); } });
       });
-      req.on('error', reject);
-      req.setTimeout(8000, () => { req.destroy(); reject(new Error('RPC timeout')); });
+      req.on('error', err => {
+        if (!isFallback && SOLANA_RPC_FALLBACK && url !== SOLANA_RPC_FALLBACK) {
+          console.warn(`[rpc] primary failed (${err.message}), trying fallback`);
+          attempt(SOLANA_RPC_FALLBACK, true);
+        } else {
+          reject(err);
+        }
+      });
+      req.setTimeout(8000, () => {
+        req.destroy();
+        if (!isFallback && SOLANA_RPC_FALLBACK && url !== SOLANA_RPC_FALLBACK) {
+          console.warn('[rpc] primary timeout, trying fallback');
+          attempt(SOLANA_RPC_FALLBACK, true);
+        } else {
+          reject(new Error('RPC timeout'));
+        }
+      });
       req.write(data);
       req.end();
     };
-    if (wait <= 0) doRequest();
-    else setTimeout(doRequest, wait);
+    if (wait <= 0) attempt(primaryUrl, false);
+    else setTimeout(() => attempt(primaryUrl, false), wait);
   });
 }
 
