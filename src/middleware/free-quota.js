@@ -1,5 +1,12 @@
 'use strict';
 
+const { timingSafeEqual } = require('node:crypto');
+function _safeStrEq(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
 const PER_IP_DAILY_LIMIT = 3;
 const GLOBAL_DAILY_CAP   = 500;
 
@@ -15,7 +22,7 @@ function getClientIp(req) {
 function isInternalCall(req) {
   const ip = getClientIp(req);
   if (INTERNAL_IPS.has(ip)) return true;
-  if (INTERNAL_SECRET && req.headers['x-internal-secret'] === INTERNAL_SECRET) return true;
+  if (INTERNAL_SECRET && _safeStrEq(req.headers['x-internal-secret'] || '', INTERNAL_SECRET)) return true;
   return false;
 }
 
