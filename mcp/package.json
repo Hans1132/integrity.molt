@@ -9,11 +9,37 @@
   "scripts": {
     "start": "node server.js"
   },
+  "files": [
+    "server.js",
+    "lib/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "solana",
+    "security",
+    "mcp",
+    "claude",
+    "iris",
+    "oracle",
+    "blockchain"
+  ],
+  "author": "Hans Lička <hanslicko@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hans1132/integrity.molt.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://intmolt.org",
+  "bugs": {
+    "url": "https://github.com/Hans1132/integrity.molt/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0"
   },
   "engines": {
     "node": ">=18"
-  },
-  "license": "MIT"
+  }
 }
