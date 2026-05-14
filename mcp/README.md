@@ -44,28 +44,68 @@ Add to your Claude Desktop config file:
 {
   "mcpServers": {
     "integrity-molt": {
-      "command": "node",
+      "command": "/path/to/node",
       "args": ["/path/to/integrity.molt/mcp/server.js"]
     }
   }
 }
 ```
 
+> **Important — use the full path to `node`.** Claude Desktop launches with a minimal `PATH` that often skips nvm and Homebrew. Find yours:
+> ```bash
+> which node   # e.g. /opt/homebrew/bin/node or /Users/you/.nvm/versions/node/v22.x.x/bin/node
+> ```
+> Paste that full path as `"command"`. Using just `"node"` causes "command not found" or picks up a system Node < 18 (no built-in `fetch`).
+
 Restart Claude Desktop after saving. The 5 tools will appear in the tool picker.
 
 ## Codex CLI configuration
+
+Codex runs from the terminal and inherits your shell `PATH`, so `node` usually works as-is. If you use nvm, run from a shell where `node --version` returns ≥ 18.
+
+Config file: `~/.codex/config.yaml`
+
+```yaml
+mcpServers:
+  integrity-molt:
+    command: node
+    args:
+      - /path/to/integrity.molt/mcp/server.js
+    type: stdio
+```
+
+## Claude Code configuration
+
+Claude Code is also terminal-based — `PATH` is inherited. Add the server once:
+
+```bash
+claude mcp add integrity-molt -- node /path/to/integrity.molt/mcp/server.js
+```
+
+Or with a full node path if needed:
+
+```bash
+claude mcp add integrity-molt -- /opt/homebrew/bin/node /path/to/integrity.molt/mcp/server.js
+```
+
+## Cursor / Windsurf / other GUI editors
+
+GUI editors (Cursor, Windsurf, VS Code extensions) launch with a minimal `PATH`, same as Claude Desktop. Use the full node path in the MCP config:
+
+**Cursor** — `~/.cursor/mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "integrity-molt": {
-      "command": "node",
-      "args": ["/path/to/integrity.molt/mcp/server.js"],
-      "type": "stdio"
+      "command": "/path/to/node",
+      "args": ["/path/to/integrity.molt/mcp/server.js"]
     }
   }
 }
 ```
+
+For any other MCP client: if `node` can't be found or `fetch` fails, replace `"node"` with the full path from `which node`.
 
 ## Manual test (stdio pipe)
 
@@ -119,6 +159,10 @@ Receipt format: [ADR-012 — Ed25519 Local Verification at MCP Boundary](docs/ad
 ## Troubleshooting
 
 **Tools not showing in Claude Desktop**: Restart Claude Desktop after editing the config file. Check for JSON syntax errors in the config.
+
+**`Error: fetch is not a function` / `ReferenceError: fetch is not defined`**: The `node` in your config is older than v18. Built-in `fetch` requires Node ≥ 18. Verify: `node --version`. Then use the full path (`which node`) to your ≥18 binary in the config.
+
+**`spawn node ENOENT` or server doesn't start**: Claude Desktop can't find `node`. Use the absolute path returned by `which node` in your terminal (e.g. `/opt/homebrew/bin/node`).
 
 **`[integrity-molt MCP] fatal: INTEGRITY_MOLT_BASE_URL "..." is not a valid URL`**: The env var is set to a malformed URL. Unset it to use the default (`https://intmolt.org`).
 
