@@ -5,11 +5,18 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-14 (MCP P1+P2+P3 — post-audit hardening komplet, verze 0.1.0)
+**Last updated:** 2026-05-15 (Terms of Service live na intmolt.org/terms)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-15: Terms of Service live na intmolt.org/terms — [infra]
+- **Změny:** `/var/www/intmolt.org/terms.html` (nový, 27 KB); NGINX `/etc/nginx/sites-available/intmolt` (přidán `location = /terms` blok vedle `/privacy`).
+- **Důvod:** Compliance blocker B1 z multi-agent auditu před npm publish MCP serveru. Pokrývá x402 payment terms, advisory disclaimer, IP protection.
+- **Dopad:** ToS dostupná veřejně na https://intmolt.org/terms. Linkovat z Privacy Policy footer a vice versa, a z mcp/README.md.
+- **Backup:** `/etc/nginx/sites-available/intmolt.backup-20260515-054957`
+- **Test:** `curl -I https://intmolt.org/terms` → 200, text/html, 27679 bytes, title „Terms of Service — integrity.molt".
 
 ### 2026-05-14: MCP P3 — pre-publish hygiene, README, CHANGELOG, version 0.1.0 — [conductor]
 - **Změny:** `mcp/README.md` (Quick install, Verification & Security, Troubleshooting, Contributing sekce); `mcp/CHANGELOG.md` (nový, [0.1.0] entry); `mcp/package.json` (version 1.0.0 → 0.1.0).
