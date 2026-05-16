@@ -5,11 +5,18 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-15 (Terms of Service live na intmolt.org/terms)
+**Last updated:** 2026-05-16 (integrity-molt-mcp@0.1.0 published na npm)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-16: integrity-molt-mcp@0.1.0 published na npm — [distribution]
+- **Změny:** balík integrity-molt-mcp@0.1.0 live na https://www.npmjs.com/package/integrity-molt-mcp
+- **Důvod:** ADR-011 distribution channel implementation completed po P0/P1/P2/P3 batches plus legal compliance (Privacy Policy a ToS live na intmolt.org).
+- **Dopad:** Externí testeři mohou install bez configurace. Default URL fix (commit b165b94) zajišťuje, že npm install dostane working install.
+- **Distribuce:** GitHub release v0.1.0, X post, sendaifun/skills IDEAS.md proposal, Discord communities.
+- **30-day review gate:** 15-16. června 2026 podle ADR-011 success metric (10 installs + 1 external interaction).
 
 ### 2026-05-15: Terms of Service live na intmolt.org/terms — [infra]
 - **Změny:** `/var/www/intmolt.org/terms.html` (nový, 27 KB); NGINX `/etc/nginx/sites-available/intmolt` (přidán `location = /terms` blok vedle `/privacy`).
