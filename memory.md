@@ -11,6 +11,12 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-16: ShieldFlow audit — derived security tests — [qa]
+- **Změny:** `tests/security/ssrf-deny-list.test.js` (+2 cases), `tests/security/path-traversal.test.js` (+2 cases); plán `docs/superpowers/plans/2026-05-16-shieldflow-audit-derived-tests.md`
+- **Důvod:** Zmapování 18 ShieldFlow AW nálezů vůči integrity.molt — 15 N/A (EVM/AWS/ZK stack), 3 relevantní vzory z AW-C-01.
+- **Dopad:** Explicitní regresní testy pro `127.1` short-form loopback, `::ffff:169.254.169.254` IPv4-mapped AWS metadata, `%2e%2e` encoded-dot path traversal.
+- **Test:** `bash scripts/test-gate.sh` → 13/13 suitů PASS, commit `4ebc81e`.
+
 ### 2026-05-16: integrity-molt-mcp@0.1.0 published na npm — [distribution]
 - **Změny:** balík integrity-molt-mcp@0.1.0 live na https://www.npmjs.com/package/integrity-molt-mcp
 - **Důvod:** ADR-011 distribution channel implementation completed po P0/P1/P2/P3 batches plus legal compliance (Privacy Policy a ToS live na intmolt.org).
