@@ -142,6 +142,7 @@ Expected output (5 tool names):
 
 **Not financial advice**: IRIS scores are informational risk indicators. They do not constitute investment advice or a guarantee of safety.
 
+**Legal**: See the [Privacy Policy](https://intmolt.org/privacy) for data handling details and the [Terms of Service](https://intmolt.org/terms) for usage terms, payment policy, and advisory disclaimer.
 ## Verification & Security
 
 All scan results from `scan_solana_address` include an Ed25519-signed receipt:
