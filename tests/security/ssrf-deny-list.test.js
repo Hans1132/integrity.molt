@@ -18,6 +18,8 @@ const BLOCKED = [
   'http://[::ffff:127.0.0.1]/evil',    // IPv4-mapped IPv6
   'http://[fc00::1]/evil',             // IPv6 ULA private
   'http://[fd12:3456::1]/evil',        // IPv6 ULA private
+  'http://127.1/evil',                 // short-form loopback (AW-C-01 ShieldFlow)
+  'http://[::ffff:169.254.169.254]/evil', // IPv4-mapped IPv6 AWS metadata (AW-C-01)
 ];
 
 const ALLOWED = [

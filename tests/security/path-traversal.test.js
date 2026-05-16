@@ -58,6 +58,17 @@ test('URL-encoded traversal ..%2F..%2Fetc%2Fpasswd is rejected after decode', ()
   assert.strictEqual(isPathSafe(decoded), false);
 });
 
+test('%2e%2e (encoded dot-dot) is rejected after decode', () => {
+  // AW-C-01 ShieldFlow: PoC /health/%2e%2e/... — Node.js/Express decode %2e → .
+  const decoded = decodeURIComponent('%2e%2e');
+  assert.strictEqual(isPathSafe(decoded), false);
+});
+
+test('%2e%2e%2f chain is rejected after decode', () => {
+  const decoded = decodeURIComponent('%2e%2e%2f..%2fetc%2fpasswd');
+  assert.strictEqual(isPathSafe(decoded), false);
+});
+
 test('sibling directory (REPORTS_DIR-evil) is rejected by sep check', () => {
   // path.resolve('/root/scanner/reports', '/root/scanner/reports-evil/file') →
   // startsWith('/root/scanner/reports/') → false (missing trailing sep)
