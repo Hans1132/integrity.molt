@@ -11,6 +11,20 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-17: ADR-013 Fáze 2 — token_audit polymorphism — [backend] (60bd097)
+- **Změny:** `src/a2a/handler.js` (executeSkill token_audit polymorfní), `server.js` (/scan/token detection-first + discriminated cache key), `src/enrichment/metaplex-agent.js` (+computeAgentScore, scoreToRisk), `tests/scan-token-audit-metaplex.test.js` (nový, 10 tests)
+- **Důvod:** ADR-013 — token_audit skill detekuje Metaplex registered agents a větví na agent audit flow (ERC-8004 + wallet + claim vs reality) vs SPL flow.
+- **Dopad:** Detection-first pořadí (6h cache); discriminated scan_type "token_agent" vs "token"; analytics neovlivněny (žádný query nefiltruje na scan_type="token"). 11 skills surface zachován.
+- **Test:** 10/10 unit tests PASS, test-gate 13/13 PASS.
+- **Gotcha:** scan_type='token_audit' existuje jen v validation_log DEFAULT — nikoli v scan_history. Composite string approach, žádná nová column.
+
+### 2026-05-17: ADR-013 Fáze 1 — Metaplex agent enrichment library + DB cache — [backend] (b9b9e33)
+- **Změny:** `src/enrichment/metaplex-agent.js` (nový, 6 exportů), `src/lib/url-validation.js` (nový, SSRF extrakce), `db.js` (metaplex_agent_cache tabulka + helpers + cleanMetaplexAgentCache), `package.json` (+3 Metaplex deps)
+- **Důvod:** ADR-013 composability axis #2 — bi-directional Metaplex integration; základ pro token_audit polymorphism.
+- **Dopad:** detectAgentIdentity/fetchRegistrationDocument/validateErc8004Document/getAssetSignerWallet/assessClaimVsReality/checkServiceEndpoint dostupné jako sdílené funkce. SSRF inline nahrazena importem z url-validation.js (zamezuje circular dep s handler.js).
+- **Test:** 14/14 unit tests PASS, test-gate 13/13 PASS.
+- **Gotcha:** umi-bundle-defaults je v1.5.1 (ne ^0.9.x jak plán říkal). Content-type text/html check PŘED JSON.parse v _fetchJson — gateways vracejí HTML error pages při výpadku.
+
 ### 2026-05-16: ShieldFlow audit — derived security tests — [qa]
 - **Změny:** `tests/security/ssrf-deny-list.test.js` (+2 cases), `tests/security/path-traversal.test.js` (+2 cases); plán `docs/superpowers/plans/2026-05-16-shieldflow-audit-derived-tests.md`
 - **Důvod:** Zmapování 18 ShieldFlow AW nálezů vůči integrity.molt — 15 N/A (EVM/AWS/ZK stack), 3 relevantní vzory z AW-C-01.
