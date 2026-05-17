@@ -436,10 +436,23 @@ function initSchema() {
       evidence_json    TEXT,
       imported_at      TEXT DEFAULT (datetime('now'))
     );
+
+    -- Metaplex Agent Registry cache (TTL 6h)
+    CREATE TABLE IF NOT EXISTS metaplex_agent_cache (
+      address               TEXT    PRIMARY KEY,
+      identity_json         TEXT,
+      registration_doc_json TEXT,
+      asset_signer_wallet   TEXT,
+      fetched_at            INTEGER NOT NULL,
+      ttl_seconds           INTEGER NOT NULL DEFAULT 21600
+    );
+    CREATE INDEX IF NOT EXISTS idx_metaplex_agent_cache_fetched_at
+      ON metaplex_agent_cache(fetched_at);
   `);
   // Migruj sloupce pro existující DB (bezpečné i při opakovaném volání)
   migrateKnownScamsSchema();
   migrateAccuracySignalsSchema();
+  migrateMetaplexAgentCacheSchema();
   dropLegacyDuplicateIndexes();
   return Promise.resolve();
 }
@@ -502,10 +515,19 @@ function migrateAccuracySignalsSchema() {
     "CREATE INDEX IF NOT EXISTS events_date_name ON events (date(created_at) DESC, name)",
     // V-9: getActiveSubscribers partial index (digest_unsubscribed = 0)
     "CREATE INDEX IF NOT EXISTS subscriptions_digest_active ON subscriptions (email, current_period_end DESC) WHERE status = 'active' AND digest_unsubscribed = 0",
+    // ADR-013: metaplex_agent_cache fetched_at index (pro existující DB)
+    "CREATE INDEX IF NOT EXISTS idx_metaplex_agent_cache_fetched_at ON metaplex_agent_cache(fetched_at)",
   ];
   for (const sql of idxs) {
     try { db.exec(sql); } catch {}
   }
+}
+
+function migrateMetaplexAgentCacheSchema() {
+  // Pro existující DB — tabulka je vytvořena v initSchema; index je idempotentní
+  try {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_metaplex_agent_cache_fetched_at ON metaplex_agent_cache(fetched_at)");
+  } catch {}
 }
 
 // Odstraní duplikátní indexy zanechané staršími migracemi.
@@ -1605,6 +1627,33 @@ function setRugcheckCache({ mint, risk_level, score, score_norm, rugged, risks, 
   );
 }
 
+// ── Metaplex Agent Registry cache ─────────────────────────────────────────────
+const METAPLEX_CACHE_TTL_S = 6 * 3600; // 6 hodin
+
+function getMetaplexAgentCache(address) {
+  const now = Date.now();
+  const row = db.prepare(
+    'SELECT * FROM metaplex_agent_cache WHERE address = ? AND (fetched_at + ttl_seconds * 1000) > ?'
+  ).get(address, now);
+  return row || null;
+}
+
+function setMetaplexAgentCache({ address, identity_json, registration_doc_json, asset_signer_wallet }) {
+  db.prepare(`
+    INSERT OR REPLACE INTO metaplex_agent_cache
+      (address, identity_json, registration_doc_json, asset_signer_wallet, fetched_at, ttl_seconds)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(address, identity_json || null, registration_doc_json || null, asset_signer_wallet || null, Date.now(), METAPLEX_CACHE_TTL_S);
+}
+
+function cleanMetaplexAgentCache() {
+  const now = Date.now();
+  const result = db.prepare(
+    'DELETE FROM metaplex_agent_cache WHERE (fetched_at + ttl_seconds * 1000) <= ?'
+  ).run(now);
+  return result.changes;
+}
+
 module.exports = {
   db, pool, initSchema, initUsersSchema, initAdsSchema,
   logPayment, isAlreadyUsed, markSignatureUsed, logEvent,
@@ -1642,6 +1691,8 @@ module.exports = {
   lookupScamCreator, rebuildScamCreators,
   // RugCheck cache
   getRugcheckCache, setRugcheckCache,
+  // Metaplex Agent Registry cache
+  getMetaplexAgentCache, setMetaplexAgentCache, cleanMetaplexAgentCache,
   // Advisor usage
   logAdvisorUsage, getAdvisorStats,
   MONTHLY_SCAN_LIMITS, MONTHLY_ADVERSARIAL_LIMITS,
