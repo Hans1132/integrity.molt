@@ -119,4 +119,21 @@ function canonicalJSON(obj, depth = 0) {
   return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k], depth + 1)).join(',') + '}';
 }
 
-module.exports = { asyncSign, canonicalJSON, SignPipelineError, SIGN_SCRIPT };
+/**
+ * buildMetaplexAgentPayload — sestaví kanonický payload pro Ed25519 signing
+ * z výsledku token_audit metaplex_agent flow. Pure funkce, žádné I/O.
+ */
+function buildMetaplexAgentPayload(auditData) {
+  const audit = auditData?.metaplex_agent_audit;
+  return {
+    subject_type:           'metaplex_agent',
+    subject_metaplex_asset: auditData?.address ?? null,
+    subject_metaplex_uri:   audit?.registration_uri || null,
+    subject_metaplex_risk:  audit?.risk_level || null,
+    subject_metaplex_score: audit?.overall_score ?? null,
+    issuer:                 'integrity.molt',
+    issuer_kid:             'integrity-molt-primary-2026',
+  };
+}
+
+module.exports = { asyncSign, canonicalJSON, SignPipelineError, SIGN_SCRIPT, buildMetaplexAgentPayload };

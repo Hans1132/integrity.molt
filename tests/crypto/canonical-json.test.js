@@ -5,7 +5,7 @@
 // Run: node tests/crypto/canonical-json.test.js
 
 const assert = require('assert');
-const { canonicalJSON } = require('../../src/crypto/sign');
+const { canonicalJSON, buildMetaplexAgentPayload } = require('../../src/crypto/sign');
 
 let passed = 0, failed = 0;
 
@@ -122,6 +122,83 @@ test('real-world receipt shape — sorted deterministically', () => {
   assert.ok(result.startsWith('{"algorithm"'), `expected sorted start, got: ${result.slice(0, 30)}`);
   assert.ok(result.includes('"signer":"integrity.molt"'), 'signer must be present');
   // Idempotent: same input always produces same output
+  assert.strictEqual(canonicalJSON(envelope), result);
+});
+
+
+// ── buildMetaplexAgentPayload regression tests ────────────────────────────────
+
+test('metaplex agent receipt shape — keys sorted alphabetically (issuer first)', () => {
+  const payload = buildMetaplexAgentPayload({
+    address: 'So1111111111111111111111111111111111111111112',
+    metaplex_agent_audit: {
+      registration_uri: 'ar://TX123',
+      overall_score: 35,
+      risk_level: 'medium',
+    },
+  });
+  const result = canonicalJSON(payload);
+  // Sorted: issuer, issuer_kid, subject_metaplex_asset, subject_metaplex_risk,
+  //         subject_metaplex_score, subject_metaplex_uri, subject_type
+  assert.ok(result.startsWith('{"issuer":'), `expected issuer first, got: ${result.slice(0, 40)}`);
+  // asset (subject_metaplex_asset) must appear before risk (subject_metaplex_risk)
+  const assetPos = result.indexOf('"subject_metaplex_asset"');
+  const riskPos  = result.indexOf('"subject_metaplex_risk"');
+  assert.ok(assetPos < riskPos, `asset must come before risk (asset@${assetPos} risk@${riskPos})`);
+  // Idempotent
+  assert.strictEqual(canonicalJSON(payload), result);
+});
+
+test('metaplex receipt — alphabetical order of subject_metaplex_* keys', () => {
+  // Deliberately unordered input
+  const payload = {
+    subject_type:           'metaplex_agent',
+    subject_metaplex_uri:   'ar://X',
+    subject_metaplex_score: 50,
+    subject_metaplex_risk:  'high',
+    subject_metaplex_asset: 'ADDR',
+    issuer:                 'i',
+    issuer_kid:             'k',
+  };
+  const result = canonicalJSON(payload);
+  // Must start with issuer
+  assert.ok(result.startsWith('{"issuer":'), `expected issuer first, got: ${result.slice(0, 40)}`);
+  // Verify subject_metaplex_* ordering: asset < risk < score < uri < type
+  const assetPos = result.indexOf('"subject_metaplex_asset"');
+  const riskPos  = result.indexOf('"subject_metaplex_risk"');
+  const scorePos = result.indexOf('"subject_metaplex_score"');
+  const uriPos   = result.indexOf('"subject_metaplex_uri"');
+  const typePos  = result.indexOf('"subject_type"');
+  assert.ok(assetPos < riskPos,  `asset must precede risk (asset@${assetPos} risk@${riskPos})`);
+  assert.ok(riskPos  < scorePos, `risk must precede score (risk@${riskPos} score@${scorePos})`);
+  assert.ok(scorePos < uriPos,   `score must precede uri (score@${scorePos} uri@${uriPos})`);
+  assert.ok(uriPos   < typePos,  `uri must precede type (uri@${uriPos} type@${typePos})`);
+});
+
+test('metaplex payload with null auditData — null fields serialize correctly', () => {
+  const payload = buildMetaplexAgentPayload(null);
+  assert.strictEqual(payload.subject_metaplex_asset, null, 'subject_metaplex_asset must be null');
+  // Must not throw
+  let result;
+  assert.doesNotThrow(() => { result = canonicalJSON(payload); });
+  // null serializes as JSON null (no quotes)
+  assert.ok(result.includes('"subject_metaplex_asset":null'), `expected null field, got: ${result}`);
+});
+
+test('existing real-world receipt shape is unchanged after new import', () => {
+  const envelope = {
+    signer:       'integrity.molt',
+    signed_at:    '2026-05-06T00:00:00Z',
+    algorithm:    'Ed25519',
+    mint_address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    risk_score:   12,
+    category:     'SAFE',
+  };
+  const result = canonicalJSON(envelope);
+  // Sorted keys: algorithm, category, mint_address, risk_score, signed_at, signer
+  assert.ok(result.startsWith('{"algorithm"'), `expected algorithm first, got: ${result.slice(0, 40)}`);
+  assert.ok(result.includes('"signer":"integrity.molt"'), 'signer value must be present');
+  // Idempotent
   assert.strictEqual(canonicalJSON(envelope), result);
 });
 
