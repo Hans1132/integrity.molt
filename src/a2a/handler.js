@@ -41,6 +41,17 @@ const { asyncSign, canonicalJSON } = require('../crypto/sign');
 // ── Agent identity (Metaplex registry cross-reference) ───────────────────────
 const { METAPLEX_ASSET, METAPLEX_URL, METAPLEX_REGISTRY_BLOCK } = require('../config/agent-identity');
 
+// ── Metaplex agent enrichment (ADR-013) ───────────────────────────────────────
+const {
+  detectAgentIdentity,
+  fetchRegistrationDocument,
+  validateErc8004Document,
+  getAssetSignerWallet,
+  assessClaimVsReality,
+  computeAgentScore,
+  scoreToRisk,
+} = require('../enrichment/metaplex-agent');
+
 // TTL cleanup job — every 10 minutes
 const _cleanupInterval = setInterval(deleteExpiredTasks, 10 * 60 * 1000);
 if (_cleanupInterval.unref) _cleanupInterval.unref();
@@ -60,7 +71,7 @@ const SKILLS = {
   },
   'token_audit': {
     name:        'Token Audit',
-    description: 'SPL token launch audit — mint authority, freeze authority, holder distribution, rug risk.',
+    description: 'Comprehensive audit of SPL tokens or Metaplex registered agents. Auto-detects target type and returns appropriate analysis. $0.75 USDC fixed price for both audit types.',
     inputModes:  ['text/plain'],
     outputModes: ['application/json'],
     priceUSDC:   0.75,     // config/pricing.js: token = 750_000
@@ -223,8 +234,54 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
       // IRIS-only endpoint — enrichment + calculateIRIS, no CAPTCHA, 127.0.0.1 rate-limit exempt.
       return internalPost('/scan/iris', { address }, null, 30_000);
 
-    case 'token_audit':
+    case 'token_audit': {
+      // Detection first — levné (6h cache), dává audit_type discriminator pro cache key
+      const _detection = await detectAgentIdentity(address).catch(() => ({ isAgent: false }));
+
+      if (_detection.isAgent && _detection.agentIdentity) {
+        // ── Metaplex agent audit flow ──────────────────────────────────────
+        const [_docResult, _walletResult] = await Promise.allSettled([
+          fetchRegistrationDocument(_detection.agentIdentity.uri),
+          getAssetSignerWallet(address),
+        ]);
+        const docR   = _docResult.status   === 'fulfilled' ? _docResult.value   : { doc: null, error: 'fetch failed', mutabilityRisk: 'high' };
+        const walletR = _walletResult.status === 'fulfilled' ? _walletResult.value : { address: null, balance_lamports: null, recent_activity: [], scam_hit: null };
+
+        const validation   = validateErc8004Document(docR.doc);
+        const claimReality = assessClaimVsReality(docR.doc, walletR.recent_activity, docR.doc?.services);
+        const overallScore = computeAgentScore(validation, walletR, claimReality, docR.mutabilityRisk);
+
+        return {
+          audit_type:  'metaplex_agent',
+          address,
+          status:      'complete',
+          metaplex_agent_audit: {
+            asset_address:                address,
+            identity_pda:                 _detection.identityPda,
+            registration_uri:             _detection.agentIdentity.uri,
+            registration_doc:             docR.doc,
+            registration_doc_unreachable: !!docR.error,
+            registration_doc_invalid:     !validation.valid,
+            validation_errors:            validation.errors,
+            validation_warnings:          validation.warnings,
+            asset_signer_wallet:          walletR,
+            claim_vs_reality:             claimReality,
+            uri_mutability_risk:          docR.mutabilityRisk,
+            lifecycle_hooks: {
+              transfer: !!_detection.agentIdentity.lifecycleChecks?.transfer,
+              update:   !!_detection.agentIdentity.lifecycleChecks?.update,
+              execute:  !!_detection.agentIdentity.lifecycleChecks?.execute,
+            },
+            overall_score: overallScore,
+            risk_level:    scoreToRisk(overallScore),
+            findings:      [...(validation.errors || []), ...(claimReality.findings || [])],
+          },
+        };
+      }
+
+      // ── SPL token audit flow (existing, unchanged) ─────────────────────
       return internalPost('/scan/token', { address }, paymentHeader, 60_000);
+    }
 
     case 'agent_token_scan':
       // Metaplex Agent Token scan — 0.15 USDC, POST /api/v1/scan/agent-token

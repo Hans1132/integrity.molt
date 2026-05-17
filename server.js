@@ -43,6 +43,15 @@ const _blacklistMw = createBlacklistMiddleware(db.db);
 const { checkBlacklist, logAbuseEvent, addToBlacklist } = _blacklistMw;
 const { enrichScanResult, combineScores } = require('./src/enrichment');
 const { parseTokenExtensionsFromBuffer }  = require('./src/enrichment/token-extensions');
+const {
+  detectAgentIdentity: _detectAgentIdentity,
+  fetchRegistrationDocument: _fetchRegistrationDocument,
+  validateErc8004Document: _validateErc8004Document,
+  getAssetSignerWallet: _getAssetSignerWallet,
+  assessClaimVsReality: _assessClaimVsReality,
+  computeAgentScore: _computeAgentScore,
+  scoreToRisk: _scoreToRisk,
+} = require('./src/enrichment/metaplex-agent');
 const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
 const { getVerificationStatus }           = require('./src/lib/ottersec');
 const {
@@ -2226,9 +2235,62 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
   const safeAddress = address; // validated by validateSolanaAddress middleware
 
   try {
-    // DB-first cache — enhanced-token-scan.sh je drahý (~48s)
-    const _tokenCached = await db.getCachedScanFromDb(safeAddress, 'token', TOKEN_AUDIT_CACHE_TTL_MS).catch(() => null);
+    // Detection first — levné (6h cache v metaplex_agent_cache), dává audit_type pro discriminated cache key
+    const _agentDetection = await _detectAgentIdentity(safeAddress).catch(() => ({ isAgent: false }));
+    const _auditScanType  = _agentDetection.isAgent ? 'token_agent' : 'token';
+
+    // DB-first cache — discriminated by audit type; enhanced-token-scan.sh je drahý (~48s)
+    const _tokenCached = await db.getCachedScanFromDb(safeAddress, _auditScanType, TOKEN_AUDIT_CACHE_TTL_MS).catch(() => null);
     if (_tokenCached) return res.json({ ..._tokenCached, cached: true });
+
+    // ── Metaplex agent audit flow ────────────────────────────────────────
+    if (_agentDetection.isAgent && _agentDetection.agentIdentity) {
+      const [_docResult, _walletResult] = await Promise.allSettled([
+        _fetchRegistrationDocument(_agentDetection.agentIdentity.uri),
+        _getAssetSignerWallet(safeAddress),
+      ]);
+      const docR    = _docResult.status    === 'fulfilled' ? _docResult.value    : { doc: null, error: 'fetch failed', mutabilityRisk: 'high' };
+      const walletR = _walletResult.status === 'fulfilled' ? _walletResult.value : { address: null, balance_lamports: null, recent_activity: [], scam_hit: null };
+
+      const validation   = _validateErc8004Document(docR.doc);
+      const claimReality = _assessClaimVsReality(docR.doc, walletR.recent_activity, docR.doc?.services);
+      const overallScore = _computeAgentScore(validation, walletR, claimReality, docR.mutabilityRisk);
+
+      const _agentResponse = {
+        audit_type:  'metaplex_agent',
+        status:      'complete',
+        address:     safeAddress,
+        metaplex_agent_audit: {
+          asset_address:                safeAddress,
+          identity_pda:                 _agentDetection.identityPda,
+          registration_uri:             _agentDetection.agentIdentity.uri,
+          registration_doc:             docR.doc,
+          registration_doc_unreachable: !!docR.error,
+          registration_doc_invalid:     !validation.valid,
+          validation_errors:            validation.errors,
+          validation_warnings:          validation.warnings,
+          asset_signer_wallet:          walletR,
+          claim_vs_reality:             claimReality,
+          uri_mutability_risk:          docR.mutabilityRisk,
+          lifecycle_hooks: {
+            transfer: !!_agentDetection.agentIdentity.lifecycleChecks?.transfer,
+            update:   !!_agentDetection.agentIdentity.lifecycleChecks?.update,
+            execute:  !!_agentDetection.agentIdentity.lifecycleChecks?.execute,
+          },
+          overall_score: overallScore,
+          risk_level:    _scoreToRisk(overallScore),
+          findings:      [...(validation.errors || []), ...(claimReality.findings || [])],
+        },
+        timestamp: new Date().toISOString(),
+      };
+      db.logScanToHistory({
+        email: req.apiKey?.email || null, address: safeAddress, scan_type: 'token_agent',
+        risk_score: overallScore ?? null, risk_level: _scoreToRisk(overallScore) || null,
+        summary: `Agent audit: ${_scoreToRisk(overallScore)}, score ${overallScore}`, cached: false,
+        result_json: _agentResponse,
+      }).catch(() => {});
+      return res.json(_agentResponse);
+    }
 
     const _t0 = Date.now();
     // Run script, RugCheck enrichment, and scam-db lookup in parallel

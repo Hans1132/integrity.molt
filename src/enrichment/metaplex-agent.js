@@ -291,6 +291,38 @@ async function checkServiceEndpoint(endpoint) {
   }
 }
 
+// ── computeAgentScore / scoreToRisk ───────────────────────────────────────────
+function computeAgentScore(validation, wallet, claimReality, mutabilityRisk) {
+  let score = 0;
+
+  // Registration doc missing entirely
+  if (!validation) return 80;
+
+  // Validation errors (max 45)
+  score += Math.min(45, (validation.errors || []).length * 15);
+
+  // URI mutability
+  if (mutabilityRisk === 'high')   score += 25;
+  else if (mutabilityRisk === 'medium') score += 10;
+
+  // Asset Signer wallet scam DB hit — hard signal
+  if (wallet?.scam_hit) score += 50;
+
+  // Claim vs reality findings
+  if (claimReality?.findings?.includes('stale_active_claim'))        score += 20;
+  if (claimReality?.findings?.includes('tee_attestation_unverified')) score += 10;
+  if (claimReality?.findings?.includes('no_services_declared'))       score += 5;
+  if (claimReality?.findings?.includes('registration_doc_missing'))   score += 30;
+
+  return Math.min(100, score);
+}
+
+function scoreToRisk(score) {
+  if (score >= 70) return 'danger';
+  if (score >= 40) return 'caution';
+  return 'safe';
+}
+
 module.exports = {
   detectAgentIdentity,
   fetchRegistrationDocument,
@@ -298,5 +330,7 @@ module.exports = {
   getAssetSignerWallet,
   assessClaimVsReality,
   checkServiceEndpoint,
+  computeAgentScore,
+  scoreToRisk,
   _setUmiForTest,
 };
