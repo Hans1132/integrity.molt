@@ -36,7 +36,7 @@ const { isSolanaAddress } = require('../validation/address');
 
 // ── OtterSec + signing (program_verification_status skill) ───────────────────
 const { getVerificationStatus }   = require('../lib/ottersec');
-const { asyncSign, canonicalJSON, buildMetaplexAgentPayload } = require('../crypto/sign');
+const { asyncSign, canonicalJSON, buildMetaplexAgentPayload, SignPipelineError } = require('../crypto/sign');
 
 // ── Agent identity (Metaplex registry cross-reference) ───────────────────────
 const { METAPLEX_ASSET, METAPLEX_URL, METAPLEX_REGISTRY_BLOCK } = require('../config/agent-identity');
@@ -292,7 +292,11 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
             algorithm:  envelope.algorithm  || 'Ed25519',
           };
         } catch (e) {
-          console.error('[a2a] token_audit metaplex_agent asyncSign failed:', e.message);
+          if (e instanceof SignPipelineError) {
+            console.error('[a2a] token_audit metaplex_agent receipt unavailable (sign pipeline):', e.message);
+          } else {
+            console.error('[a2a] token_audit metaplex_agent receipt unavailable (unexpected error):', e.name, e.message);
+          }
           // receipt remains undefined — audit data are still returned
         }
         return { ...auditResult, ...(receipt ? { receipt } : {}) };

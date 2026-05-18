@@ -208,6 +208,8 @@ async function main() {
 
   // ── T11: asyncSign succeeds → result includes receipt field ─────────────────
   await test('T11: asyncSign succeeds → result.receipt.payload.subject_type + signature present', async () => {
+    _asyncSignImpl = async () => { throw new SignPipelineError('asyncSign stub not configured'); };
+    _detectAgentIdentityImpl = async () => ({ isAgent: false });
     // Nastavíme detectAgentIdentity tak, aby vrátil agentní identitu
     _detectAgentIdentityImpl = async () => ({
       isAgent:      true,
@@ -234,10 +236,13 @@ async function main() {
     assert.strictEqual(result.receipt.payload.subject_type, 'metaplex_agent', 'receipt.payload.subject_type should be metaplex_agent');
     assert.strictEqual(result.receipt.signature, 'sig123', 'receipt.signature should match stub value');
     assert.strictEqual(result.receipt.verify_key, 'vk456', 'receipt.verify_key should match stub value');
+    assert.strictEqual(result.receipt.payload.subject_metaplex_asset, 'So11111111111111111111111111111112', 'receipt.payload.subject_metaplex_asset should match input address');
   });
 
   // ── T12: asyncSign throws SignPipelineError → receipt omitted, no throw ──────
   await test('T12: asyncSign throws SignPipelineError → receipt absent, audit data intact', async () => {
+    _asyncSignImpl = async () => { throw new SignPipelineError('asyncSign stub not configured'); };
+    _detectAgentIdentityImpl = async () => ({ isAgent: false });
     // Nastavíme detectAgentIdentity → agentní flow
     _detectAgentIdentityImpl = async () => ({
       isAgent:      true,
