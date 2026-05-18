@@ -1,6 +1,6 @@
 'use strict';
 // tests/scan-token-audit-metaplex.test.js
-// Polymorphism testy pro token_audit skill (ADR-013 Fáze 2).
+// Polymorphism testy pro token_audit skill (ADR-013 Fáze 2+4a).
 // Testuje logiku handler.js a server.js bez živých RPC volání.
 // Spustit: node tests/scan-token-audit-metaplex.test.js
 
@@ -8,6 +8,7 @@ process.env.SQLITE_DB_PATH = ':memory:';
 process.env.NODE_ENV       = 'test';
 
 const assert = require('assert');
+const path   = require('path');
 const db     = require('../db');
 db.initSchema();
 
@@ -18,6 +19,60 @@ const {
   computeAgentScore,
   scoreToRisk,
 } = require('../src/enrichment/metaplex-agent');
+
+// ── Mutable stubs pro handler.js signing tests (T11, T12) ────────────────────
+// Musí být nainstalovány PŘED prvním require('../src/a2a/handler'),
+// protože handler.js destrukturuje závislosti na úrovni modulu.
+//
+// Proxy pattern: stub funkce deleguje na měnitelný _impl holder,
+// takže handler.js zachytí wrapper (ne konkrétní impl) a testy
+// mohou impl vyměnit mezi voláními.
+
+const { canonicalJSON, buildMetaplexAgentPayload, SignPipelineError } = require('../src/crypto/sign');
+
+// Holder pro asyncSign — vyměňujeme mezi T11/T12
+let _asyncSignImpl = async () => { throw new SignPipelineError('default stub — not configured'); };
+
+// Holder pro detectAgentIdentity — vyměňujeme mezi T11/T12
+let _detectAgentIdentityImpl = async () => ({ isAgent: false });
+
+function _stubModule(resolvedPath, exports) {
+  require.cache[resolvedPath] = {
+    id:       resolvedPath,
+    filename: resolvedPath,
+    loaded:   true,
+    exports,
+    parent:   null,
+    children: [],
+    paths:    [],
+  };
+}
+
+const BASE = path.resolve(__dirname, '..');
+
+// Stub 1: crypto/sign — proxy wrapper přes _asyncSignImpl
+_stubModule(require.resolve(BASE + '/src/crypto/sign'), {
+  asyncSign:              (text) => _asyncSignImpl(text),
+  canonicalJSON,
+  buildMetaplexAgentPayload,
+  SignPipelineError,
+  SIGN_SCRIPT:            '/dev/null',
+});
+
+// Stub 2: enrichment/metaplex-agent — proxy wrapper přes _detectAgentIdentityImpl
+// Ostatní funkce vracejí bezpečné výchozí hodnoty
+_stubModule(require.resolve(BASE + '/src/enrichment/metaplex-agent'), {
+  detectAgentIdentity:      (addr) => _detectAgentIdentityImpl(addr),
+  fetchRegistrationDocument: async () => ({ doc: null, error: null, mutabilityRisk: 'low' }),
+  validateErc8004Document,    // reálná pure funkce
+  getAssetSignerWallet:      async () => ({ address: null, balance_lamports: null, recent_activity: [], scam_hit: null }),
+  assessClaimVsReality,       // reálná pure funkce
+  computeAgentScore,          // reálná pure funkce
+  scoreToRisk,                // reálná pure funkce
+});
+
+// Teď načteme handler.js — zachytí výše nainstalované proxy stubs
+const { executeSkill } = require('../src/a2a/handler');
 
 const ERC8004_TYPE = 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1';
 const VALID_DOC = {
@@ -149,6 +204,59 @@ async function main() {
 
     assert.ok(score >= 50, `score should be >= 50 for scam wallet, got ${score}`);
     assert.strictEqual(scoreToRisk(score), 'danger', `risk should be danger for score ${score}`);
+  });
+
+  // ── T11: asyncSign succeeds → result includes receipt field ─────────────────
+  await test('T11: asyncSign succeeds → result.receipt.payload.subject_type + signature present', async () => {
+    // Nastavíme detectAgentIdentity tak, aby vrátil agentní identitu
+    _detectAgentIdentityImpl = async () => ({
+      isAgent:      true,
+      identityPda:  'MOCK_PDA_T11',
+      agentIdentity: {
+        uri:              'https://example.com/agent.json',
+        lifecycleChecks:  { transfer: true, update: false, execute: false },
+      },
+    });
+    // Nastavíme asyncSign tak, aby vrátil úspěšný envelope
+    _asyncSignImpl = async () => ({
+      signature:  'sig123',
+      verify_key: 'vk456',
+      key_id:     'kid789',
+      signed_at:  '2026-01-01T00:00:00.000Z',
+      signer:     'integrity.molt',
+      algorithm:  'Ed25519',
+    });
+
+    const result = await executeSkill('token_audit', 'So11111111111111111111111111111112');
+
+    assert.strictEqual(result.audit_type, 'metaplex_agent', 'audit_type should be metaplex_agent');
+    assert.ok(result.receipt, 'receipt should be present when asyncSign succeeds');
+    assert.strictEqual(result.receipt.payload.subject_type, 'metaplex_agent', 'receipt.payload.subject_type should be metaplex_agent');
+    assert.strictEqual(result.receipt.signature, 'sig123', 'receipt.signature should match stub value');
+    assert.strictEqual(result.receipt.verify_key, 'vk456', 'receipt.verify_key should match stub value');
+  });
+
+  // ── T12: asyncSign throws SignPipelineError → receipt omitted, no throw ──────
+  await test('T12: asyncSign throws SignPipelineError → receipt absent, audit data intact', async () => {
+    // Nastavíme detectAgentIdentity → agentní flow
+    _detectAgentIdentityImpl = async () => ({
+      isAgent:      true,
+      identityPda:  'MOCK_PDA_T12',
+      agentIdentity: {
+        uri:              'https://example.com/agent2.json',
+        lifecycleChecks:  {},
+      },
+    });
+    // Nastavíme asyncSign tak, aby hodil SignPipelineError
+    _asyncSignImpl = async () => { throw new SignPipelineError('signing failed'); };
+
+    const result = await executeSkill('token_audit', 'So11111111111111111111111111111112');
+
+    assert.strictEqual(result.audit_type, 'metaplex_agent', 'audit_type should be metaplex_agent');
+    assert.strictEqual(result.receipt, undefined, 'receipt should be absent when asyncSign throws');
+    // Audit data musí zůstat kompletní i přes chybu podepisování
+    assert.ok(result.metaplex_agent_audit, 'metaplex_agent_audit should be present');
+    assert.strictEqual(result.status, 'complete', 'status should be complete despite signing failure');
   });
 
   // ── Summary ────────────────────────────────────────────────────────────────

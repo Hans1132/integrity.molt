@@ -5,9 +5,25 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-16 (integrity-molt-mcp@0.1.0 published na npm)
+**Last updated:** 2026-05-18 (ADR-013 Fáze 4a — asyncSign wiring pro metaplex_agent receipt)
 
 ---
+
+## Recent changes (top of stack, newest first)
+
+### 2026-05-18: ADR-013 Fáze 4a — asyncSign wiring pro metaplex_agent receipt — [backend] (pending)
+- **Změny:** `src/a2a/handler.js` (+buildMetaplexAgentPayload import, refactor token_audit metaplex_agent return → auditResult + try/catch signing, +executeSkill export), `tests/scan-token-audit-metaplex.test.js` (+T11/T12 signing tests via require.cache proxy stubs)
+- **Důvod:** ADR-013 Fáze 4a — handler.js nyní podepisuje metaplex_agent audit výsledky; signing je optional (catch → receipt=undefined, audit data zachovány).
+- **Dopad:** metaplex_agent výsledky mají volitelné pole `receipt` s { payload, signature, verify_key, key_id, signed_at, signer, algorithm }. SPL flow nezměněn.
+- **Test:** T11/T12 PASS (12/12), test-gate 13/13 PASS.
+- **Gotcha:** Proxy wrapper pattern pro require.cache stubs nutný, protože handler.js destrukturuje deps na úrovni modulu — přímá záměna cache po loadu nefunguje.
+
+### 2026-05-17: ADR-013 Fáze 3 — receipt envelope discriminator + adversarial tests — [security/qa] (fc76c39)
+- **Změny:** `src/crypto/sign.js` (+buildMetaplexAgentPayload export), `tests/crypto/canonical-json.test.js` (+4 regresní testy), `tests/security/metaplex-agent-adversarial.test.js` (nový, AS-23 až AS-27)
+- **Důvod:** ADR-013 Fáze 3 — pure payload builder pro budoucí signing metaplex_agent receipts; handler.js wiring = Fáze 4.
+- **Dopad:** buildMetaplexAgentPayload(auditData) → { subject_type, subject_metaplex_asset/uri/risk/score, issuer, issuer_kid }. Alphabetical order: asset < risk < score < uri < type (subject_metaplex_* < subject_type).
+- **Test:** canonical-json 18/18, adversarial 5/5 (AS-23 TEE forged, AS-24 SSRF loopback, AS-25 drainer scam_hit, AS-26 stale claim, AS-27 DNS rebinding hostname), gate 13/13 PASS.
+- **Gotcha:** scoreToRisk vrací 'safe'|'caution'|'danger' — NE 'low'/'medium'/'high'. Danger threshold = 70. Neopakovat v task specs.
 
 ## Recent changes (top of stack, newest first)
 

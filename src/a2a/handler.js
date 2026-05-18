@@ -36,7 +36,7 @@ const { isSolanaAddress } = require('../validation/address');
 
 // ── OtterSec + signing (program_verification_status skill) ───────────────────
 const { getVerificationStatus }   = require('../lib/ottersec');
-const { asyncSign, canonicalJSON } = require('../crypto/sign');
+const { asyncSign, canonicalJSON, buildMetaplexAgentPayload } = require('../crypto/sign');
 
 // ── Agent identity (Metaplex registry cross-reference) ───────────────────────
 const { METAPLEX_ASSET, METAPLEX_URL, METAPLEX_REGISTRY_BLOCK } = require('../config/agent-identity');
@@ -251,7 +251,7 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
         const claimReality = assessClaimVsReality(docR.doc, walletR.recent_activity, docR.doc?.services);
         const overallScore = computeAgentScore(validation, walletR, claimReality, docR.mutabilityRisk);
 
-        return {
+        const auditResult = {
           audit_type:  'metaplex_agent',
           address,
           status:      'complete',
@@ -277,6 +277,25 @@ async function executeSkill(skillId, address, options = {}, paymentHeader = null
             findings:      [...(validation.errors || []), ...(claimReality.findings || [])],
           },
         };
+        // Signing is optional — does not interrupt flow on failure
+        let receipt;
+        try {
+          const signPayload = buildMetaplexAgentPayload(auditResult);
+          const envelope    = await asyncSign(canonicalJSON(signPayload));
+          receipt = {
+            payload:    signPayload,
+            signature:  envelope.signature  || null,
+            verify_key: envelope.verify_key || null,
+            key_id:     envelope.key_id     || null,
+            signed_at:  envelope.signed_at  || new Date().toISOString(),
+            signer:     envelope.signer     || 'integrity.molt',
+            algorithm:  envelope.algorithm  || 'Ed25519',
+          };
+        } catch (e) {
+          console.error('[a2a] token_audit metaplex_agent asyncSign failed:', e.message);
+          // receipt remains undefined — audit data are still returned
+        }
+        return { ...auditResult, ...(receipt ? { receipt } : {}) };
       }
 
       // ── SPL token audit flow (existing, unchanged) ─────────────────────
@@ -1011,4 +1030,4 @@ function buildAgentCard(baseUrl) {
   };
 }
 
-module.exports = { handleA2ARequest, handleA2ASubscribe, handleTasksSendSubscribe, buildAgentCard, SKILLS, getTask, createTask, validateCallbackUrl };
+module.exports = { handleA2ARequest, handleA2ASubscribe, handleTasksSendSubscribe, buildAgentCard, SKILLS, getTask, createTask, validateCallbackUrl, executeSkill };
