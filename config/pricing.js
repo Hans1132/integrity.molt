@@ -18,7 +18,7 @@ const PRICING = {
   'evm-token':         750_000,   // 0.75 USDC
   'evm-scan':          750_000,   // 0.75 USDC
   contract:          5_000_000,   // 5.00 USDC
-  'token-audit':       750_000,   // 0.75 USDC
+  'token-audit':       750_000,   // 0.75 USDC — polymorphic: SPL token or Metaplex registered agent, signed receipt
   'agent-token':       150_000,   // 0.15 USDC
   delta:             1_000_000,   // 1.00 USDC
   adversarial:       4_000_000,   //  4.00 USDC (under AutoPilot 5 USDC per-tx limit)

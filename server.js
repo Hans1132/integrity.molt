@@ -1357,7 +1357,7 @@ Content-Type: application/json
 | \`program_verification_status\` | free | Check if a Solana program is verified on-chain |
 | \`agent_token_scan\` | $0.15 USDC | Token security scan optimized for AI agents |
 | \`governance_change\` | $0.15 USDC | Detect governance changes in a Solana program |
-| \`token_audit\` | $0.75 USDC | Detailed token audit report |
+| \`token_audit\` | $0.75 USDC | Polymorphic audit — SPL token or Metaplex registered agent. Signed receipt. |
 | \`wallet_profile\` | $0.75 USDC | Wallet risk profile with behavioral analysis |
 | \`adversarial_sim\` | $4.00 USDC | Adversarial simulation — test attack vectors |
 | \`deep_audit\` | $5.00 USDC | Deep security audit with signed findings report |
@@ -1380,6 +1380,7 @@ Every paid response includes an Ed25519-signed receipt envelope with:
 - \`signature\` (Ed25519 base64, verifiable at \`/verify/v1/signed-receipt\`)
 - \`signer\`: \`integrity.molt\`
 - \`jwks_url\`: \`https://intmolt.org/jwks.json\`
+- For Metaplex agent audits: \`receipt.payload.subject_type\` = \`"metaplex_agent"\`, \`receipt.payload.subject_metaplex_risk\` (safe/caution/danger), \`receipt.payload.subject_metaplex_score\` (0–100)
 
 ## A2A Relay (via moltbook)
 
@@ -1479,7 +1480,7 @@ app.get('/offer', (req, res) => {
       {
         route:       'POST /a2a',
         skill:       'token_audit',
-        description: 'Detailed token audit report — liquidity, holder distribution, creator history, mint authority',
+        description: 'Polymorphic token audit — auto-detects SPL token or Metaplex registered agent. Returns Ed25519-signed receipt.',
         price:       '$0.75 USDC',
         mimeType:    'application/json',
         networks:    [SOLANA_MAINNET],
