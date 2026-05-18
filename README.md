@@ -90,7 +90,7 @@ The canonical surface is A2A 0.4.1, discoverable via /.well-known/agent-card.jso
 |---|---|---|
 | agent_token_scan | $0.15 | Metaplex Agent Token scan — Core NFT backing, treasury PDA, update authority, creator fees, DAO governance |
 | governance_change | $0.15 | Detect authority changes and program upgrades via Helius enhanced transactions; signed verdict |
-| token_audit | $0.75 | SPL token launch audit — mint/freeze authority, holder distribution, rug risk |
+| token_audit | $0.75 | Polymorphic audit — auto-detects Metaplex registered agent (ERC-8004 + wallet + claim validation) or SPL token (mint/freeze authority, holder distribution, rug risk). Returns Ed25519-signed receipt. |
 | wallet_profile | $0.75 | Wallet behavioral profile — age, activity, DeFi exposure, risk classification |
 | adversarial_sim | $4.00 | Fork on-chain state, probe 7 attack playbooks, return signed risk report |
 | deep_audit | $5.00 | Full program audit — static analysis, LLM-verified findings, Ed25519-signed report |

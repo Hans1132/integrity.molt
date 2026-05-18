@@ -155,6 +155,28 @@ src:  https://intmolt.org/.well-known/jwks.json
 
 The `verify_signed_receipt` tool checks this receipt locally using the pinned public key. No round-trip to the oracle is required — the trust anchor is the key, not the URL.
 
+**Metaplex agent token_audit receipts** use a wrapped format — pass the nested `receipt` object from the `token_audit` response (not the full response):
+
+```json
+{
+  "payload": {
+    "subject_type": "metaplex_agent",
+    "subject_metaplex_asset": "<Core Asset address>",
+    "subject_metaplex_risk": "safe|caution|danger",
+    "subject_metaplex_score": 82,
+    "subject_metaplex_uri": "https://www.metaplex.com/agents/...",
+    "issuer": "integrity.molt",
+    "issuer_kid": "integrity-molt-primary-2026"
+  },
+  "signature": "<base64 Ed25519 sig>",
+  "verify_key": "<base64 raw 32-byte public key>",
+  "key_id": "...",
+  "signed_at": "...",
+  "signer": "integrity.molt",
+  "algorithm": "Ed25519"
+}
+```
+
 Receipt format: [ADR-012 — Ed25519 Local Verification at MCP Boundary](docs/adr-012-mcp-local-verify.md)
 
 ## Troubleshooting
