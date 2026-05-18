@@ -675,11 +675,12 @@ console.log(`[payment] USDC ATA for wallet ${WALLET}: ${USDC_ATA}`);
 setupStrategies();
 configureSession(app);
 
-// HTTP request logging do souboru (Apache combined format)
+// HTTP request logging do souboru (Apache combined format + MCP tag)
 const LOG_DIR = process.env.LOG_DIR || '/var/log/intmolt';
 try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch {}
 const accessLogStream = fs.createWriteStream(path.join(LOG_DIR, 'access.log'), { flags: 'a' });
-app.use(morgan('combined', { stream: accessLogStream }));
+morgan.token('mcp', (req) => req.headers['x-mcp-caller'] === '1' ? '1' : '-');
+app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" mcp=:mcp', { stream: accessLogStream }));
 
 app.use(express.static('/root/x402-server/public', { extensions: ['html'] }));
 app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.svg'));
