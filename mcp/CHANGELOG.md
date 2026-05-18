@@ -7,6 +7,18 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [0.1.1] - 2026-05-18
+
+### Changed
+- `verify_signed_receipt` tool description now mentions `receipt` object from token_audit Metaplex agent responses
+- `verify_signed_receipt` inputSchema: envelope description updated to reference token_audit receipt field
+- Metaplex agent wrapped receipt verification test coverage added
+
+### Note
+`verifier.js` unchanged — wrapped format was already supported.
+
+---
+
 ## [0.1.0] — 2026-05-14
 
 Initial pre-publish release. Wraps the 5 free integrity.molt skills as MCP tools.

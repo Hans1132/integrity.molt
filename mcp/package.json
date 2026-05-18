@@ -1,6 +1,6 @@
 {
   "name": "integrity-molt-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "integrity.molt Solana security oracle — MCP tools for Claude Desktop",
   "main": "server.js",
   "bin": {
