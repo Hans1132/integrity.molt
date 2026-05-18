@@ -5,14 +5,30 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-18 (ADR-013 Fáze 4a — asyncSign wiring pro metaplex_agent receipt)
+**Last updated:** 2026-05-18 (ADR-013 Fáze 4b/4c/5 — discovery surface + MCP tools + npm bump)
 
 ---
 
 ## Recent changes (top of stack, newest first)
 
-### 2026-05-18: ADR-013 Fáze 4a — asyncSign wiring pro metaplex_agent receipt — [backend] (pending)
-- **Změny:** `src/a2a/handler.js` (+buildMetaplexAgentPayload import, refactor token_audit metaplex_agent return → auditResult + try/catch signing, +executeSkill export), `tests/scan-token-audit-metaplex.test.js` (+T11/T12 signing tests via require.cache proxy stubs)
+### 2026-05-18: ADR-013 Fáze 4b+x402discovery — token_audit discovery surface update — [conductor]
+- **Změny:** `src/docs/generate-x402-discovery.js` (line 117: stale SPL-only description → polymorphic), `server.js` (/skill.md table + /offer + Signed Receipts sekce), `config/pricing.js` (+inline comment), `docs/skills.md` (+Metaplex/ERC-8004/signed receipt row). Commit: e7d7e8f + HEAD.
+- **Důvod:** ADR-013 Fáze 4b downstream scope — update popis token_audit na VŠECH discovery surfaces.
+- **Test:** test-gate 13/13 PASS.
+
+### 2026-05-18: ADR-013 Fáze 4c — MCP verify_signed_receipt Metaplex agent support — [security/MCP]
+- **Změny:** `mcp/lib/tools.js` (verify_signed_receipt description + envelope inputSchema updated), `tests/mcp/server.test.js` (+T71 valid wrapped metaplex_agent receipt, +T72 invalid sig). Commit: f5d3554.
+- **Důvod:** ADR-013 Fáze 4c — MCP klienti informováni, že token_audit Metaplex receipty lze verifikovat přes verify_signed_receipt (wrapped format). verifier.js bez změn — wrapped path existoval.
+- **Test:** 72/72 mcp tests PASS.
+
+### 2026-05-18: ADR-013 Fáze 5 — MCP 0.1.1 bump, CHANGELOG, X post draft — [conductor]
+- **Změny:** `mcp/package.json` (0.1.0 → 0.1.1), `mcp/CHANGELOG.md` (+[0.1.1] sekce), `docs/x-post-adr013-launch.md` (nový)
+- **Důvod:** ADR-013 Fáze 5 — reflect Fáze 3+4 changes (verify_signed_receipt Metaplex agent support) v npm balíku.
+- **Test:** test-gate 72/72 + 13/13 PASS před commitem. Commit: da189c5.
+- **Gotcha:** `npm whoami` → ENEEDAUTH — npm session vypršela. Manuální publish: `cd /root/x402-server/mcp && npm login && npm publish`.
+
+### 2026-05-18: ADR-013 Fáze 4a — asyncSign wiring pro metaplex_agent receipt — [backend]
+- **Změny:** `src/a2a/handler.js` (+buildMetaplexAgentPayload import, refactor token_audit metaplex_agent return → auditResult + try/catch signing, +executeSkill export), `tests/scan-token-audit-metaplex.test.js` (+T11/T12 signing tests via require.cache proxy stubs). Commits: b4270fc + 08e5717.
 - **Důvod:** ADR-013 Fáze 4a — handler.js nyní podepisuje metaplex_agent audit výsledky; signing je optional (catch → receipt=undefined, audit data zachovány).
 - **Dopad:** metaplex_agent výsledky mají volitelné pole `receipt` s { payload, signature, verify_key, key_id, signed_at, signer, algorithm }. SPL flow nezměněn.
 - **Test:** T11/T12 PASS (12/12), test-gate 13/13 PASS.

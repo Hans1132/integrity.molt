@@ -114,7 +114,7 @@ function generateX402Discovery(usdcAta) {
       {
         id:          'token_audit',
         name:        'Token Audit',
-        description: 'SPL token launch audit — mint authority, freeze authority, holder distribution, rug risk.',
+        description: 'Polymorphic token audit — auto-detects Metaplex registered agent (ERC-8004 + wallet + claim validation) or SPL token (liquidity, holder distribution, rug risk). Returns Ed25519-signed receipt.',
         pricing:     { type: 'per_call', amount: PRICING.token / 1_000_000, currency: 'USDC', protocol: 'x402' },
         tags:        ['solana', 'token', 'security']
       },
