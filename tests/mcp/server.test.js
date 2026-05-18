@@ -382,6 +382,59 @@ console.log('\ntests/mcp/server.test.js\n');
     delete process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
   });
 
+  test('verify_signed_receipt handles wrapped metaplex_agent receipt — valid podpis + pinned key', () => {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
+    const spkiDer = publicKey.export({ type: 'spki', format: 'der' });
+    const keyBytes = spkiDer.subarray(12); // strip 12-byte DER header → raw 32-byte key
+    process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY = keyBytes.toString('base64url');
+    const innerPayload = {
+      subject_type: 'metaplex_agent',
+      subject_metaplex_asset: 'So11111111111111111111111111111112',
+      subject_metaplex_risk: 'safe',
+      subject_metaplex_score: 15,
+      issuer: 'integrity.molt',
+      issuer_kid: 'integrity-molt-primary-2026',
+    };
+    const sig = crypto.sign(null, Buffer.from(canonicalJSON(innerPayload), 'utf-8'), privateKey);
+    const wrappedEnvelope = {
+      payload: innerPayload,
+      signature: sig.toString('base64'),
+      verify_key: keyBytes.toString('base64'),
+      key_id: keyBytes.toString('base64').slice(0, 16),
+      signed_at: new Date().toISOString(),
+      signer: 'integrity.molt',
+      algorithm: 'Ed25519',
+    };
+    const result = verifyLocally(wrappedEnvelope);
+    assert.strictEqual(result.valid, true, 'wrapped metaplex_agent receipt musí být valid');
+    assert.strictEqual(result.verified_locally, true, 'musí být verified_locally');
+    delete process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
+  });
+
+  test('verify_signed_receipt handles wrapped metaplex_agent receipt — neplatný podpis vrátí valid:false', () => {
+    const innerPayload = {
+      subject_type: 'metaplex_agent',
+      subject_metaplex_asset: 'So11111111111111111111111111111112',
+      subject_metaplex_risk: 'safe',
+      subject_metaplex_score: 15,
+      issuer: 'integrity.molt',
+      issuer_kid: 'integrity-molt-primary-2026',
+    };
+    const wrappedEnvelope = {
+      payload: innerPayload,
+      signature: Buffer.alloc(64).toString('base64'),
+      verify_key: Buffer.alloc(32).toString('base64'),
+      key_id: 'fake',
+      signed_at: new Date().toISOString(),
+      signer: 'integrity.molt',
+      algorithm: 'Ed25519',
+    };
+    delete process.env.INTEGRITY_MOLT_TEST_VERIFY_KEY;
+    const result = verifyLocally(wrappedEnvelope);
+    assert.strictEqual(result.valid, false, 'neplatný podpis musí vrátit valid:false');
+    assert.strictEqual(result.verified_locally, true);
+  });
+
   await testAsync('handleTool verify_signed_receipt — INTEGRITY_MOLT_LOCAL_VERIFY=1 vrátí verified_locally', async () => {
     const envelope = makeTestEnvelope(TEST_PAYLOAD, { useAsPinned: true });
     process.env.INTEGRITY_MOLT_LOCAL_VERIFY = '1';
