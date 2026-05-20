@@ -13,8 +13,10 @@ verify_key.bin
 node_modules/
 
 # ── Runtime data ───────────────────────────────────────────────────────────────
-data/
+data/*
 !data/legit-tokens.json
+!data/rules-v2.json
+!data/rules-v2.weights.md
 logs/
 *.log
 server.log
