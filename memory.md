@@ -11,6 +11,14 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-19: IRIS v2.0 T-FRONTEND mini-cycle (Phase 2.5) — [frontend]
+- **Změny:** `public/scan.html:1528-1553` renderIrisBadge switch refactored — lowercase v2 enum + v1 backward compat fallback, CSS classes `.iris-grade-circle.safe/.caution/.danger/.unknown` + `.iris-grade-label.safe/.caution/.danger/.unknown` added. `scripts/bot/telegram-bot.sh` three case blocks (lines ~256, ~678, ~693) got `caution|danger|unknown` arms with 🟡/🔴/⚪ emoji.
+- **Důvod:** F1 + F2 audit findings (conductor mid-Phase-2 audit 2026-05-19). Pre v2 deploy hot-fix — frontend would visually misclassify, bot would emoji-fallback to 🟡 for danger tokens. Hansova directive Phase 2.5 mini-cycle between Phase 2 handoff a Phase 3 subagent reviews.
+- **Dopad:** Aditivní backward-compat. v1 enum (LOW/MEDIUM/HIGH/CRITICAL) stále funguje; v2 enum (safe/caution/danger/unknown) také funguje. No backend ownership boundary porušení.
+- **Test:** test-gate.sh PASS (14/0). Bash `bash -n` PASS. Live v2 caution/danger visual validation deferred do Phase 5 merge.
+- **Backup:** N/A (low-risk HTML/Bash changes, git diff je rollback path).
+- **Gotcha:** Plan reference k `.iris-badge.X` CSS selectorům neexistuje v scan.html — actual classes jsou `.iris-grade-circle.X` + `.iris-grade-label.X`. Patch aplikován na obě existing rodiny. Worktree neměl `node_modules` (čerstvě vytvořený worktree) → symlink na `/root/x402-server/node_modules` pro běh test-gate; symlink je v `.gitignore`, nikoli committed.
+
 ### 2026-05-19: IRIS v2.0 Amendment v3 — external oracle floor thresholds — [db]
 - **Změny:** `data/rules-v2.json` (+3 thresholds keys: external_oracle_floor_min_score_norm=50, external_oracle_floor_offset=51, external_oracle_floor_scale=0.6; version v2.0.0 → v2.0.1), `data/rules-v2.weights.md` (+section "External oracle floor (Amendment v3, 2026-05-19)" with rationale per key + generalization paragraph + Bucket D re-verify math; +change history bullet).
 - **Důvod:** T0 pre-flight 2026-05-19 zjistilo že 5pdyeWSC NENÍ v `known_scams` — known_scam soft floor neaktivuje, v2 score by spadl na ~9 vs v1's 51 (Bucket D FAIL). Amendment v3 přidává continuous external oracle floor (rugcheck danger + score_norm≥50 + no internal scam_db match → floor formula). 5pdyeWSC computed score ≈ 64, PASS Bucket D s 13-point margin.
