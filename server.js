@@ -50,8 +50,8 @@ const {
   getAssetSignerWallet: _getAssetSignerWallet,
   assessClaimVsReality: _assessClaimVsReality,
   computeAgentScore: _computeAgentScore,
-  scoreToRisk: _scoreToRisk,
 } = require('./src/enrichment/metaplex-agent');
+const { classifyRisk } = require('./src/lib/risk-classification');
 const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
 const { getVerificationStatus }           = require('./src/lib/ottersec');
 const {
@@ -2280,15 +2280,15 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
             execute:  !!_agentDetection.agentIdentity.lifecycleChecks?.execute,
           },
           overall_score: overallScore,
-          risk_level:    _scoreToRisk(overallScore),
+          risk_level:    classifyRisk(overallScore),
           findings:      [...(validation.errors || []), ...(claimReality.findings || [])],
         },
         timestamp: new Date().toISOString(),
       };
       db.logScanToHistory({
         email: req.apiKey?.email || null, address: safeAddress, scan_type: 'token_agent',
-        risk_score: overallScore ?? null, risk_level: _scoreToRisk(overallScore) || null,
-        summary: `Agent audit: ${_scoreToRisk(overallScore)}, score ${overallScore}`, cached: false,
+        risk_score: overallScore ?? null, risk_level: classifyRisk(overallScore),
+        summary: `Agent audit: ${classifyRisk(overallScore)}, score ${overallScore}`, cached: false,
         result_json: _agentResponse,
       }).catch(() => {});
       return res.json(_agentResponse);
