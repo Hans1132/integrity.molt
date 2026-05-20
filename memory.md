@@ -5,11 +5,34 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-18 (ADR-013 Fáze 4b/4c/5 — discovery surface + MCP tools + npm bump)
+**Last updated:** 2026-05-19 (IRIS v2.0 Scope A Plan-fáze approved)
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-19: IRIS v2.0 Amendment v3 — external oracle floor thresholds — [db]
+- **Změny:** `data/rules-v2.json` (+3 thresholds keys: external_oracle_floor_min_score_norm=50, external_oracle_floor_offset=51, external_oracle_floor_scale=0.6; version v2.0.0 → v2.0.1), `data/rules-v2.weights.md` (+section "External oracle floor (Amendment v3, 2026-05-19)" with rationale per key + generalization paragraph + Bucket D re-verify math; +change history bullet).
+- **Důvod:** T0 pre-flight 2026-05-19 zjistilo že 5pdyeWSC NENÍ v `known_scams` — known_scam soft floor neaktivuje, v2 score by spadl na ~9 vs v1's 51 (Bucket D FAIL). Amendment v3 přidává continuous external oracle floor (rugcheck danger + score_norm≥50 + no internal scam_db match → floor formula). 5pdyeWSC computed score ≈ 64, PASS Bucket D s 13-point margin.
+- **Dopad:** Aditivní config keys — žádný consumer ještě nepoužívá. Phase 2 backend bude aplikovat floor logiku v calculateIRIS_v2() per Plan T14. Backward compat: existing v1 scoring nedotčeno.
+- **Test:** `node -e "JSON.parse..."` confirms 10 thresholds keys present + weights sum=100.
+- **Backup:** `/root/backups/rules-v2-pre-amend-v3-20260520-1036.json`, `/root/backups/rules-v2-weights-pre-amend-v3-20260520-1036.md`.
+- **Gotcha:** Floor mechanism (not dim signal) per Hansova Refinement 1 option (c). Surface via top-level `risk_factors` array with name `external_oracle_danger_floor_applied` — set inside `calculateIRIS_v2()` aggregate, not inside any per-dim `signals[]`.
+
+### 2026-05-19: IRIS v2.0 Scope A Phase 1 — db schema + rules-v2 sidecar — [db]
+- **Změny:** `data/rules-v2.json` (plain JSON, weights sum=100, version v2.0.0), `data/rules-v2.weights.md` (53-řádkový audit-trail sidecar), `db.js` (+goplus_cache CREATE TABLE + index, +getGoplusCache/setGoplusCache/setGoplusCacheError/cleanupGoplusCache, +cleanup integrace do 6h cron line ~560, +module.exports), `.gitignore` (`data/` → `data/*` + 2 file exceptions). Commits: cd87bd2 + 7d783db.
+- **Důvod:** IRIS v2.0 Scope A Phase 1 (Tasks 1-4 of plan `2026-05-19-iris-v2-implementation.md`). Q6 ratify potvrzeno — plain JSON + sidecar místo json5 dep. GoPlus Token Security cache (24h success / 5min negative) připravena pro Phase 2 backend enrichment.
+- **Dopad:** Aditivní změny, žádný consumer ještě nepoužívá. Phase 2 (backend) bude rules-v2.json načítat + goplus cache využívat. Žádné regrese na existing scanech.
+- **Test:** Smoke test setGoplusCache/getGoplusCache/setGoplusCacheError/cleanupGoplusCache OK. JSON.parse rules-v2.json + weights sum=100 OK. `sqlite3 .schema goplus_cache` ukazuje tabulku+index. test-gate.sh proveden v Task 4.
+- **Backup:** `/root/backups/intmolt-pre-iris-v2-phase1-20260520-0940.db`, `/root/backups/db-pre-iris-v2-phase1-20260520-0940.js`.
+- **Gotcha:** Plan předpokládal `_stmts = {}` module-level prepared-stmt object — v db.js neexistuje. Adaptováno na inline `db.prepare()` pattern mirror `getRugcheckCache`/`setRugcheckCache`. Public API (4 fn names + signatury + 24h/5min TTL chování) zachováno per plan. `.gitignore` musel přejít na `data/*` + explicitní `!` exceptions, jinak `git add` na `data/<file>` selže (precedent: existující `!data/legit-tokens.json`).
+
+### 2026-05-19: IRIS v2.0 Scope A — Plan-fáze deliverable approved (brainstorm + spec) — [conductor]
+- **Změny:** `docs/superpowers/specs/2026-05-19-iris-v2-amendment-q3-3tier.md` (388 řádků, overlay nad existing 607-řádkový primary spec). Žádný kód.
+- **Důvod:** brainstorm Hans + conductor → 3-tier `risk_level` enum (safe/caution/danger/unknown) lowercase, thresholds 40/70 **preserved** z metaplex `scoreToRisk`, scope expansion: OpenAPI enum + `src/lib/risk-classification.js` shared lib + uppercase eradication 13 sites. Guesswork 30/50 rejected Hansovou výhradou — bez evidence preserve baseline + defer calibration na post-Scope-A cycle.
+- **Dopad:** Code phase čeká. Po writing-plans skill bude task-by-task plan (phase 1 db schema → phase 2 parallel backend+qa → phase 3 review subagents → phase 4 guardian → phase 5 merge).
+- **Test:** N/A Plan fáze. Test gate v2 spec v amendmentu §4 (Bucket A ≥70 precision ≥95%, Bucket B ≤39 specificity ≥95%, Bucket C [40,70] spread ≥30%, Bucket D 5pdyeWSC ≥51).
+- **Gotcha:** `docs/superpowers/` je v `.gitignore` → spec drafts untracked. Worktree write nutný kvůli background isolation, pak `cp` do primary. Hansova výhrada 2026-05-19 = "bez evidence threshold change je guesswork" — patří do feedback memory pro future sessions.
 
 ### 2026-05-18: ADR-013 Fáze 4b+x402discovery — token_audit discovery surface update — [conductor]
 - **Změny:** `src/docs/generate-x402-discovery.js` (line 117: stale SPL-only description → polymorphic), `server.js` (/skill.md table + /offer + Signed Receipts sekce), `config/pricing.js` (+inline comment), `docs/skills.md` (+Metaplex/ERC-8004/signed receipt row). Commit: e7d7e8f + HEAD.
