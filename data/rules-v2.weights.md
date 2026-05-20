@@ -42,6 +42,7 @@
 ## Change history
 
 - **2026-05-19 v2.0.0** — initial weights for Scope A. Preserved metaplex thresholds 40/70 per Hansova výhrada in amendment §1.3.
+- **2026-05-19 v2.0.1** — Amendment v3 added external oracle danger floor mechanism (3 new threshold keys: `external_oracle_floor_min_score_norm`, `external_oracle_floor_offset`, `external_oracle_floor_scale`). Bridges ingest-lag gap discovered during T0 pre-flight when `5pdyeWSC` token (used as Bucket D regression anchor) found absent from `known_scams`. Bumps `rules-v2.json` schema to v2.0.1 (no breaking — additive keys, JSON.parse-compatible).
 
 ## Update protocol
 
@@ -51,3 +52,33 @@ When changing any weight or threshold:
 3. Bump `version` in JSON.
 4. systemd restart applies.
 5. Test gate (step 17) re-runs against labeled dataset.
+
+## External oracle floor (Amendment v3, 2026-05-19)
+
+Mechanism: when external oracle (RugCheck currently; extensible to GoPlus/Birdeye in future Scope B) classifies token as `danger` with high score_norm AND our `known_scams` DB has no matching entry (or low-confidence entry), apply continuous floor to total score. Bridges ingest-lag and source-coverage gaps where fresh external-oracle danger flags don't propagate to internal DB fast enough.
+
+| Key | Value | Rationale |
+|-----|------:|-----------|
+| `external_oracle_floor_min_score_norm` | 50 | RC `risk_level === 'danger'` typically correlates with `score_norm ≥ 50`. Below this, RC tags `warn` or lower — different semantics. |
+| `external_oracle_floor_offset` | 51 | Preserves v1 minimum behavior (`src/features/iris-score.js:417-418` step floor 51 for `isRcDanger && !knownScam`). Continuous-compatible value at score_norm=50 boundary. |
+| `external_oracle_floor_scale` | 0.6 | Gradient. score_norm=75 → floor 66 (mid-caution). score_norm=100 → floor 81 (top of caution band). Calibrated to keep floor in caution range for moderate RC danger, escalate to danger for strong RC signal. Tunable post-deploy via Scope B calibration cycle. |
+
+### Generalization
+
+This is NOT a 5pdyeWSC-specific patch. Pattern: any token flagged `danger` by RugCheck with high score_norm that hasn't been ingested into `known_scams` yet (or has low ingest confidence). Three real causes: (a) ingest lag between RC flag and SolRPDS poller cadence, (b) source coverage where RC sees tokens our DB sources don't, (c) confidence threshold mismatch in SolRPDS ingest pipeline producing entries below 0.5.
+
+### Activation condition
+
+```
+rugcheck.risk_level === 'danger'
+AND rugcheck.score_norm >= external_oracle_floor_min_score_norm
+AND (no known_scams entry OR known_scams.confidence < soft_floor_min_confidence)
+```
+
+When activated, signal name `external_oracle_danger_floor_applied` is appended to top-level `risk_factors` array (not to any dimension's `signals[]` — floor is mechanism-level).
+
+### Bucket D re-verify (5pdyeWSC, score_norm=71, no known_scams entry)
+
+- v1 score: 51 (from step floor `isRcDanger && !knownScam → max(.,51)`)
+- v2 score (no external floor): ~9 (FAIL Bucket D)
+- v2 score (with external floor): `51 + (71−50) × 0.6 = 63.6 → 64` (PASS Bucket D, 13-point margin)
