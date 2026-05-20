@@ -11,6 +11,14 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-19: IRIS v2.0 errata — score_norm → score_normalised (Decision 1 option a) — [backend]
+- **Změny:** `src/features/iris-score.js` calculateIRIS_v2 — dropped `?? score_normalised` fallback; uses single canonical `rugcheck.score_normalised` field name. Comment on line 427 updated for consistency.
+- **Důvod:** Hansova Decision 1 option (a) post Phase 2 handoff. Amendment v3 doc corrected by conductor (errata header + body sed). Code follows suit: single field name, no fallback. Cleaner code, no future ambiguity.
+- **Dopad:** External oracle floor still fires identically — score_normalised value is what v1 enrichment exposes, same data path. Backwards behavior preserved.
+- **Test:** Smoke test mock enrichment{score_normalised:71} → score=64, risk_level=caution, risk_factors includes external_oracle_danger_floor_applied. PASS.
+- **Backup:** None (single-line edit, git diff is rollback).
+- **Gotcha:** Config key in rules-v2.json `external_oracle_floor_min_score_norm` retains short form for JSON brevity — semantics still refer to score_normalised field. Signal name strings `rugcheck_score_norm_critical`/`rugcheck_score_norm_warn` in scoreReputation are consumer-facing API surface — keep as-is unless Hans pushes for rename (separate decision).
+
 ### 2026-05-19: IRIS v2.0 Scope A Phase 2A — backend engine rewrite (Tasks 5-16) — [backend]
 - **Změny:** New `src/lib/risk-classification.js` (classifyRisk shared lib, 3-tier 40/70). Rewrite `src/features/iris-score.js` (476 → 401 lines, 8 dim weighted + soft_floor + external_oracle_floor [Amendment v3] + soft_whitelist + circuit breaker; `calculateIRIS` aliased to `calculateIRIS_v2` for back-compat). New `src/enrichment/goplus.js` (146 lines, circuit breaker 3-fail/600ms timeout, 1h success / 5min negative DB cache). Refactor `src/enrichment/metaplex-agent.js` (drop local scoreToRisk → import classifyRisk). Refactor `src/enrichment/index.js` (uppercase eradication → classifyRisk). Refactor `src/og/generator.js` (uppercase eradication via tier mapping). server.js: 4 sites _scoreToRisk→classifyRisk + 13 sites uppercase eradication (UNKNOWN→unknown, OpenAPI enum, risk_explanation refactor) + Morgan `:response-time ms` token. Rewrite `src/routes/a2a-oracle.js` /scan/v1 handler (parallel goplus, calculateIRIS_v2, v2 envelope shape, scan_type='a2a_scan_v2' read+write, X-IRIS-Version: 2.0 header per Amendment v2 §3 R11). `docs/skills.md` legacy `"low"` example → `"safe"` + iris_score 92→12.
 - **Důvod:** Phase 2A backend execution per `docs/superpowers/plans/2026-05-19-iris-v2-implementation.md` Tasks 5-16. Amendment v2 (3-tier lowercase enum, 40/70 thresholds preserved) + Amendment v3 (external oracle floor for fresh-flagged tokens absent from known_scams). Aligns IRIS scoring with continuous 8-dim methodology, eliminates step floors that collapsed v1 into bimodal 0-or-76 outputs.
