@@ -252,9 +252,11 @@ if ! systemctl is-active --quiet integrity-x402.service 2>/dev/null; then
 elif [ ! -f tests/iris/data/calibration-v2.json ]; then
   echo "  ⚠️  SKIP (no calibration-v2.json — v2 not deployed)"
 else
-  if SCAN_URL_BASE=http://localhost:3402 node --test --test-timeout=300000 tests/iris/iris-calibration.test.js 2>&1 | tail -25; then
+  if SCAN_URL_BASE=http://localhost:3402 node --test --test-timeout=300000 tests/iris/iris-calibration.test.js > /tmp/iris-calibration.log 2>&1; then
+    tail -25 /tmp/iris-calibration.log
     PASS=$((PASS+1))
   else
+    tail -25 /tmp/iris-calibration.log
     FAIL=$((FAIL+1))
     ERRORS="$ERRORS\n- IRIS v2 calibration: one or more Bucket A/B/C/D targets failed"
   fi
