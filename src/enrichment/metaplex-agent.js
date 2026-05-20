@@ -5,6 +5,7 @@ const { mplAgentIdentity, safeFetchAgentIdentityV1, findAgentIdentityV1Pda } = r
 const { findAssetSignerPda }           = require('@metaplex-foundation/mpl-core');
 const { publicKey }                    = require('@metaplex-foundation/umi');
 const { validateUrl }                  = require('../lib/url-validation');
+const { classifyRisk }                 = require('../lib/risk-classification');
 const db                               = require('../../db');
 
 const RPC_URL              = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -317,12 +318,6 @@ function computeAgentScore(validation, wallet, claimReality, mutabilityRisk) {
   return Math.min(100, score);
 }
 
-function scoreToRisk(score) {
-  if (score >= 70) return 'danger';
-  if (score >= 40) return 'caution';
-  return 'safe';
-}
-
 module.exports = {
   detectAgentIdentity,
   fetchRegistrationDocument,
@@ -331,6 +326,6 @@ module.exports = {
   assessClaimVsReality,
   checkServiceEndpoint,
   computeAgentScore,
-  scoreToRisk,
+  classifyRisk,
   _setUmiForTest,
 };
