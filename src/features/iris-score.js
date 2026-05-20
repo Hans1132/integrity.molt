@@ -424,13 +424,11 @@ function calculateIRIS_v2(enrichment, scamDb, goplus) {
   }
 
   // Floor 2: External oracle danger floor (Amendment v3, 2026-05-19)
-  // Applied when external oracle (RugCheck) classifies token as danger with high score_norm
+  // Applied when external oracle (RugCheck) classifies token as danger with high score_normalised
   // AND internal known_scams lacks high-confidence matching entry. Bridges ingest lag between
   // RC danger flag and SolRPDS poller catching up to known_scams DB.
   const rcRiskLevel = enrichment?.external_sources?.rugcheck?.risk_level || null;
-  const rcScoreNorm = enrichment?.external_sources?.rugcheck?.score_norm
-    ?? enrichment?.external_sources?.rugcheck?.score_normalised
-    ?? null;
+  const rcScoreNorm = enrichment?.external_sources?.rugcheck?.score_normalised ?? null;
   if (rcRiskLevel === 'danger'
       && rcScoreNorm !== null
       && rcScoreNorm >= T.external_oracle_floor_min_score_norm
