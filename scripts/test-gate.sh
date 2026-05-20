@@ -245,6 +245,21 @@ else
   fi
 fi
 
+# 17. IRIS v2 calibration accuracy — Bucket A/B/C/D against labeled dataset
+echo "🎯 IRIS v2 calibration (Bucket A/B/C/D)..."
+if ! systemctl is-active --quiet integrity-x402.service 2>/dev/null; then
+  echo "  ⚠️  SKIP (service not running)"
+elif [ ! -f tests/iris/data/calibration-v2.json ]; then
+  echo "  ⚠️  SKIP (no calibration-v2.json — v2 not deployed)"
+else
+  if SCAN_URL_BASE=http://localhost:3402 node --test --test-timeout=300000 tests/iris/iris-calibration.test.js 2>&1 | tail -25; then
+    PASS=$((PASS+1))
+  else
+    FAIL=$((FAIL+1))
+    ERRORS="$ERRORS\n- IRIS v2 calibration: one or more Bucket A/B/C/D targets failed"
+  fi
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
