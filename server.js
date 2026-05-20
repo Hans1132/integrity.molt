@@ -680,7 +680,7 @@ const LOG_DIR = process.env.LOG_DIR || '/var/log/intmolt';
 try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch {}
 const accessLogStream = fs.createWriteStream(path.join(LOG_DIR, 'access.log'), { flags: 'a' });
 morgan.token('mcp', (req) => req.headers['x-mcp-caller'] === '1' ? '1' : '-');
-app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" mcp=:mcp', { stream: accessLogStream }));
+app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] :response-time ms ":referrer" ":user-agent" mcp=:mcp', { stream: accessLogStream }));
 
 app.use(express.static('/root/x402-server/public', { extensions: ['html'] }));
 app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.svg'));
