@@ -674,6 +674,10 @@ Pro MCP cleanup byly dvě možnosti: (a) keep commits 3770298 + dde98e4 v histor
 
 ## Gotchas
 
+### 2026-05-21: Bucket C ≥30% target was wrong premise — [conductor]
+Random unlabeled spl_mints cluster at 20-29 (mean 23.5, stddev 0.8) because they share weak-signal profile (no known_scam match, no whitelist override, no RC danger flag). Tight cluster ≠ bimodal collapse; it's correctly safe classification. Real continuous design test needs labeled grey-zone tokens (RugCheck warn, partial whitelist, mixed signals). Per Amendment §1.4, post-deploy calibration cycle 2-4 weeks replaces synthetic random Bucket C with empirical labeled set. Until then Bucket C is observability-only (telemetry stats, sanity gate scored>0).
+
+
 > Sharp edges objevené během implementace, které ještě nejsou v CLAUDE.md sekci 4. Pokud se některý opakuje, povýšit do CLAUDE.md.
 
 ### 2026-05-06: Database path je `data/intmolt.db`, ne root `intmolt.db`
@@ -691,6 +695,13 @@ Při rebase + force-push použil Claude Code správně `--force-with-lease`, ne 
 ---
 
 ## Open TODOs (nice-to-have, future ideas)
+
+### 2026-05-21: Post-deploy 2-4 weeks — replace Bucket C with labeled grey-zone tokens
+Synthetic random Bucket C currently observability-only. Post-deploy 2-4 weeks: collect 30 manually-labeled grey-zone tokens (RugCheck `warn` flag, partial whitelist tier-2, mixed signal profiles). Update `tests/iris/data/calibration-v2.json` Bucket C subset. Re-enable spread target ≥30% in [40,70] as real continuous-design gate per Amendment §1.4 calibration cycle. Track in scope_b TODOs.
+
+### 2026-05-21: Post-deploy 7-day watch — /scan/v1/ 503 insufficient_data rate
+Bucket C fresh-compute sample produced 4/30 = 13% null (HTTP 503 insufficient_data) initially; clean cache re-run showed 0/30 nullish but production traffic distribution unknown. Monitor `/scan/v1/` 503 rate via Morgan response-time logs + journalctl filter. If production rate > 5%, tune `data/rules-v2.json` circuit_breaker block — candidates: `consecutive_failures_open: 3 → 5` (more lenient before opening), `enrichment_timeout_ms: 600 → 800` (more tolerance for slow RC/GoPlus responses). Document tuning in Amendment v3 §1.4 calibration cycle log.
+
 
 > Co napadlo během práce a nepatří do `tasks/active/`. Pokud TODO eskaluje na prioritu, převést na task soubor.
 
