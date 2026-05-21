@@ -353,6 +353,9 @@ function scoreAge(enrichment) {
   return { score, signals, source_health: 'ok' };
 }
 
+// ── v1 import (Decision 3 alias flip — 5 paid paths default to v1) ─────────
+const { calculateIRIS_v1, formatIrisForLLM_v1 } = require('./iris-score-v1');
+
 // ── Aggregate ─────────────────────────────────────────────────────────────────
 function calculateIRIS_v2(enrichment, scamDb, goplus) {
   const dims = {
@@ -467,11 +470,13 @@ function calculateIRIS_v2(enrichment, scamDb, goplus) {
   };
 }
 
-// ── Legacy compat: keep v1 export name `calculateIRIS` aliased to v2 ──────────
-const calculateIRIS = calculateIRIS_v2;
+// ── Decision 3 (Hansova 2026-05-21): default alias points to v1 for 5 paid paths
+// /scan/v1/ + token_audit call calculateIRIS_v2 explicitly. Scope B will migrate rest.
+const calculateIRIS = calculateIRIS_v1;
+const formatIrisForLLM = formatIrisForLLM_v1;
 
-// ── Formatter for LLM prompt (used by paid scans) ─────────────────────────────
-function formatIrisForLLM(iris) {
+// ── v2 formatter (used by token_audit + /scan/v1/ paths) ──────────────────────
+function formatIrisForLLM_v2(iris) {
   if (!iris) return '';
   const lines = [`Token IRIS Score: ${iris.score}/100 (${iris.risk_level})`, 'Breakdown:'];
   for (const [name, d] of Object.entries(iris.breakdown || {})) {
@@ -481,4 +486,4 @@ function formatIrisForLLM(iris) {
   return lines.join('\n');
 }
 
-module.exports = { calculateIRIS_v2, calculateIRIS, formatIrisForLLM };
+module.exports = { calculateIRIS_v1, calculateIRIS_v2, calculateIRIS, formatIrisForLLM, formatIrisForLLM_v1, formatIrisForLLM_v2 };

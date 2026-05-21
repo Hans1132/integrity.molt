@@ -52,7 +52,8 @@ const {
   computeAgentScore: _computeAgentScore,
 } = require('./src/enrichment/metaplex-agent');
 const { classifyRisk } = require('./src/lib/risk-classification');
-const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
+const { calculateIRIS, calculateIRIS_v2, formatIrisForLLM, formatIrisForLLM_v2 } = require('./src/features/iris-score');
+const { getGoplusReport } = require('./src/enrichment/goplus');
 const { getVerificationStatus }           = require('./src/lib/ottersec');
 const {
   validateReport,
@@ -2295,16 +2296,18 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
     }
 
     const _t0 = Date.now();
-    // Run script, RugCheck enrichment, and scam-db lookup in parallel
-    const [scriptResult, enrichmentResult, scamDbResult] = await Promise.allSettled([
+    // Run script, RugCheck enrichment, scam-db lookup, and GoPlus in parallel (Decision 3: token_audit uses IRIS v2 + goplus)
+    const [scriptResult, enrichmentResult, scamDbResult, goplusResult] = await Promise.allSettled([
       runScript('/root/scanner/enhanced-token-scan.sh', [safeAddress], 150000),
       enrichScanResult(safeAddress),
-      lookupScamDb(safeAddress)
+      lookupScamDb(safeAddress),
+      getGoplusReport(safeAddress)
     ]);
     console.log(`[scan/token] address=${safeAddress} script=${Date.now()-_t0}ms`);
     const { stdout } = scriptResult.status === 'fulfilled' ? scriptResult.value : { stdout: '' };
     const enrichmentData = enrichmentResult.status === 'fulfilled' ? enrichmentResult.value : null;
     const scamDb = scamDbResult.status === 'fulfilled' ? scamDbResult.value : { known_scam: null, rugcheck: null, db_match: false };
+    const goplus = goplusResult.status === 'fulfilled' ? goplusResult.value : { source_health: 'circuit_breaker_open' };
 
     const slug = safeAddress.substring(0, 10).toLowerCase();
     let data = null;
@@ -2317,18 +2320,18 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
       finalScore = combineScores(finalScore, enrichmentData.aggregated_risk);
     }
 
-    // IRIS full breakdown
-    const irisResult = calculateIRIS(enrichmentData, scamDb);
+    // IRIS v2 breakdown (Decision 3: token_audit migrated to v2 + goplus)
+    const irisResult = calculateIRIS_v2(enrichmentData, scamDb, goplus);
 
     // IRIS floor: pro staré/rugged tokeny shell vrací 0 ale IRIS zná DB signály.
-    // Worst-case wins — bereme vyšší ze dvou skóre.
+    // Worst-case wins — bereme vyšší ze dvou skóre. v2 returns .risk_level (lowercase) instead of .grade.
     if (typeof irisResult.score === 'number' && irisResult.score > (finalScore ?? 0)) {
       finalScore = irisResult.score;
-      if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.grade.toLowerCase() };
+      if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.risk_level };
     }
 
-    // IRIS sekce pro advisor kontext
-    const irisSection = `\n${formatIrisForLLM(irisResult)}\n`;
+    // IRIS sekce pro advisor kontext — v2 formatter
+    const irisSection = `\n${formatIrisForLLM_v2(irisResult)}\n`;
 
     // Advisor — šedá zóna 40-70
     const advisorCtx = `Token audit pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}${irisSection}`;
