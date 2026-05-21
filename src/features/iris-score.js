@@ -418,7 +418,7 @@ function calculateIRIS_v2(enrichment, scamDb, goplus) {
   const knownScam = scamDb?.known_scam || null;
   const confidence = knownScam?.confidence_score ?? knownScam?.confidence ?? 0;
   const hasHighConfidenceKnownScam = (knownScam != null && confidence >= T.soft_floor_min_confidence);
-  if (confidence > T.soft_floor_min_confidence) {
+  if (confidence >= T.soft_floor_min_confidence) {
     const floor = T.soft_floor_offset + confidence * T.soft_floor_scale;
     if (total < floor) total = floor;
   }
