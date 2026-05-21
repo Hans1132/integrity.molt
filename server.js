@@ -50,9 +50,10 @@ const {
   getAssetSignerWallet: _getAssetSignerWallet,
   assessClaimVsReality: _assessClaimVsReality,
   computeAgentScore: _computeAgentScore,
-  scoreToRisk: _scoreToRisk,
 } = require('./src/enrichment/metaplex-agent');
-const { calculateIRIS, formatIrisForLLM } = require('./src/features/iris-score');
+const { classifyRisk } = require('./src/lib/risk-classification');
+const { calculateIRIS, calculateIRIS_v2, formatIrisForLLM, formatIrisForLLM_v2 } = require('./src/features/iris-score');
+const { getGoplusReport } = require('./src/enrichment/goplus');
 const { getVerificationStatus }           = require('./src/lib/ottersec');
 const {
   validateReport,
@@ -243,7 +244,7 @@ async function quickScanRpcOnly(address) {
     const notFoundMsg = "This address doesn't exist on-chain yet. It may be invalid, not yet funded, or previously closed. Insufficient data for risk scoring.";
     return {
       risk_score:   null,
-      risk_level:   'UNKNOWN',
+      risk_level:   'unknown',
       status:       'address_not_found',
       summary:      notFoundMsg,
       message:      notFoundMsg,
@@ -680,7 +681,7 @@ const LOG_DIR = process.env.LOG_DIR || '/var/log/intmolt';
 try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch {}
 const accessLogStream = fs.createWriteStream(path.join(LOG_DIR, 'access.log'), { flags: 'a' });
 morgan.token('mcp', (req) => req.headers['x-mcp-caller'] === '1' ? '1' : '-');
-app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" mcp=:mcp', { stream: accessLogStream }));
+app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] :response-time ms ":referrer" ":user-agent" mcp=:mcp', { stream: accessLogStream }));
 
 app.use(express.static('/root/x402-server/public', { extensions: ['html'] }));
 app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.svg'));
@@ -1047,7 +1048,7 @@ const agentTokenPaymentAccepts = [{
           scan_type:      { type: 'string' },
           target:         { type: 'string' },
           score:          { type: 'number' },
-          risk_level:     { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
+          risk_level:     { type: 'string', enum: ['safe', 'caution', 'danger', 'unknown'] },
           findings:       { type: 'array' },
           agent_metadata: { type: 'object' },
           token_metrics:  { type: 'object' },
@@ -1853,8 +1854,8 @@ app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, as
         status:       'address_not_found',
         address:      safeAddress,
         risk_score:   null,
-        risk_level:   'UNKNOWN',
-        iris:         { score: null, grade: 'UNKNOWN', breakdown: null },
+        risk_level:   'unknown',
+        iris:         { score: null, grade: 'unknown', breakdown: null },
         message:      "This address doesn't exist on-chain yet. It may be invalid, not yet funded, or previously closed. Insufficient data for risk scoring.",
         risk_factors: [],
         timestamp:    new Date().toISOString(),
@@ -1980,8 +1981,8 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
       if (!accountData && noEnrichmentData) {
         return res.json({
           status: 'address_not_found', address: safeAddress, tier: 'free',
-          risk_score: null, risk_level: 'UNKNOWN',
-          iris: { score: null, grade: 'UNKNOWN', breakdown: null },
+          risk_score: null, risk_level: 'unknown',
+          iris: { score: null, grade: 'unknown', breakdown: null },
           message: "This address doesn't exist on-chain yet. It may be invalid, not yet funded, or previously closed. Insufficient data for risk scoring.",
           risk_factors: [], timestamp: new Date().toISOString(),
         });
@@ -2038,8 +2039,8 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
         address:      safeAddress,
         tier:         'paid',
         risk_score:   null,
-        risk_level:   'UNKNOWN',
-        iris:         { score: null, grade: 'UNKNOWN', breakdown: null },
+        risk_level:   'unknown',
+        iris:         { score: null, grade: 'unknown', breakdown: null },
         message:      msg,
         risk_factors: [],
         timestamp:    new Date().toISOString()
@@ -2280,31 +2281,33 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
             execute:  !!_agentDetection.agentIdentity.lifecycleChecks?.execute,
           },
           overall_score: overallScore,
-          risk_level:    _scoreToRisk(overallScore),
+          risk_level:    classifyRisk(overallScore),
           findings:      [...(validation.errors || []), ...(claimReality.findings || [])],
         },
         timestamp: new Date().toISOString(),
       };
       db.logScanToHistory({
         email: req.apiKey?.email || null, address: safeAddress, scan_type: 'token_agent',
-        risk_score: overallScore ?? null, risk_level: _scoreToRisk(overallScore) || null,
-        summary: `Agent audit: ${_scoreToRisk(overallScore)}, score ${overallScore}`, cached: false,
+        risk_score: overallScore ?? null, risk_level: classifyRisk(overallScore),
+        summary: `Agent audit: ${classifyRisk(overallScore)}, score ${overallScore}`, cached: false,
         result_json: _agentResponse,
       }).catch(() => {});
       return res.json(_agentResponse);
     }
 
     const _t0 = Date.now();
-    // Run script, RugCheck enrichment, and scam-db lookup in parallel
-    const [scriptResult, enrichmentResult, scamDbResult] = await Promise.allSettled([
+    // Run script, RugCheck enrichment, scam-db lookup, and GoPlus in parallel (Decision 3: token_audit uses IRIS v2 + goplus)
+    const [scriptResult, enrichmentResult, scamDbResult, goplusResult] = await Promise.allSettled([
       runScript('/root/scanner/enhanced-token-scan.sh', [safeAddress], 150000),
       enrichScanResult(safeAddress),
-      lookupScamDb(safeAddress)
+      lookupScamDb(safeAddress),
+      getGoplusReport(safeAddress)
     ]);
     console.log(`[scan/token] address=${safeAddress} script=${Date.now()-_t0}ms`);
     const { stdout } = scriptResult.status === 'fulfilled' ? scriptResult.value : { stdout: '' };
     const enrichmentData = enrichmentResult.status === 'fulfilled' ? enrichmentResult.value : null;
     const scamDb = scamDbResult.status === 'fulfilled' ? scamDbResult.value : { known_scam: null, rugcheck: null, db_match: false };
+    const goplus = goplusResult.status === 'fulfilled' ? goplusResult.value : { source_health: 'circuit_breaker_open' };
 
     const slug = safeAddress.substring(0, 10).toLowerCase();
     let data = null;
@@ -2317,18 +2320,18 @@ app.post('/scan/token', trackFunnel('token'), requireApiKey, express.json(), val
       finalScore = combineScores(finalScore, enrichmentData.aggregated_risk);
     }
 
-    // IRIS full breakdown
-    const irisResult = calculateIRIS(enrichmentData, scamDb);
+    // IRIS v2 breakdown (Decision 3: token_audit migrated to v2 + goplus)
+    const irisResult = calculateIRIS_v2(enrichmentData, scamDb, goplus);
 
     // IRIS floor: pro staré/rugged tokeny shell vrací 0 ale IRIS zná DB signály.
-    // Worst-case wins — bereme vyšší ze dvou skóre.
+    // Worst-case wins — bereme vyšší ze dvou skóre. v2 returns .risk_level (lowercase) instead of .grade.
     if (typeof irisResult.score === 'number' && irisResult.score > (finalScore ?? 0)) {
       finalScore = irisResult.score;
-      if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.grade.toLowerCase() };
+      if (data) data = { ...data, risk_score: finalScore, risk_level: irisResult.risk_level };
     }
 
-    // IRIS sekce pro advisor kontext
-    const irisSection = `\n${formatIrisForLLM(irisResult)}\n`;
+    // IRIS sekce pro advisor kontext — v2 formatter
+    const irisSection = `\n${formatIrisForLLM_v2(irisResult)}\n`;
 
     // Advisor — šedá zóna 40-70
     const advisorCtx = `Token audit pro adresu ${safeAddress}:\n${JSON.stringify(data || { raw: stdout.slice(0, 2000) }, null, 2)}${irisSection}`;
@@ -2388,7 +2391,7 @@ app.post('/scan/wallet', trackFunnel('wallet'), requireApiKey, express.json(), v
     if (!accountData) {
       return res.json({
         status: 'address_not_found', address: safeAddress,
-        risk_score: null, risk_level: 'UNKNOWN',
+        risk_score: null, risk_level: 'unknown',
         message: "This address doesn't exist on-chain.",
         timestamp: new Date().toISOString()
       });
@@ -2467,7 +2470,7 @@ app.post('/scan/pool', trackFunnel('pool'), requireApiKey, express.json(), valid
     if (!accountData) {
       return res.json({
         status: 'address_not_found', address: safeAddress,
-        risk_score: null, risk_level: 'UNKNOWN',
+        risk_score: null, risk_level: 'unknown',
         message: "This address doesn't exist on-chain.",
         timestamp: new Date().toISOString()
       });
@@ -4918,18 +4921,18 @@ app.get('/scan/:address', async (req, res) => {
     clearTimeout(timer);
     const irisData = await irisRes.json();
 
-    const grade = (irisData.iris?.grade || irisData.risk_level || 'UNKNOWN').toUpperCase();
     const isNotFound = irisData.status === 'address_not_found';
     const score = isNotFound ? null :
       (typeof irisData.iris?.score === 'number' ? irisData.iris.score : (irisData.risk_score ?? '?'));
+    const tier = classifyRisk(typeof score === 'number' ? score : null);
+    const grade = tier.toUpperCase();
 
     const riskDescriptor =
-      isNotFound                                ? 'could not be found on-chain — address may be invalid, unfunded, or closed' :
-      grade === 'LOW'    || grade === 'SAFE'    ? 'verified legitimate with no critical risk factors' :
-      grade === 'MEDIUM' || grade === 'CAUTION' ? 'shows moderate risk signals that warrant attention' :
-      grade === 'HIGH'                          ? 'contains significant red flags detected by IRIS methodology' :
-      grade === 'CRITICAL' || grade === 'DANGER'? 'matches known scam patterns — avoid interaction' :
-      'analyzed with IRIS methodology';
+      isNotFound          ? 'could not be found on-chain — address may be invalid, unfunded, or closed' :
+      tier === 'safe'     ? 'verified legitimate with no critical risk factors' :
+      tier === 'caution'  ? 'shows moderate risk signals that warrant attention' :
+      tier === 'danger'   ? 'contains significant red flags detected by IRIS methodology' :
+      /* unknown */         'unable to assess due to insufficient data';
 
     meta.TITLE          = isNotFound
       ? `Address Not Found · Solana Security Scan | integrity.molt`

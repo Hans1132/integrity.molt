@@ -72,8 +72,8 @@ All skills are invoked via the same JSON-RPC 2.0 endpoint: `POST /a2a`
   "jsonrpc": "2.0",
   "id": "unique-request-id",
   "result": {
-    "iris_score": 92,
-    "risk_level": "low",
+    "iris_score": 12,
+    "risk_level": "safe",
     "risk_factors": [],
     "signed_at": "2026-05-06T10:00:00.000Z",
     "signature": "base64-ed25519-signature",

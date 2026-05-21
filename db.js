@@ -1694,7 +1694,7 @@ function setGoplusCache(mint, data) {
     data.blacklist_function ?? null,
     data.slippage_modifiable ?? null,
     data.risk_count ?? 0,
-    typeof data.raw === 'string' ? data.raw : JSON.stringify(data.raw || {})
+    typeof data.raw_json === 'string' ? data.raw_json : JSON.stringify(data.raw_json || {})
   );
 }
 
