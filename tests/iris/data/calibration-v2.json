@@ -1,0 +1,760 @@
+{
+  "generated_at": "2026-05-20T11:54:12.403Z",
+  "spec_refs": [
+    "docs/superpowers/specs/2026-05-19-iris-v2-scope-a-plan.md §6.1",
+    "docs/superpowers/specs/2026-05-19-iris-v2-amendment-q3-3tier.md §4",
+    "docs/superpowers/specs/2026-05-19-iris-v2-amendment-v3-external-oracle-floor.md §3.3"
+  ],
+  "bucket_a_scams": [
+    {
+      "mint": "EHVmm31boizMwAkPxi3njP3UuF68qT1MHshFuNBPtuFZ",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "EU7oCncaGe28zhhp4kfaYPCgg6zZHkJmK92pGhj6KwyU",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "9jGSaePdfQsLs97kQcyA1T1mpH1qBEGsaAMPDRLLT3QZ",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "Gguqz9qsQbdbk8L6DyVgkspVJRY3bxTHXGrsvhvkE5ji",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "AwRQ7eSNcEA5XTcfJeiX1MxLfpULyTX1F4VoNvseVDGp",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "6pbDZAiWnfXRyRmKR2N73gSKkzXr5dgmk7ApbZLpump",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "A9r4Nw558Abdg1kGQ2hqiuYgGhyPmc8au6gZuhzMpump",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "7pYAfAuY2z9HudFbkmJDMcmhqcUapYEFmsGu8sMwuB2X",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "8yZstiXJTVxRGy3VsUvTKgYknU628wPSzgfRD1L4m51b",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "FUZZMchYjdCxkGWyfZRTRoYnhnXp7FZyPdiwYQrcQ9Yf",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "HkxRzt2FpgodkwzMjFDMAKuiRKh77KLWGiwywqEqrSN7",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "GL7xkVKQDd1q8uHt7MLN8XeNfr9SkULfyntCPKfXVcAM",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "4TibuyeKysapbatmyARa5hom6y2yVzc9VmbpUeVpfYhi",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "BNt3jHxcCm4GfnUT3Ro5FKJahLwN47GHKapzrz5C5rfB",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "4FfvjR73GK7GVYFvg3FKwGUeCM2MixhtM49Kma7codHL",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "HCjRypAVEwroxKd5fSS4dvJpNsZS52JTnoDuj8g8zyPt",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "CbWnjwLbjhCZ1w5xh7qjEbrFsZPsPcLZ681w4na8Hph",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "C7Rtp7wtxL9BfafSjzthWvFooVEfvssC11oF32hpZcTp",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "75XracgnqjPeuexHKWQU3bBcXMZG6XLDF867tKB1T9e6",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "GGEM88wL3zJjDxP1kKQ1UNtuZJaWPvdbkCjU8qoJwjn5",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "gQ4msQb2jupNnbLLiqpKJmTRUcVmct3Cn7dASrrV9jN",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "EWHciTz4X7QastCmNFiE3WMXmGNXaFPqCy3GSKSTu5o2",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "BVq3HWHfoNXykMmdpxspYrnx3wL6tFPUbsLagGqgk9aZ",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "9SfCRfCjC8rozCBts5QvhADdD1a9kwZQM7H96MBZ5YKG",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "TKMKgSh3aADsmjr4yFWG52tkCQvmDxsQC1he1aBsi65",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "G5irNKev1H8D6CfLKx2LpCuke2K9EcpsZDyVsuEswQce",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "n9bw3zXej9Mzf5cAXCShNP7cA6FmjYCD6Q7bCGjEyCP",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "9VgfFUFkGGrRePvpKLPkp9DR3crRepf6CJsYU3UmudtY",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "4U1qiLipg51gKjdwyEBndYX9AAbSv1cu2tpqFNXJ9UA2",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "34oR9kWg93VytH1qLGTM21ozLjErhm3yuU2zbhmKpump",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "8kM2UeWV8RDCRxRZzojixcs17G6iMQ6WrsTRUeRqz2eh",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "5uyCj7wS9cVGBCpDqCWitRNbbRp9ARqfUZFRTrWHpump",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "B2FNF3HvcNKGKBvbtbXShpmFZTAmwZBnmmUwicsbUM9B",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "9xNxQvFaZqhyZdXaWgvT3Mq3tsqh1cok8crie1pRqrYH",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "3nyrY7J2uzq1Un3p5Z7zsPeGGVSGM8XyjwaAng1Vnfhw",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "29KNh2ky1GmVv5dvYbEVnjiLozKJKJiaXBj3AuaEcJMH",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "5V83sqAG2VUnR5g87xxdJ1B7izYMk1AMRmBTeAednVBP",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "9vS7SEGZJAaKa7jY39vY4x7tAFhEPijTF8wL6a22LqaU",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "QAqVCovW1pZJaRAHRvaLd8VPcfCC3wWJ1HLB2TjM2SB",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "HgvvehNhkc73bmNVfrnR3Wo7frH3UQzzvfEzHy2y7XSN",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "4QKCEPC7FtMKayK21hxzpbtXE7kAjvsQUDPaZ9ZEWc76",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "6hXikHzNJKEeq3LxhAfbptRe9xdit4k43MDZFCK86TCE",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "2s8f66PAr7WFgqEgqkNxfQ3PKB7xHJZ73qezwf2BifDN",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "windowyZqWJtEZtxuF9iALMTdj7Ch3bwb7yWjW49AGt",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "3e5mtf2mebUHcswDgQuT1xo2t9tZvofReAgDukznwgK6",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "JAagSZ4gperMcu47Gv55V6EXWUsk6beSUBhkLV4c2BJS",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "HAR3nTQPk1X5VaSnm4BrzKTFn1NSK5Bf51aurh6iZUUB",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "5KBcwuHueiWaDPXub5VWrnVofaBsF6ii1d9yWUjXU7Yb",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "SkAghy1BGSHGF3zgMi6hhM656JfzT94fzcGmYmNqUa1",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    },
+    {
+      "mint": "EiKhF9wdk8np2jm8EMnvj66962Fz8DT2cciNAQ2BU9ah",
+      "label": "scam",
+      "meta": {
+        "scam_type": "rug_pull",
+        "rug_pattern": "inactive_pool",
+        "confidence": 0.9
+      }
+    }
+  ],
+  "bucket_b_whitelist": [
+    {
+      "mint": "So11111111111111111111111111111111111111112",
+      "label": "legit",
+      "meta": {
+        "symbol": "SOL",
+        "name": "Wrapped SOL",
+        "source": "major"
+      }
+    },
+    {
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "label": "legit",
+      "meta": {
+        "symbol": "USDC",
+        "name": "USD Coin",
+        "source": "major"
+      }
+    },
+    {
+      "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "label": "legit",
+      "meta": {
+        "symbol": "BONK",
+        "name": "Bonk",
+        "source": "major"
+      }
+    },
+    {
+      "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "label": "legit",
+      "meta": {
+        "symbol": "USDT",
+        "name": "USDT",
+        "source": "major"
+      }
+    },
+    {
+      "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+      "label": "legit",
+      "meta": {
+        "symbol": "RAY",
+        "name": "Raydium",
+        "source": "major"
+      }
+    },
+    {
+      "mint": "Comp4ssDzXcLeu2MnLuGNNFC4cmLPMng8qWHPvzAMU1h",
+      "label": "legit",
+      "meta": {
+        "symbol": "compassSOL",
+        "name": "Compass SOL",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "ACeWC77UeW2DBZMe7YBsuXoxLvk4dHMnPzneApau1Au6",
+      "label": "legit",
+      "meta": {
+        "symbol": "AI",
+        "name": "Any Inu (Wormhole)",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "4y3oUrsJfSp431R3wJrWiaLxRPsnYtpkVJmoV2bYpBiy",
+      "label": "legit",
+      "meta": {
+        "symbol": "WIFE",
+        "name": "wifejak",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "FwBixtdcmxawRFzBNeUmzhQzaFuvv6czs5wCQuLgWWsg",
+      "label": "legit",
+      "meta": {
+        "symbol": "CHEEPEPE",
+        "name": "cheepepe",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "CsxCtA8usvWKdRhe7KhLU5GgwzYaLkoHsz1MKBVZ4W3M",
+      "label": "legit",
+      "meta": {
+        "symbol": "WINR",
+        "name": "WINR (Wormhole)",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "AqEHVh8J2nXH9saV2ciZyYwPpqWFRfD2ffcq5Z8xxqm5",
+      "label": "legit",
+      "meta": {
+        "symbol": "YAKU",
+        "name": "Yaku",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "BZLbGTNCSFfoth2GYDtwr7e4imWzpR5jqcUuGEwr646K",
+      "label": "legit",
+      "meta": {
+        "symbol": "IO",
+        "name": "IO",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "DM3Y4R7n1HGhP9AkNT6Ex4w1qQTpgq1TyujrMDX11FMT",
+      "label": "legit",
+      "meta": {
+        "symbol": "BASC",
+        "name": "BASC",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "5hmf8Jt9puwoqiFQTb3vr22732ZTKYRLRw9Vo7tN3rcz",
+      "label": "legit",
+      "meta": {
+        "symbol": "BABY",
+        "name": "Baby",
+        "source": "jupiter_validated_csv"
+      }
+    },
+    {
+      "mint": "SNApmcWQqj3Ny2YFkQmkELQnNgaXRu6KmnYSPiFZcLn",
+      "label": "legit",
+      "meta": {
+        "symbol": "SNAP",
+        "name": "SolSnap",
+        "source": "jupiter_validated_csv"
+      }
+    }
+  ],
+  "bucket_c_unlabeled": [
+    {
+      "mint": "EnM8dadZqEUJtTCZNbPCgyh68XZ3QmZXta3k2pXoEAw8",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "4ykL7K9VtsFzsAEQ3wNZ7CgvVkaAYmq7UTr8QcwFpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "31ZQVsdM2MC8p67vGWT68amBAZX7NM6dG33u7Qqvpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "DHPfcLSUov8rSuhdjnQGjnQ3cuQWNVbDpfdbtHbHk43U",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "5EmsPHbbdFbZ4JErd4DYbEuMQWismomDQsu9XHchpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "ATyvWmBr845L8bLdfZdnYtpcBJZVrqMnnT3Xn4Xcpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "FqzTLmwyuikqxSZNCKDDbSUuBnRVA8d8SuYqzSqMpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "48ybBVTZVEwnmky66xGebVdCtDe4mruWtTNtPeNhpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "DqdG2ePGPQTeC7TP5YJx97KGfYzJkgBovJSpH7SApump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "BbYWGCpEwxncSisVhFhHrfyPzngcSC2Pv5meLJDVpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "5wdVsU3baAZDNdgYqXY4E9W2vn9mzVrfy5iRedZRpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "5xLBT1aH4xj26SwALwfoPeqwGStTxLBeTjBmJzkBpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "7iZVnsEiiosmJfb28xXfCRczSZjhVhK76BppncX7pump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "4M4AhVporEX4WsDgnos6nSF4nGhZ7rqjfZR8yCV9pump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "CbTsdRrJsSZARXgeujeC3axu7oumhHabS8ibW5Ukpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "6N9UNxgK3QKMpmkLDszzyfgAnowS6cDRtts4MFTTpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "FpUzRCaDqj7y4k9f2dq3HTid6Xgt4xcSjL8GQcf6pump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "4pinCNWcoGw3apT1d7LjAk91RoL5ikZmgVCg2aCCpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "Ec9Lwyq6GPQHELhGM16KBGeCqGc3RtshqFLzryoupump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "63CY6RLq4rjiA5oF9zgZzeaNeiUTnXt7AZbHUKk3pump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "CCqHtsgD9VBsZzNSgaZkpFmeHvAB8EC16sXp26n4xPCJ",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "3CVfukukCEiC7tPQiNdpKoADBjRJ6UgDGgAfD7Bspump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "8oFeuuZ9TxVCyKqSvsjBADErpHeQ61mTNVQYiTRZpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "3kRRNQhsjuMCjSNWtoWWwmPB8jNUTyMjEiHEPBPzpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "catguMWKU1VCTuqRENX84hr7SzvRyMxMdZYkbq51XhQ",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "9czzwm1znBaiMxF9Fyq4cKw6gqne4xELyX8BycTppump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "qS8iUErMvBPFxzwfqfHVEmceaSnmmBmEuFxwid7pump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "4JLQbaYogov2YZN1XAZtE21N3GY66qEiC3ENog8Epump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "Dmi3PhxodZB9JCwUHEufw91QmPCfQYvMoixz6nMQpump",
+      "label": "unlabeled",
+      "meta": {}
+    },
+    {
+      "mint": "3RQA2p9THV6ix5o8eewZ6YvGtLCVx9dD5FrkMHtJpump",
+      "label": "unlabeled",
+      "meta": {}
+    }
+  ],
+  "bucket_d_regression": [
+    {
+      "mint": "5pdyeWSCqUmfmx4s7eHXCe1Y4dBWDQDyB1iQgzgKDopi",
+      "label": "regression",
+      "meta": {
+        "note": "v1 historical score 51 via isRcDanger step floor (src/features/iris-score.js:417-418).",
+        "target": "≥ 51 in v2 via external_oracle_floor (amendment v3 §3.3 projects 64).",
+        "not_in_known_scams": true
+      }
+    }
+  ]
+}
