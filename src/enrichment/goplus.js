@@ -99,7 +99,7 @@ async function getGoplusReport(mint) {
   const cached = db.getGoplusCache(mint, CACHE_TTL_MS);
   if (cached) {
     if (cached.err_reason) {
-      return { source_health: 'circuit_breaker_open', error: cached.err_reason };
+      return { source_health: _cb.state === 'open' ? 'circuit_breaker_open' : 'fail_transient', error: cached.err_reason };
     }
     return {
       source_health: 'ok',

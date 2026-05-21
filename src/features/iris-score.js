@@ -296,7 +296,7 @@ function scoreTrading(enrichment) {
 
 function scoreHoneypot(goplus, enrichment) {
   // Dimension is GoPlus-dependent. If GoPlus open, drop dim and renormalize.
-  if (!goplus || goplus.source_health === 'circuit_breaker_open') {
+  if (!goplus || goplus.source_health !== 'ok') {
     return { score: 0, signals: [], source_health: 'circuit_breaker_open' };
   }
   let s = 0;
