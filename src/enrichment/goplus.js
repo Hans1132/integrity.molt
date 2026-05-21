@@ -11,6 +11,29 @@ const GOPLUS_BASE_URL = process.env.GOPLUS_BASE_URL || 'https://api.gopluslabs.i
 const GOPLUS_TIMEOUT_MS = parseInt(process.env.GOPLUS_TIMEOUT_MS || '600', 10);
 const CACHE_TTL_MS = 3600_000; // 1 hour
 
+// L0 in-memory cache — 5 min TTL, mirror rugcheck.js pattern per spec §7
+const _memCache = new Map();
+const MEM_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function _memGet(mint) {
+  const e = _memCache.get(mint);
+  if (!e) return null;
+  if (Date.now() - e.ts > MEM_CACHE_TTL_MS) {
+    _memCache.delete(mint);
+    return null;
+  }
+  return e.data;
+}
+
+function _memSet(mint, data) {
+  _memCache.set(mint, { data, ts: Date.now() });
+  // FIFO cap to prevent unbounded growth
+  if (_memCache.size > 1000) {
+    const oldest = _memCache.keys().next().value;
+    _memCache.delete(oldest);
+  }
+}
+
 // Circuit breaker state — process-local, not persisted
 const _cb = {
   state: 'closed',            // 'closed' | 'open' | 'half_open'
@@ -95,13 +118,17 @@ function _normalize(raw, mint) {
  * Tries cache first (1h TTL success, 5min TTL error), then live API.
  */
 async function getGoplusReport(mint) {
+  // L0: in-memory cache (5 min TTL)
+  const memHit = _memGet(mint);
+  if (memHit) return memHit;
+
   // L1: DB cache
   const cached = db.getGoplusCache(mint, CACHE_TTL_MS);
   if (cached) {
     if (cached.err_reason) {
       return { source_health: _cb.state === 'open' ? 'circuit_breaker_open' : 'fail_transient', error: cached.err_reason };
     }
-    return {
+    const out = {
       source_health: 'ok',
       is_malicious: cached.is_malicious,
       can_buy: cached.can_buy,
@@ -112,6 +139,8 @@ async function getGoplusReport(mint) {
       slippage_modifiable: cached.slippage_modifiable,
       risk_count: cached.risk_count,
     };
+    _memSet(mint, out);
+    return out;
   }
 
   // Circuit breaker
@@ -131,7 +160,9 @@ async function getGoplusReport(mint) {
     }
     db.setGoplusCache(mint, normalized);
     _cbAdvance(true);
-    return { source_health: 'ok', ...normalized };
+    const out = { source_health: 'ok', ...normalized };
+    _memSet(mint, out);
+    return out;
   } catch (err) {
     _cbAdvance(false);
     const reason = err.name === 'AbortError' ? 'timeout' : (err.message || 'unknown');
