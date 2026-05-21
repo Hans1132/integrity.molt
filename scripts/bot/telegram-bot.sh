@@ -254,10 +254,11 @@ Please wait 30–60 seconds..."
     if [ -n "$risk_level" ]; then
         local remoji="🟡"
         case "$risk_level" in
-            low|safe)     remoji="🟢" ;;
-            medium)       remoji="🟡" ;;
-            high|avoid)   remoji="🔴" ;;
-            critical)     remoji="🆘" ;;
+            low|safe)              remoji="🟢" ;;
+            medium|caution)        remoji="🟡" ;;
+            high|avoid|danger)     remoji="🔴" ;;
+            critical)              remoji="🆘" ;;
+            unknown|"")            remoji="⚪" ;;
         esac
         risk_header="${remoji} <b>Risk: ${risk_level^^}</b>"
         [ -n "$risk_score" ] && risk_header="${risk_header} | Score: ${risk_score}/100"
@@ -676,10 +677,11 @@ if hints: print('💡 Check: ' + ' · '.join(hints))
     # Emoji podle risk_level (server pole), ne podle textu recommendation
     local emoji="🟡"
     case "$risk_level" in
-        safe|low)     emoji="🟢" ;;
-        medium)       emoji="🟡" ;;
-        high|avoid)   emoji="🔴" ;;
-        critical)     emoji="🆘" ;;
+        safe|low)              emoji="🟢" ;;
+        medium|caution)        emoji="🟡" ;;
+        high|avoid|danger)     emoji="🔴" ;;
+        critical)              emoji="🆘" ;;
+        unknown)               emoji="⚪" ;;
     esac
     # Fallback: pokud risk_level chybí, odvoď z score
     if [ -z "$risk_level" ] && [ "$score" != "?" ]; then
@@ -691,11 +693,12 @@ if hints: print('💡 Check: ' + ' · '.join(hints))
 
     local score_label
     case "$risk_level" in
-        safe|low)     score_label="LOW"      ;;
-        medium)       score_label="MEDIUM"   ;;
-        high|avoid)   score_label="HIGH"     ;;
-        critical)     score_label="CRITICAL" ;;
-        *)            score_label="${risk_level^^}" ;;
+        safe|low)              score_label="LOW"      ;;
+        medium|caution)        score_label="CAUTION"  ;;
+        high|avoid|danger)     score_label="DANGER"   ;;
+        critical)              score_label="CRITICAL" ;;
+        unknown)               score_label="UNKNOWN"  ;;
+        *)                     score_label="${risk_level^^}" ;;
     esac
 
     local age_display=""
