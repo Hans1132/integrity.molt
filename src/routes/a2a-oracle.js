@@ -369,6 +369,22 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
     // Run v2 scoring (8 dims, weighted, soft floor + external oracle floor + soft whitelist)
     const iris = calculateIRIS_v2(enrichment, scamDb, goplus);
 
+    // Decision 4 (G9): HTTP 503 insufficient_data path per spec §5 + Amendment v2 §5
+    // When ≥3 enrichment sources fail, return 503 with Retry-After (don't sign degraded scores).
+    if (iris.confidence_level === 'insufficient' || iris.score === null) {
+      const failedCount = Object.values(iris.breakdown || {})
+        .filter(d => d.source_health === 'circuit_breaker_open').length;
+      res.set('Retry-After', '30');
+      res.set('X-Insufficient-Data', String(failedCount));
+      return res.status(503).json({
+        status: 'insufficient_data',
+        address,
+        iris_version: '2.0',
+        failed_dimensions: failedCount,
+        detail: 'Multiple enrichment sources unavailable. Retry-After 30s.',
+      });
+    }
+
     const reportPayload = {
       address,
       iris_version:     '2.0',
