@@ -11,6 +11,14 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-21: IRIS v2.0 Phase 5 — TEST GATE 15/15 GREEN, ship ready — [conductor]
+- **Změny:** Bucket C test recalibrated to informational telemetry (Path 1 MODIFIED per Hansova directive). ADR-014 FINALIZED in docs/key-decisions.md. 2 Open TODOs registered (labeled grey-zone replacement 2-4 weeks; 503 rate >5% trigger). Commit just now atop main.
+- **Důvod:** Step 17 was failing on Bucket C ≥30% [40,70] spread target — synthetic random unlabeled tokens correctly classify as safe (cluster mean 23.5 stddev 0.8) but target premise was conductor's guess without ground-truth labels. Per Amendment §1.4 post-deploy calibration cycle replaces synthetic test with empirical labeled grey-zone set.
+- **Dopad:** Production v2 live: /scan/v1/ returns iris_version 2.0 envelope, X-IRIS-Version 2.0 header, 8-dim breakdown with risk_factors (incl. external_oracle_danger_floor_applied), HTTP 503 + Retry-After/X-Insufficient-Data when ≥3 dims down. token_audit paid skill on v2 + goplus; 5 paid paths v1 via alias (deferred Scope B migration). 5pdyeWSC empirically scores 64 caution — Amendment v3 §3.3 math reality-confirmed. RugCheck API new key (f9188157...) in .env. IRIS_VERSION=0 (v2 active).
+- **Test:** test-gate.sh 15/15 PASS. Step 16 IRIS live 30/30, step 17 calibration 4/4 (Bucket A 50/50 ≥70, B 15/15 ≤39, C 30/30 scored sanity gate, D 5pdyeWSC=64). MCP tests 72/72.
+- **Backup:** /root/backups/intmolt-pre-phase5-20260521-1547.db, /root/backups/main-pre-phase5-20260521-1547.sha (rollback path), /root/backups/iris-calibration-pre-observability-20260521-1614.js.
+- **Gotcha:** (1) Bucket C ≥30% target was wrong premise — see Gotchas section. (2) Memory.md merge conflicts during Phase 5 — all 3 branches appended top-of-stack, sequential merge required per-branch resolution. (3) Cache namespace pollution between IRIS_VERSION=1 ↔ IRIS_VERSION=0 flips — stale a2a_scan_v2 entries had v1 shape. Clear cache after flag flip.
+
 ### 2026-05-21: IRIS v2.0 Phase 5 — sequential merge to main + v1 rollback engaged — [conductor]
 - **Změny:** Merged 3 worktrees to main: backend (22 commits incl. errata + Phase 4 fix-ups, `5f03e40`), qa (8 commits + memory.md conflict-resolved merge, `876824e`), frontend (3 commits + memory.md conflict-resolved merge, `4080ed4`). 2 memory.md conflicts resolved by keeping ALL entries (qa Phase 2B + frontend Phase 2.5 entries kept alongside backend's Phase 4 fix-ups + Phase 2A + errata entries). Total ~33 commits landed.
 - **Důvod:** Phase 5 sequential merge per primary spec §11 + Hansova directive 2026-05-21. v2 code fully merged to main; service restarted to load.
