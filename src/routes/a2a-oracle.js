@@ -20,7 +20,7 @@ const router = express.Router();
 
 const { asyncSign, canonicalJSON } = require('../crypto/sign');
 const { isSolanaAddress } = require('../validation/address');
-const { calculateIRIS_v2 } = require('../features/iris-score');
+const { calculateIRIS_v1, calculateIRIS_v2 } = require('../features/iris-score');
 const { getGoplusReport }  = require('../enrichment/goplus');
 const { enrichScanResult } = require('../enrichment');
 const { lookupScamDb, lookupScamCreator } = require('../scam-db/lookup');
@@ -339,7 +339,10 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
 
   // Migration marker per Amendment v2 §3 R11 — clients keying on uppercase enum
   // can branch on this header (paired with in-body iris_version field).
-  res.setHeader('X-IRIS-Version', '2.0');
+  // Decision 5 (G10/R5): IRIS_VERSION=1 routes to legacy calculateIRIS_v1 for rollback safety.
+  const useV1 = process.env.IRIS_VERSION === '1';
+  const irisVersion = useV1 ? '1.0' : '2.0';
+  res.setHeader('X-IRIS-Version', irisVersion);
 
   try {
     // 1. DB-first cache — vrátí uložený podepsaný výsledek pokud je čerstvý (30 min)
@@ -366,12 +369,16 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
       } catch { scamDb.scam_creators = null; }
     }
 
-    // Run v2 scoring (8 dims, weighted, soft floor + external oracle floor + soft whitelist)
-    const iris = calculateIRIS_v2(enrichment, scamDb, goplus);
+    // Run scoring — v2 by default, v1 if rollback flag set (Decision 5).
+    // goplus enrichment runs unconditionally above for cost-uniformity; unused in v1 branch.
+    const iris = useV1
+      ? calculateIRIS_v1(enrichment, scamDb)
+      : calculateIRIS_v2(enrichment, scamDb, goplus);
 
     // Decision 4 (G9): HTTP 503 insufficient_data path per spec §5 + Amendment v2 §5
     // When ≥3 enrichment sources fail, return 503 with Retry-After (don't sign degraded scores).
-    if (iris.confidence_level === 'insufficient' || iris.score === null) {
+    // v1 never sets confidence_level/insufficient — check is a no-op for v1 path.
+    if (!useV1 && (iris.confidence_level === 'insufficient' || iris.score === null)) {
       const failedCount = Object.values(iris.breakdown || {})
         .filter(d => d.source_health === 'circuit_breaker_open').length;
       res.set('Retry-After', '30');
@@ -387,9 +394,9 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
 
     const reportPayload = {
       address,
-      iris_version:     '2.0',
+      iris_version:     irisVersion,
       iris_score:       iris.score,
-      risk_level:       iris.risk_level,
+      risk_level:       useV1 ? (iris.grade || '').toLowerCase() : iris.risk_level,
       risk_factors:     iris.risk_factors || [],
       iris_breakdown:   iris.breakdown,
       confidence_level: iris.confidence_level,
