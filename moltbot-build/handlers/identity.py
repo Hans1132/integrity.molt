@@ -1,7 +1,6 @@
 """/refreshidentity — pull docs/IDENTITY.md from repo, parse, atomic-write identity.env."""
 from __future__ import annotations
 
-import asyncio
 import datetime as dt
 import logging
 import os
@@ -15,10 +14,10 @@ from telegram.ext import ContextTypes
 
 from lib.config import Config
 from lib.parse_identity import ParseError, parse, to_env
+from lib.trigger import wait_consumed
 
 log = logging.getLogger(__name__)
 
-POLL_INTERVAL = 1.0
 MAX_WAIT = 30.0
 TG_LIMIT = 4000
 
@@ -39,16 +38,6 @@ def _read_current_env(path: Path) -> dict[str, str]:
     for m in ENV_LINE_RE.finditer(path.read_text()):
         out[m.group(1)] = _unescape(m.group(2))
     return out
-
-
-async def _wait_trigger_consumed(trigger: Path, max_wait: float) -> bool:
-    waited = 0.0
-    while waited < max_wait:
-        if not trigger.exists():
-            return True
-        await asyncio.sleep(POLL_INTERVAL)
-        waited += POLL_INTERVAL
-    return False
 
 
 def _write_atomic(target: Path, content: str) -> None:
@@ -114,7 +103,7 @@ def make_handler(cfg: Config):
             cfg.identity_pull_trigger_file.touch()
 
             # 3. Wait for runner to consume trigger (ExecStartPost removes it)
-            consumed = await _wait_trigger_consumed(cfg.identity_pull_trigger_file, MAX_WAIT)
+            consumed = await wait_consumed(cfg.identity_pull_trigger_file, MAX_WAIT)
             if not consumed:
                 await update.message.reply_text(
                     f"pull exceeded {int(MAX_WAIT)}s, aborting (identity.env unchanged)"
