@@ -22,7 +22,7 @@ class Config:
     heartbeat_trigger_file: Path
     heartbeat_marker_file: Path
     heartbeat_runner_unit: str
-    identity_pull_trigger: Path
+    identity_pull_trigger_file: Path
     identity_env_file: Path
     identity_repo_path: Path
     identity_runner_unit: str
@@ -66,7 +66,7 @@ def load() -> Config:
         heartbeat_trigger_file=Path(os.environ.get("HEARTBEAT_TRIGGER_FILE", "/var/run/moltbot/trigger-heartbeat")),
         heartbeat_marker_file=Path(os.environ.get("HEARTBEAT_MARKER_FILE", "/var/run/moltbot/last-heartbeat")),
         heartbeat_runner_unit=os.environ.get("HEARTBEAT_RUNNER_UNIT", "moltbot-heartbeat-runner.service"),
-        identity_pull_trigger=Path(os.environ.get("IDENTITY_PULL_TRIGGER_FILE", "/var/run/moltbot/trigger-identity-pull")),
+        identity_pull_trigger_file=Path(os.environ.get("IDENTITY_PULL_TRIGGER_FILE", "/var/run/moltbot/trigger-identity-pull")),
         identity_env_file=Path(os.environ.get("IDENTITY_ENV_FILE", "/etc/moltbot/identity.env")),
         identity_repo_path=Path(os.environ.get("IDENTITY_REPO_PATH", "/root/x402-server")),
         identity_runner_unit=os.environ.get("IDENTITY_RUNNER_UNIT", "moltbot-identity-pull-runner.service"),
