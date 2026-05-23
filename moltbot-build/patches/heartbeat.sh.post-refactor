@@ -1,0 +1,654 @@
+#!/bin/bash
+
+# --- moltbot integration (added by install.sh) ---
+source /etc/moltbot/llm-config.env 2>/dev/null || true
+mkdir -p /var/run/moltbot 2>/dev/null || true
+touch /var/run/moltbot/last-heartbeat 2>/dev/null || true
+chown moltbot:moltbot /var/run/moltbot/last-heartbeat 2>/dev/null || true
+# --- end moltbot integration ---
+source /etc/moltbot/identity.env 2>/dev/null || true   # moltbot identity integration (added by Stage 9)
+# heartbeat.sh - Moltbook activity monitor and auto-reply bot
+
+MOLTBOOK_TOKEN=$(cat /root/.secrets/moltbook_api_key)
+MOLTBOOK_BASE="https://www.moltbook.com/api/v1"
+LOG_FILE="/root/heartbeat.log"
+STATE_FILE="/root/heartbeat_state.json"
+SEEN_FILE="/root/.moltbot_seen.json"
+OWN_ACCOUNT="integrity_molt"
+
+LOCK_FILE="/tmp/heartbeat.lock"
+
+log() {
+    echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $1" | tee -a "$LOG_FILE"
+}
+
+# Lockfile mechanism: exit if lock exists and is less than 20 minutes old
+if [ -f "$LOCK_FILE" ]; then
+    LOCK_AGE=$(( $(date +%s) - $(stat -c %Y "$LOCK_FILE") ))
+    if [ "$LOCK_AGE" -lt 1200 ]; then
+        echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] Lock file exists (age ${LOCK_AGE}s), exiting." | tee -a "$LOG_FILE"
+        exit 0
+    fi
+fi
+touch "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+
+# Budget check: exit if daily API call limit reached (also loads comment helpers)
+source /root/.secrets/budget-check.sh || exit 0
+# Global daily comment limit (overrides budget-check.sh comment functions)
+source /root/.secrets/comment-limiter.sh || exit 0
+
+# Initialize state file if not exists
+if [ ! -f "$STATE_FILE" ]; then
+    echo '{"processed_comments":[],"upvoted_posts":[],"commented_posts":[]}' > "$STATE_FILE"
+fi
+
+# Initialize seen file if not exists
+if [ ! -f "$SEEN_FILE" ]; then
+    echo '[]' > "$SEEN_FILE"
+fi
+
+is_processed() {
+    local comment_id="$1"
+    jq -e --arg id "$comment_id" '.processed_comments | contains([$id])' "$STATE_FILE" > /dev/null 2>&1
+}
+
+mark_processed() {
+    local comment_id="$1"
+    local tmp
+    tmp=$(mktemp)
+    jq --arg id "$comment_id" '.processed_comments += [$id]' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+}
+
+is_upvoted() {
+    local post_id="$1"
+    jq -e --arg id "$post_id" 'contains([$id])' "$SEEN_FILE" > /dev/null 2>&1
+}
+
+mark_upvoted() {
+    local post_id="$1"
+    local tmp
+    tmp=$(mktemp)
+    jq --arg id "$post_id" '. + [$id] | .[-200:]' "$SEEN_FILE" > "$tmp" && mv "$tmp" "$SEEN_FILE"
+}
+
+is_feed_commented() {
+    local post_id="$1"
+    jq -e --arg id "$post_id" '.commented_posts // [] | contains([$id])' "$STATE_FILE" > /dev/null 2>&1
+}
+
+mark_feed_commented() {
+    local post_id="$1"
+    local tmp
+    tmp=$(mktemp)
+    jq --arg id "$post_id" '.commented_posts = (.commented_posts // []) + [$id]' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+}
+
+OPENROUTER_API_KEY=$(cat /root/.secrets/openrouter_api_key)
+
+call_openrouter() {
+    local prompt="$1"
+    if [ -z "$OPENROUTER_API_KEY" ]; then
+        log "ERROR: OPENROUTER_API_KEY is not set"
+        return 1
+    fi
+    curl -s -X POST "https://openrouter.ai/api/v1/chat/completions" \
+        -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"model\": \"${MOLTBOT_LLM_MODEL:-anthropic/claude-opus-4-7}\",
+            \"messages\": [{\"role\": \"user\", \"content\": $(printf '%s' "$prompt" | jq -Rs .)}]
+        }" | jq -r '.choices[0].message.content // empty'
+}
+
+solve_verification() {
+    local verify_code="$1"
+    local challenge_text="$2"
+    local comment_id="$3"
+
+    log "  Verification required. Challenge: $challenge_text"
+
+    SOLVE_PROMPT="Solve this math problem. The text uses obfuscated mixed-case letters and symbols — read through the noise and extract the actual math question, then solve it.
+
+Return ONLY the numeric answer formatted to exactly 2 decimal places (e.g. '35.00' or '525.00'). No words, no explanation — just the number.
+
+Challenge: $challenge_text"
+
+    RAW_ANSWER=$(call_openrouter "$SOLVE_PROMPT")
+    MATH_ANSWER=$(echo "$RAW_ANSWER" | grep -oP '\d+\.\d{2}' | head -1)
+
+    if [ -z "$MATH_ANSWER" ]; then
+        RAW_NUM=$(echo "$RAW_ANSWER" | grep -oP '\d+(\.\d+)?' | head -1)
+        if [ -n "$RAW_NUM" ]; then
+            MATH_ANSWER=$(printf "%.2f" "$RAW_NUM")
+        fi
+    fi
+
+    if [ -z "$MATH_ANSWER" ]; then
+        log "  ERROR: Could not parse math answer from model response: $RAW_ANSWER"
+        return 1
+    fi
+
+    log "  Submitting verification answer: $MATH_ANSWER"
+
+    VERIFY_RESPONSE=$(curl -s -X POST \
+        -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"verification_code\": \"$verify_code\", \"answer\": \"$MATH_ANSWER\"}" \
+        "$MOLTBOOK_BASE/verify")
+
+    VERIFY_SUCCESS=$(echo "$VERIFY_RESPONSE" | jq -r '.success')
+    if [ "$VERIFY_SUCCESS" = "true" ]; then
+        log "  SUCCESS: Comment verified and published (id=$comment_id)"
+        return 0
+    else
+        log "  ERROR: Verification failed (answer=$MATH_ANSWER): $(echo "$VERIFY_RESPONSE" | jq -r '.message // .error // "unknown"')"
+        return 1
+    fi
+}
+
+log "=== Heartbeat starting ==="
+
+# Step 1: Get home feed
+HOME_RESPONSE=$(curl -s -H "Authorization: Bearer $MOLTBOOK_TOKEN" "$MOLTBOOK_BASE/home")
+if [ -z "$HOME_RESPONSE" ]; then
+    log "ERROR: Failed to fetch home feed"
+    exit 1
+fi
+
+ACTIVITY_COUNT=$(echo "$HOME_RESPONSE" | jq '.activity_on_your_posts | length')
+log "Found $ACTIVITY_COUNT post(s) with activity"
+
+# Step 2: Process each post with activity
+if [ "$ACTIVITY_COUNT" -gt 0 ]; then
+    for i in $(seq 0 $((ACTIVITY_COUNT - 1))); do
+        POST_ACTIVITY=$(echo "$HOME_RESPONSE" | jq -c ".activity_on_your_posts[$i]")
+        POST_ID=$(echo "$POST_ACTIVITY" | jq -r '.post_id')
+        POST_TITLE=$(echo "$POST_ACTIVITY" | jq -r '.post_title')
+        NEW_COUNT=$(echo "$POST_ACTIVITY" | jq -r '.new_notification_count')
+
+        log "Processing post [$((i+1))/$ACTIVITY_COUNT]: \"$POST_TITLE\" (id=$POST_ID, new=$NEW_COUNT)"
+
+        # Fetch recent comments (newest first)
+        COMMENTS_RESPONSE=$(curl -s \
+            -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+            "$MOLTBOOK_BASE/posts/$POST_ID/comments?sort=new&limit=20")
+
+        COMMENT_COUNT=$(echo "$COMMENTS_RESPONSE" | jq '.comments | length')
+        log "  Fetched $COMMENT_COUNT comment(s)"
+
+        for j in $(seq 0 $((COMMENT_COUNT - 1))); do
+            COMMENT=$(echo "$COMMENTS_RESPONSE" | jq -c ".comments[$j]")
+            COMMENT_ID=$(echo "$COMMENT" | jq -r '.id')
+            COMMENT_AUTHOR=$(echo "$COMMENT" | jq -r '.author.name')
+            COMMENT_CONTENT=$(echo "$COMMENT" | jq -r '.content')
+
+            # Skip own comments
+            if [ "$COMMENT_AUTHOR" = "$OWN_ACCOUNT" ]; then
+                continue
+            fi
+
+            # Skip already-processed comments
+            if is_processed "$COMMENT_ID"; then
+                log "  [skip] Already replied to comment $COMMENT_ID by $COMMENT_AUTHOR"
+                continue
+            fi
+
+            # Sanitize incoming comment before passing to LLM
+            SANITIZED_CONTENT=$(echo "$COMMENT_CONTENT" | python3 /root/.secrets/sanitize.py 2>/dev/null)
+            if [ $? -ne 0 ]; then
+                log "  BLOCKED by sanitizer: comment $COMMENT_ID by $COMMENT_AUTHOR"
+                mark_processed "$COMMENT_ID"
+                continue
+            fi
+
+            log "  Generating reply to $COMMENT_AUTHOR (comment $COMMENT_ID)"
+            log "  Comment preview: ${SANITIZED_CONTENT:0:120}..."
+
+            # ── Scan detection: Solana address OR explicit "scan/audit <target>" ──
+            # Rule 1: valid base58 address (32-44 chars, starts with capital letter)
+            # Rule 2: explicit "scan <address>", "audit <address>" with a real target
+            # Do NOT trigger on random English words matching keyword lists
+            SCAN_INPUT=""
+            SOLANA_ADDR=$(echo "$SANITIZED_CONTENT" | grep -oE '\b[1-9A-HJ-NP-Z][1-9A-HJ-NP-Za-km-z]{31,43}\b' | head -1)
+            if [ -n "$SOLANA_ADDR" ]; then
+                SCAN_INPUT="$SOLANA_ADDR"
+                log "  [scan] Solana address detected: ${SOLANA_ADDR:0:12}..."
+            else
+                # Only trigger if "scan/audit/check" is directly followed by an address or token name
+                EXPLICIT_TARGET=$(echo "$SANITIZED_CONTENT" | grep -oiP '(?<=\b(scan|audit|check)\s)[1-9A-HJ-NP-Za-km-z]{32,44}' | head -1)
+                if [ -n "$EXPLICIT_TARGET" ]; then
+                    SCAN_INPUT="$EXPLICIT_TARGET"
+                    log "  [scan] Explicit address after keyword: ${SCAN_INPUT:0:12}..."
+                fi
+                # No fallback to POST_TITLE or guessed project names
+            fi
+
+            REPLY_TEXT=""
+            if [ -n "$SCAN_INPUT" ]; then
+                log "  [scan] Running quick-scan.sh for: $SCAN_INPUT"
+                SCAN_OUTPUT=$(/root/scanner/quick-scan.sh "$SCAN_INPUT" 2>/dev/null)
+                SCAN_EXIT=$?
+                if [ $SCAN_EXIT -eq 0 ] && [ -n "$SCAN_OUTPUT" ]; then
+                    # Format through Moltbook formatter: strips log/metadata, keeps only AI analysis
+                    FORMATTED=$(echo "$SCAN_OUTPUT" | /root/scanner/format-for-moltbook.sh 2>/dev/null)
+                    # Validate formatted output (it's from our scripts but may contain AI text)
+                    FORMATTED=$(echo "$FORMATTED" | python3 /root/.secrets/validate_output.py 2>/dev/null)
+                    if [ $? -eq 0 ] && [ -n "$FORMATTED" ]; then
+                        ADDR_DISPLAY="${SCAN_INPUT:0:8}...${SCAN_INPUT: -4}"
+                        REPLY_TEXT="Quick scan for ${ADDR_DISPLAY}:
+
+${FORMATTED}"
+                        log "  [scan] Scan formatted, reply length: ${#REPLY_TEXT} chars"
+                    else
+                        log "  [scan] Formatter blocked output — falling back to AI reply"
+                    fi
+                else
+                    log "  [scan] quick-scan.sh failed (exit=$SCAN_EXIT) — falling back to AI reply"
+                fi
+            fi
+
+            if [ -z "$REPLY_TEXT" ]; then
+            # Generate reply with OpenRouter / Gemini 2.5 Flash
+            REPLY_PROMPT="You are a security expert on Moltbook posting as integrity_molt. You have deep knowledge of Solana, smart contracts, DeFi, and on-chain security.
+
+You are replying to a comment on a post titled: \"$POST_TITLE\"
+
+Comment by $COMMENT_AUTHOR:
+$SANITIZED_CONTENT
+
+Write a thoughtful, genuine reply of 2-4 sentences. Be specific and helpful — address the actual question or point raised. Do not pitch services or mention audits unless the commenter is explicitly asking for one. Do not use hashtags or emojis. If you mention integrity_molt at all, use it only as a signature at the end: \"- integrity_molt\". Output only the reply text, nothing else."
+
+            REPLY_TEXT=$(call_openrouter "$REPLY_PROMPT")
+            fi
+
+            if [ -z "$REPLY_TEXT" ]; then
+                log "  ERROR: Failed to generate reply for comment $COMMENT_ID"
+                continue
+            fi
+
+            # Validate LLM output before posting
+            REPLY_TEXT=$(echo "$REPLY_TEXT" | python3 /root/.secrets/validate_output.py 2>/dev/null)
+            if [ $? -ne 0 ]; then
+                log "  BLOCKED by validator: reply to comment $COMMENT_ID"
+                continue
+            fi
+
+            log "  Reply generated (${#REPLY_TEXT} chars): ${REPLY_TEXT:0:100}..."
+
+            # Check daily comment limit before posting
+            if ! check_daily_comment_limit; then
+                log "  Daily comment limit reached — skipping reply to $COMMENT_AUTHOR"
+                break
+            fi
+
+            # Post the reply as a top-level comment on the post
+            POST_PAYLOAD=$(jq -n \
+                --arg content "$REPLY_TEXT" \
+                '{"content": $content}')
+
+            POST_RESPONSE=$(curl -s -X POST \
+                -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$POST_PAYLOAD" \
+                "$MOLTBOOK_BASE/posts/$POST_ID/comments")
+
+            POST_SUCCESS=$(echo "$POST_RESPONSE" | jq -r '.success')
+
+            if [ "$POST_SUCCESS" != "true" ]; then
+                log "  ERROR: Failed to post reply: $(echo "$POST_RESPONSE" | jq -r '.message // .error // "unknown"')"
+                continue
+            fi
+
+            record_comment
+            NEW_COMMENT_ID=$(echo "$POST_RESPONSE" | jq -r '.comment.id')
+            VERIFY_CODE=$(echo "$POST_RESPONSE" | jq -r '.comment.verification.verification_code // empty')
+            CHALLENGE_TEXT=$(echo "$POST_RESPONSE" | jq -r '.comment.verification.challenge_text // empty')
+
+            if [ -z "$VERIFY_CODE" ]; then
+                log "  SUCCESS: Reply posted (id=$NEW_COMMENT_ID, no verification needed)"
+                mark_processed "$COMMENT_ID"
+                continue
+            fi
+
+            if solve_verification "$VERIFY_CODE" "$CHALLENGE_TEXT" "$NEW_COMMENT_ID"; then
+                mark_processed "$COMMENT_ID"
+            fi
+        done
+
+        # Mark notifications as read for this post
+        curl -s -X POST \
+            -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+            "$MOLTBOOK_BASE/notifications/read-by-post/$POST_ID" > /dev/null
+        log "  Notifications marked as read for post $POST_ID"
+    done
+else
+    log "No activity to process"
+fi
+
+# Step 3: Browse feed, upvote 3 interesting posts, comment on the best one
+log "=== Browsing feed ==="
+
+FEED_RESPONSE=$(curl -s -H "Authorization: Bearer $MOLTBOOK_TOKEN" "$MOLTBOOK_BASE/feed?limit=20")
+FEED_COUNT=$(echo "$FEED_RESPONSE" | jq '.posts | length' 2>/dev/null)
+
+if [ -z "$FEED_COUNT" ] || [ "$FEED_COUNT" = "null" ] || [ "$FEED_COUNT" -eq 0 ]; then
+    log "No posts found in feed (or unsupported endpoint)"
+else
+    log "Fetched $FEED_COUNT post(s) from feed"
+
+    # Build a summary of posts for AI selection
+    POSTS_SUMMARY=$(echo "$FEED_RESPONSE" | jq -r \
+        '[.posts[] | "\(.id) | \(.title) | \((.content // .body // "")[0:200])"]
+        | to_entries[] | "\(.key): \(.value)"')
+
+    # Ask AI to select 3 posts for upvoting and 1 for commenting
+    SELECT_PROMPT="You are integrity_molt, an AI security auditor on Moltbook. Here are posts from the feed (index: id | title | preview):
+
+$POSTS_SUMMARY
+
+Select the 3 most interesting posts related to security, AI agents, blockchain, or technology for upvoting.
+Also select the single most interesting post for writing a thoughtful comment.
+
+Return ONLY a JSON object like: {\"upvote\": [0, 2, 5], \"comment\": 2}
+Use 0-based indices from the list above. Output only the JSON, nothing else."
+
+    SELECTION=$(call_openrouter "$SELECT_PROMPT" | sed 's/```[a-z]*//g;s/```//g')
+    log "AI selection: $SELECTION"
+
+    UPVOTE_INDICES=$(echo "$SELECTION" | jq -r '.upvote[]' 2>/dev/null)
+    COMMENT_INDEX=$(echo "$SELECTION" | jq -r '.comment' 2>/dev/null)
+
+    # Upvote selected posts
+    UPVOTE_COUNT=0
+    for idx in $UPVOTE_INDICES; do
+        FEED_POST_ID=$(echo "$FEED_RESPONSE" | jq -r --argjson i "$idx" '.posts[$i].id')
+        FEED_POST_TITLE=$(echo "$FEED_RESPONSE" | jq -r --argjson i "$idx" '.posts[$i].title')
+
+        if [ -z "$FEED_POST_ID" ] || [ "$FEED_POST_ID" = "null" ]; then
+            continue
+        fi
+
+        if is_upvoted "$FEED_POST_ID"; then
+            log "  [skip] Already upvoted post \"$FEED_POST_TITLE\" ($FEED_POST_ID)"
+            continue
+        fi
+
+        UPVOTE_RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+            "$MOLTBOOK_BASE/posts/$FEED_POST_ID/upvote")
+
+        UPVOTE_SUCCESS=$(echo "$UPVOTE_RESPONSE" | jq -r '.success')
+        if [ "$UPVOTE_SUCCESS" = "true" ]; then
+            log "  SUCCESS: Upvoted post \"$FEED_POST_TITLE\" ($FEED_POST_ID)"
+            mark_upvoted "$FEED_POST_ID"
+            UPVOTE_COUNT=$((UPVOTE_COUNT + 1))
+        else
+            log "  ERROR: Failed to upvote post $FEED_POST_ID: $(echo "$UPVOTE_RESPONSE" | jq -r '.message // .error // "unknown"')"
+        fi
+    done
+    log "Upvoted $UPVOTE_COUNT new post(s)"
+
+    # Comment on the most interesting post (only if daily limit not reached)
+    if [ -n "$COMMENT_INDEX" ] && [ "$COMMENT_INDEX" != "null" ]; then
+        COMMENT_POST_ID=$(echo "$FEED_RESPONSE" | jq -r --argjson i "$COMMENT_INDEX" '.posts[$i].id')
+        COMMENT_POST_TITLE=$(echo "$FEED_RESPONSE" | jq -r --argjson i "$COMMENT_INDEX" '.posts[$i].title')
+        COMMENT_POST_BODY=$(echo "$FEED_RESPONSE" | jq -r --argjson i "$COMMENT_INDEX" '.posts[$i] | (.content // .body // "")[0:500]')
+
+        if is_feed_commented "$COMMENT_POST_ID"; then
+            log "  [skip] Already commented on feed post \"$COMMENT_POST_TITLE\" ($COMMENT_POST_ID)"
+        elif ! check_daily_comment_limit; then
+            log "  Daily comment limit reached — skipping feed comment"
+        else
+            FEED_COMMENT_PROMPT="You are a security expert on Moltbook posting as integrity_molt. You have deep knowledge of Solana, smart contracts, DeFi, and on-chain security.
+
+Write a thoughtful, genuinely helpful comment (3-5 sentences) on the following post. Share a relevant security insight, flag a real risk, or add useful technical context. Do not pitch services or offer scans. Do not use hashtags or emojis. End with just \"- integrity_molt\" as a signature. Output only the comment text, nothing else.
+
+Post title: \"$COMMENT_POST_TITLE\"
+Post content: $COMMENT_POST_BODY"
+
+            FEED_COMMENT=$(call_openrouter "$FEED_COMMENT_PROMPT")
+
+            if [ -z "$FEED_COMMENT" ]; then
+                log "  ERROR: Failed to generate feed comment"
+            else
+                # Validate LLM output before posting
+                FEED_COMMENT=$(echo "$FEED_COMMENT" | python3 /root/.secrets/validate_output.py 2>/dev/null)
+                if [ $? -ne 0 ]; then
+                    log "  BLOCKED by validator: feed comment on \"$COMMENT_POST_TITLE\""
+                else
+                    log "  Posting comment on \"$COMMENT_POST_TITLE\": ${FEED_COMMENT:0:100}..."
+
+                    FEED_PAYLOAD=$(jq -n --arg content "$FEED_COMMENT" '{"content": $content}')
+                    FEED_POST_RESPONSE=$(curl -s -X POST \
+                        -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+                        -H "Content-Type: application/json" \
+                        -d "$FEED_PAYLOAD" \
+                        "$MOLTBOOK_BASE/posts/$COMMENT_POST_ID/comments")
+
+                    FEED_POST_SUCCESS=$(echo "$FEED_POST_RESPONSE" | jq -r '.success')
+
+                    if [ "$FEED_POST_SUCCESS" != "true" ]; then
+                        log "  ERROR: Failed to post feed comment: $(echo "$FEED_POST_RESPONSE" | jq -r '.message // .error // "unknown"')"
+                    else
+                        record_comment
+                        NEW_FEED_COMMENT_ID=$(echo "$FEED_POST_RESPONSE" | jq -r '.comment.id')
+                        FEED_VERIFY_CODE=$(echo "$FEED_POST_RESPONSE" | jq -r '.comment.verification.verification_code // empty')
+                        FEED_CHALLENGE_TEXT=$(echo "$FEED_POST_RESPONSE" | jq -r '.comment.verification.challenge_text // empty')
+
+                        if [ -z "$FEED_VERIFY_CODE" ]; then
+                            log "  SUCCESS: Feed comment posted (id=$NEW_FEED_COMMENT_ID, no verification needed)"
+                            mark_feed_commented "$COMMENT_POST_ID"
+                        else
+                            if solve_verification "$FEED_VERIFY_CODE" "$FEED_CHALLENGE_TEXT" "$NEW_FEED_COMMENT_ID"; then
+                                mark_feed_commented "$COMMENT_POST_ID"
+                            fi
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    fi
+fi
+
+
+# ── Step 4: Token Audit Outreach ───────────────────────────────────────────────
+# Scan feed for posts about Molt.id tokens with treasury mentions.
+# If found and daily DM quota not exceeded, send a polite audit offer via Moltbook DM.
+# Limit: max 3 DMs per day across all heartbeat runs.
+
+TOKEN_AUDIT_STATE="/root/heartbeat_token_audit_state.json"
+TOKEN_AUDIT_DAILY_LIMIT=3
+
+if [ ! -f "$TOKEN_AUDIT_STATE" ]; then
+    echo '{"dm_log":[]}' > "$TOKEN_AUDIT_STATE"
+fi
+
+# Count DMs sent today
+token_audit_dms_today() {
+    python3 << 'PYEOF'
+import json, sys
+from datetime import datetime, timezone, timedelta
+try:
+    with open('/root/heartbeat_token_audit_state.json') as f:
+        d = json.load(f)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    count = 0
+    for entry in d.get('dm_log', []):
+        ts = entry.get('sent_at', '')
+        try:
+            t = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+            if t > cutoff:
+                count += 1
+        except Exception:
+            pass
+    print(count)
+except Exception:
+    print(0)
+PYEOF
+}
+
+# Check if we already DMed this agent today
+already_dmed_today() {
+    local agent="$1"
+    python3 - "$agent" << 'PYEOF'
+import json, sys
+from datetime import datetime, timezone, timedelta
+agent = sys.argv[1]
+try:
+    with open('/root/heartbeat_token_audit_state.json') as f:
+        d = json.load(f)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    for entry in d.get('dm_log', []):
+        if entry.get('agent') == agent:
+            ts = entry.get('sent_at', '')
+            try:
+                t = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                if t > cutoff:
+                    sys.exit(0)  # already DMed
+            except Exception:
+                pass
+    sys.exit(1)  # not DMed
+except Exception:
+    sys.exit(1)
+PYEOF
+}
+
+# Record a DM sent
+record_token_audit_dm() {
+    local agent="$1"
+    local mint="$2"
+    python3 - "$agent" "$mint" << 'PYEOF'
+import json, sys
+from datetime import datetime, timezone
+agent, mint = sys.argv[1], sys.argv[2]
+with open('/root/heartbeat_token_audit_state.json') as f:
+    d = json.load(f)
+d.setdefault('dm_log', []).append({
+    'agent': agent,
+    'mint': mint,
+    'sent_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+})
+d['dm_log'] = d['dm_log'][-200:]
+with open('/root/heartbeat_token_audit_state.json', 'w') as f:
+    json.dump(d, f, indent=2)
+PYEOF
+}
+
+log "=== Token audit outreach ==="
+DM_TODAY=$(token_audit_dms_today)
+log "DMs sent today: $DM_TODAY / $TOKEN_AUDIT_DAILY_LIMIT"
+
+if [ "$DM_TODAY" -lt "$TOKEN_AUDIT_DAILY_LIMIT" ] && [ -n "$FEED_RESPONSE" ]; then
+    # Scan already-fetched feed for posts mentioning tokens/treasury/allocation/Molt
+    # Keywords that suggest a token project with treasury
+    AUDIT_CANDIDATES=$(echo "$FEED_RESPONSE" | jq -r '
+      .posts[]
+      | select(
+          (.title + " " + (.content // .body // "")) | ascii_downcase
+          | test("treasury|token.*launch|beggars.*alloc|allocation.*fund|token.*mint|mint.*address|token.*supply|launched.*token|our.*token")
+        )
+      | "\(.id)|\(.author.name)|" + (.title[0:80])
+    ' 2>/dev/null | head -5)
+
+    if [ -z "$AUDIT_CANDIDATES" ]; then
+        log "No token-treasury posts found in feed — skipping outreach"
+    else
+        DM_SENT=0
+        while IFS='|' read -r POST_ID AUTHOR TITLE_PREVIEW; do
+            [ -z "$POST_ID" ] || [ -z "$AUTHOR" ] && continue
+            [ "$AUTHOR" = "$OWN_ACCOUNT" ] && continue
+
+            REMAINING=$(( TOKEN_AUDIT_DAILY_LIMIT - DM_TODAY - DM_SENT ))
+            if [ "$REMAINING" -le 0 ]; then
+                log "  Daily DM limit reached — stopping outreach"
+                break
+            fi
+
+            if already_dmed_today "$AUTHOR"; then
+                log "  [skip] Already DMed $AUTHOR today"
+                continue
+            fi
+
+            log "  Candidate post: \"$TITLE_PREVIEW\" by $AUTHOR ($POST_ID)"
+
+            # Fetch full post to check for mint address
+            POST_DETAIL=$(curl -s -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+                "$MOLTBOOK_BASE/posts/$POST_ID" 2>/dev/null)
+            FULL_CONTENT=$(echo "$POST_DETAIL" | jq -r '(.content // .body // "")[0:800]' 2>/dev/null)
+
+            # Look for a Solana mint address in the post body
+            FOUND_MINT=$(echo "$FULL_CONTENT" | grep -oE '\b[1-9A-HJ-NP-Z][1-9A-HJ-NP-Za-km-z]{31,43}\b' | head -1)
+
+            # Compose DM using OpenRouter — concise, non-spammy, value-first
+            DM_CONTEXT="Post title: \"$TITLE_PREVIEW\""
+            [ -n "$FOUND_MINT" ] && DM_CONTEXT="$DM_CONTEXT\nMint address in post: ${FOUND_MINT:0:12}..."
+
+            DM_PROMPT="You are integrity_molt, an AI security auditor for Solana tokens. You saw a post about a token project with treasury funds.
+
+$DM_CONTEXT
+
+Write a brief, genuine DM (3-5 sentences) offering a Token Security Audit at \$0.75 USDC via intmolt.org.
+- Mention what the audit covers: mint authority, freeze authority, treasury multisig check, supply concentration
+- Be specific about the treasury risk angle — not generic sales talk
+- End with: 'Audit via A2A: POST https://intmolt.org/a2a  {skill: "token_audit", address: "<mint>"}  (0.75 USDC x402)'
+- Do NOT use emojis, hashtags, or marketing buzzwords
+- Output only the DM text, nothing else"
+
+            DM_TEXT=$(call_openrouter "$DM_PROMPT")
+
+            if [ -z "$DM_TEXT" ]; then
+                log "  ERROR: Failed to generate DM for $AUTHOR"
+                continue
+            fi
+
+            # Validate output before sending
+            DM_TEXT=$(echo "$DM_TEXT" | python3 /root/.secrets/validate_output.py 2>/dev/null)
+            if [ $? -ne 0 ]; then
+                log "  BLOCKED by validator: DM to $AUTHOR"
+                continue
+            fi
+
+            log "  Sending token audit DM to $AUTHOR (${#DM_TEXT} chars)"
+
+            # Send DM via Moltbook: POST /api/v1/agents/dm/conversations
+            # Creates new conversation with initial message
+            DM_PAYLOAD=$(jq -n --arg rn "$AUTHOR" --arg msg "$DM_TEXT" \
+                '{"recipient_name": $rn, "message": $msg}')
+            DM_RESPONSE=$(curl -s -X POST \
+                -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$DM_PAYLOAD" \
+                "$MOLTBOOK_BASE/agents/dm/conversations" 2>/dev/null)
+
+            DM_SUCCESS=$(echo "$DM_RESPONSE" | jq -r '.success // (.conversation_id != null) // false' 2>/dev/null)
+            DM_ALREADY=$(echo "$DM_RESPONSE" | jq -r '.message // ""' 2>/dev/null | grep -i "already exists")
+
+            if [ "$DM_SUCCESS" = "true" ] || [ -n "$DM_ALREADY" ]; then
+                log "  SUCCESS: DM sent to $AUTHOR (post=$POST_ID)"
+                record_token_audit_dm "$AUTHOR" "${FOUND_MINT:-unknown}"
+                DM_SENT=$((DM_SENT + 1))
+            else
+                DM_ERROR=$(echo "$DM_RESPONSE" | jq -r '.message // .error // "unknown"' 2>/dev/null)
+                log "  ERROR: DM to $AUTHOR failed: $DM_ERROR"
+                # If conversation already exists, record it as sent anyway to avoid repeat attempts
+                if echo "$DM_ERROR" | grep -qi "already exists"; then
+                    record_token_audit_dm "$AUTHOR" "${FOUND_MINT:-unknown}"
+                fi
+            fi
+
+            # Small delay between DMs to be polite
+            sleep 2
+        done <<< "$AUDIT_CANDIDATES"
+
+        log "Sent $DM_SENT token audit DM(s) this run"
+    fi
+else
+    if [ "$DM_TODAY" -ge "$TOKEN_AUDIT_DAILY_LIMIT" ]; then
+        log "Daily DM limit reached ($DM_TODAY) — skipping outreach"
+    else
+        log "No feed data available — skipping outreach"
+    fi
+fi
+
+log "=== Heartbeat complete ==="
