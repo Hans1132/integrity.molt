@@ -94,6 +94,12 @@ def test_to_env_bash_source_roundtrip(good_identity_md, tmp_path):
     )
     assert result.stdout.strip() == "Mint authority risks"
 
+    result = subprocess.run(
+        ["bash", "-c", f"set -e; source {env_file}; echo \"$MOLTBOT_TAGLINE\""],
+        capture_output=True, text=True, check=True,
+    )
+    assert result.stdout.strip() == "On-chain risk scoring, rug detection, signed receipts."
+
 
 def test_to_env_escapes_single_quotes():
     """Values containing apostrophes must round-trip through bash without breaking."""
@@ -116,5 +122,23 @@ def test_to_env_escapes_single_quotes():
             capture_output=True, text=True, check=True,
         )
         assert result.stdout.strip() == "don't worry about it"
+
+        result = subprocess.run(
+            ["bash", "-c", f"set -e; source {path}; echo \"$MOLTBOT_PAID_SKILLS\""],
+            capture_output=True, text=True, check=True,
+        )
+        assert result.stdout.strip() == "two '' quotes"
+
+        result = subprocess.run(
+            ["bash", "-c", f"set -e; source {path}; echo \"$MOLTBOT_TOPIC_0\""],
+            capture_output=True, text=True, check=True,
+        )
+        assert result.stdout.strip() == "t'1"
+
+        result = subprocess.run(
+            ["bash", "-c", f"set -e; source {path}; echo \"$MOLTBOT_FREE_SKILLS\""],
+            capture_output=True, text=True, check=True,
+        )
+        assert result.stdout.strip() == "single ' quote"
     finally:
         Path(path).unlink()
