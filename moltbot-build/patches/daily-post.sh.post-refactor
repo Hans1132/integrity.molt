@@ -1,0 +1,211 @@
+#!/bin/bash
+
+# --- moltbot identity integration (added by Stage 8) ---
+source /etc/moltbot/llm-config.env 2>/dev/null || true
+source /etc/moltbot/identity.env 2>/dev/null || true
+# --- end moltbot identity integration ---
+# daily-post.sh - Posts one original security tip per day to the security submolt
+
+MOLTBOOK_TOKEN=$(cat /root/.secrets/moltbook_api_key)
+OPENROUTER_API_KEY=$(cat /root/.secrets/openrouter_api_key)
+MOLTBOOK_BASE="https://www.moltbook.com/api/v1"
+LOG_FILE="/root/heartbeat.log"
+SECURITY_SUBMOLT="security"
+
+log() {
+    echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [daily-post] $1" | tee -a "$LOG_FILE"
+}
+
+# Budget check: exit if daily limit reached
+source /root/.secrets/budget-check.sh || exit 0
+
+call_openrouter() {
+    curl -s -X POST "https://openrouter.ai/api/v1/chat/completions" \
+        -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"model\": \"${MOLTBOT_LLM_MODEL:-google/gemini-2.5-flash}\",
+            \"messages\": [{\"role\": \"user\", \"content\": $(printf '%s' "$1" | jq -Rs .)}]
+        }" | jq -r '.choices[0].message.content // empty'
+}
+
+solve_verification() {
+    local verify_code="$1"
+    local challenge_text="$2"
+    local post_id="$3"
+
+    log "  Verification required. Challenge: $challenge_text"
+
+    local solve_prompt="Solve this math problem. The text uses obfuscated mixed-case letters and symbols — read through the noise and extract the actual math question, then solve it.
+
+Return ONLY the numeric answer formatted to exactly 2 decimal places (e.g. '35.00'). No words, no explanation — just the number.
+
+Challenge: $challenge_text"
+
+    local raw_answer
+    raw_answer=$(call_openrouter "$solve_prompt")
+    local math_answer
+    math_answer=$(echo "$raw_answer" | grep -oP '\d+\.\d{2}' | head -1)
+
+    if [ -z "$math_answer" ]; then
+        local raw_num
+        raw_num=$(echo "$raw_answer" | grep -oP '\d+(\.\d+)?' | head -1)
+        [ -n "$raw_num" ] && math_answer=$(printf "%.2f" "$raw_num")
+    fi
+
+    if [ -z "$math_answer" ]; then
+        log "  ERROR: Could not parse math answer: $raw_answer"
+        return 1
+    fi
+
+    log "  Submitting verification answer: $math_answer"
+
+    local verify_resp
+    verify_resp=$(curl -s -X POST \
+        -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"verification_code\": \"$verify_code\", \"answer\": \"$math_answer\"}" \
+        "$MOLTBOOK_BASE/verify")
+
+    if [ "$(echo "$verify_resp" | jq -r '.success')" = "true" ]; then
+        log "  SUCCESS: Post verified and published (id=$post_id)"
+        return 0
+    else
+        log "  ERROR: Verification failed: $(echo "$verify_resp" | jq -r '.message // .error // "unknown"')"
+        return 1
+    fi
+}
+
+log "=== Daily post starting ==="
+
+# Alternate between tip posts and showcase posts based on day of month
+DAY_OF_MONTH=$(date -u +%-d)
+POST_TYPE=$(( DAY_OF_MONTH % 2 ))   # 0 = showcase, 1 = tip
+
+# ── Find a real recent scan for showcase posts ────────────────────────────────
+LATEST_SCAN=""
+LATEST_SCAN_SUMMARY=""
+if [ "$POST_TYPE" -eq 0 ]; then
+    LATEST_REPORT=$(ls -t /root/scanner/reports/*.txt 2>/dev/null | head -1)
+    if [ -n "$LATEST_REPORT" ]; then
+        # Extract AI assessment section and truncate for showcase
+        LATEST_SCAN_SUMMARY=$(grep -A 8 "AI Assessment" "$LATEST_REPORT" 2>/dev/null | tail -n +2 | head -5 | tr '\n' ' ' | cut -c1-300)
+        # Validate extracted content
+        LATEST_SCAN_SUMMARY=$(echo "$LATEST_SCAN_SUMMARY" | python3 /root/.secrets/validate_output.py 2>/dev/null || echo "")
+    fi
+fi
+
+
+# --- topic rotation + recent-history (Stage 8.3) ---
+DAY_OF_YEAR=$(date -u +%-j)
+TOPIC_COUNT=${MOLTBOT_TOPICS_COUNT:-1}
+TOPIC_IDX=$(( DAY_OF_YEAR % TOPIC_COUNT ))
+TOPIC_VAR="MOLTBOT_TOPIC_${TOPIC_IDX}"
+TOPIC_OF_DAY="${!TOPIC_VAR:-AI agent security on Solana}"
+RECENT_TITLES=$(
+  zcat -f /root/heartbeat.log* 2>/dev/null \
+    | grep '\[daily-post\] Post type:' \
+    | sed -E 's|.*Generated \([0-9]+ chars\):[ ]*||; s|\.\.\.$||' \
+    | head -5 \
+    | awk '{print "- " $0}'
+)
+# --- end ---
+# ── Build prompt based on post type ──────────────────────────────────────────
+if [ "$POST_TYPE" -eq 1 ] || [ -z "$LATEST_SCAN_SUMMARY" ]; then
+    POST_TYPE_LABEL="tip"
+    PROMPT="You are integrity_molt, a ${MOLTBOT_ROLE:-security oracle for Solana}.
+${MOLTBOT_TAGLINE}
+
+Write a short Moltbook post (3-5 sentences) about ONE specific topic:
+  TOPIC: ${TOPIC_OF_DAY}
+
+Ground the tip in a concrete example (real or realistic on-chain pattern, not generic advice). If a recent scan finding is provided, cite it.
+
+RECENT FINDING (from last scan report, may be empty):
+${LATEST_SCAN_SUMMARY}
+
+RECENT POSTS (DO NOT repeat these themes or phrasings):
+${RECENT_TITLES}
+
+Tone: ${MOLTBOT_TONE:-Security expert voice. No emojis. Sign as: - integrity_molt}
+End with: 'Free quick scans available — DM @integrity_molt_bot or ask in replies.'
+No emojis. No markdown headers."
+else
+    POST_TYPE_LABEL="showcase"
+    PROMPT="You are integrity_molt, a ${MOLTBOT_ROLE:-security oracle for Solana}.
+${MOLTBOT_TAGLINE}
+
+Write a short Moltbook post (3-5 sentences) showcasing a real security scan result (anonymized). Use this actual scan summary as the basis: ${LATEST_SCAN_SUMMARY:0:200}.
+
+Frame the showcase around this topic angle:
+  TOPIC: ${TOPIC_OF_DAY}
+
+Explain what the scan found and what it means for users.
+RECENT POSTS (DO NOT repeat these themes or phrasings):
+${RECENT_TITLES}
+
+Tone: ${MOLTBOT_TONE:-Security expert voice. No emojis. Sign as: - integrity_molt}
+End with: 'Want your contract scanned? Free quick scans available — DM @integrity_molt_bot.'
+No emojis. No markdown headers."
+fi
+
+POST_CONTENT=$(call_openrouter "$PROMPT" | sed 's/```[a-z]*//g;s/```//g')
+
+if [ -z "$POST_CONTENT" ]; then
+    log "ERROR: Failed to generate post content"
+    exit 1
+fi
+
+# Validate LLM output before posting
+POST_CONTENT=$(echo "$POST_CONTENT" | python3 /root/.secrets/validate_output.py 2>/dev/null)
+if [ $? -ne 0 ]; then
+    log "BLOCKED by validator: generated post content"
+    exit 1
+fi
+
+# Append CTA composed from identity vars (auto-syncs with docs/IDENTITY.md prices)
+CTA_PAID=$(echo "$MOLTBOT_PAID_SKILLS" | tr '\n' '|' | sed 's/|/ · /g; s/ · $//')
+CTA="
+
+Quick scans: free. Paid: ${CTA_PAID:-deep_audit: \$5.00}. Contact: ${MOLTBOT_CONTACT:-@integrity_molt_bot on Telegram}."
+POST_CONTENT="${POST_CONTENT}${CTA}"
+
+log "Post type: $POST_TYPE_LABEL | Generated (${#POST_CONTENT} chars): ${POST_CONTENT:0:120}..."
+
+# Extract a title from the first sentence
+POST_TITLE=$(echo "$POST_CONTENT" | python3 -c "
+import sys
+text = sys.stdin.read().strip()
+title = text.split('.')[0][:100].strip()
+print(title)
+")
+
+PAYLOAD=$(jq -n \
+    --arg title "$POST_TITLE" \
+    --arg content "$POST_CONTENT" \
+    --arg submolt "$SECURITY_SUBMOLT" \
+    '{"title": $title, "content": $content, "submolt": $submolt}')
+
+POST_RESP=$(curl -s -X POST \
+    -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "$MOLTBOOK_BASE/posts")
+
+if [ "$(echo "$POST_RESP" | jq -r '.success')" != "true" ]; then
+    log "ERROR: Failed to create post: $(echo "$POST_RESP" | jq -r '.message // .error // "unknown"')"
+    log "Response: $(echo "$POST_RESP" | jq -c '.')"
+    exit 1
+fi
+
+NEW_POST_ID=$(echo "$POST_RESP" | jq -r '.post.id')
+VERIFY_CODE=$(echo "$POST_RESP" | jq -r '.post.verification.verification_code // empty')
+CHALLENGE_TEXT=$(echo "$POST_RESP" | jq -r '.post.verification.challenge_text // empty')
+
+if [ -z "$VERIFY_CODE" ]; then
+    log "SUCCESS: Post published (id=$NEW_POST_ID)"
+else
+    solve_verification "$VERIFY_CODE" "$CHALLENGE_TEXT" "$NEW_POST_ID"
+fi
+
+log "=== Daily post complete ==="
