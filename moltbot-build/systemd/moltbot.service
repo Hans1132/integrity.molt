@@ -1,0 +1,35 @@
+[Unit]
+Description=Moltbot Telegram control bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=moltbot
+Group=moltbot
+WorkingDirectory=/opt/moltbot
+EnvironmentFile=/opt/moltbot/.env
+ExecStart=/opt/moltbot/venv/bin/python -u /opt/moltbot/main.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/etc/moltbot /var/run/moltbot
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

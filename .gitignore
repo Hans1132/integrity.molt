@@ -63,3 +63,7 @@ public/test-og.png
 # Internal credentials & local logs
 .gcp-credentials.json
 memory.md
+
+# Python bytecode
+__pycache__/
+*.pyc
