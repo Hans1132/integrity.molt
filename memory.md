@@ -5,11 +5,28 @@
 > Hans stahuje pravidelně a uploaduje do project files na claude.ai pro strategický kontext.
 > Stručnost > úplnost. Jeden entry typicky 3 až 5 řádků.
 
-**Last updated:** 2026-05-19 (IRIS v2.0 Scope A Phase 2A backend complete)
+** **Last updated:** 2026-05-21 (Metaplex registry endpoints updated to intmolt.org direct)
+
 
 ---
 
 ## Recent changes (top of stack, newest first)
+
+### 2026-05-21: Metaplex Agent Registry endpoints updated → intmolt.org direct [strategy]
+- **Změny:** Update Arweave registry dokumentu přes Metaplex dashboard. `services.web` z `https://molt.id/agent/integrity.molt` (404) na `https://intmolt.org`. `services.A2A` z `https://multiclaw.moltid.workers.dev/c/integrity/a2a` (401 + nedostupné z venku) na `https://intmolt.org/a2a`. Description zúžená na `"Solana security oracle. Eleven A2A skills, x402 paid tier, Ed25519 signed receipts."`. Nový Arweave URL: `gateway.irys.xyz/EXnibJZltm1nzeE1_Nx7ad1ty8qIIFQMaPVufEVqGCU`.
+- **Důvod:** Open question z architecture.md (canonical A2A endpoint vs multiclaw proxy molt.id týmu) resolved bez DM molt.id, přímou editací v Metaplex dashboardu. Direct endpoint: nižší latence, žádný third-party SPOF, žádná 401 wall blokující veřejný access. Trade-off: molt.id ztrácí observability do volání, která přes multiclaw tekla.
+- **Dopad:** A2A discovery flow (Metaplex Agent Registry → Arweave → agent.json) má konzistentní pointer na live endpoint. Composability axis č. 2 (Metaplex registry odkazovaná ze signed receipts) funguje bez broken pointer.
+- **Test:** Smoke e2e přes PowerShell Invoke-RestMethod. `tasks/send` `quick_scan` na USDC mint `EPjFWdd5...DT1v` → `state: submitted` instant. `tasks/get` follow-up → `state: completed` v 68ms total (submitted 32.635 → working 32.647 → completed 32.703). IRIS verdict: `score: 0, grade: LOW`, scam_db `whitelisted: true, note: "Verified legitimate token"`. Free skill bypass přes A2A funkční (žádný 402 pro `quick_scan`).
+- **Backup:** Arweave je immutable, předchozí registry dokument zůstává v historii. Rollback = další update s předchozími hodnotami + ~0.0001 SOL fee.
+- **Gotcha:** (1) `walletAddress` v Arweave dokumentu = Core Asset address `2tWPw22b...`, ne agent wallet `BFmkPKu2tS9Ro...` z architecture.md. Pokud Core Asset má Asset Signer PDA přijímající USDC, je to záměr. Pokud ne, agenti, co čtou `walletAddress` jako x402 destination, posílají USDC do dead-end. Ověřit testem 0.01 USDC. (2) Metaplex dashboard form field "Web Endpoint" zobrazil `molt.id/agent/integrity.molt` jako placeholder default, ne stored hodnotu. Arweave document je source of truth, ne dashboard placeholder.
+
+
+###Open TODOs
+- Update `agent.json` top-level `"url"` z base domény (`https://intmolt.org`) na A2A endpoint (`https://intmolt.org/a2a`) per A2A 0.4.1 spec. Parser-friendly klienti čtou `url` přímo, ne `endpoints` array. Ne urgentní, ale konzistence před partnership integrací (ElizaOS, SendAI).
+- Reconcile `agent.json` `endpoints[4].auth: "x402"` s realitou. Handler bypasses x402 pro free skills (`quick_scan`, `scan_address`, `verify_receipt`, `new_spl_feed`), ale doc tvrdí silnější. Fix: `"auth": "mixed"` + clarifikovat description, nebo split do dvou endpoint entries (free + paid).
+- Ověřit, kam reálně přicházejí USDC platby na `walletAddress: "2tWPw22b..."` v Arweave registry dokumentu. Test: poslat 0.01 USDC, sledovat účetní. Pokud Asset Signer PDA přijímá → záměr. Pokud drops → agenti čtoucí walletAddress jako x402 destination posílají dead, opravit v dalším Arweave update.
+
+
 
 ### 2026-05-21: IRIS v2.0 Phase 5 — TEST GATE 15/15 GREEN, ship ready — [conductor]
 - **Změny:** Bucket C test recalibrated to informational telemetry (Path 1 MODIFIED per Hansova directive). ADR-014 FINALIZED in docs/key-decisions.md. 2 Open TODOs registered (labeled grey-zone replacement 2-4 weeks; 503 rate >5% trigger). Commit just now atop main.
