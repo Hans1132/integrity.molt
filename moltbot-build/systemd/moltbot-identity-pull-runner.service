@@ -1,0 +1,10 @@
+[Unit]
+Description=Pull docs/IDENTITY.md from integrity.molt repo
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/x402-server
+ExecStart=/usr/bin/git fetch --quiet origin main
+ExecStart=/usr/bin/git checkout --quiet origin/main -- docs/IDENTITY.md
+ExecStartPost=/bin/rm -f /var/run/moltbot/trigger-identity-pull
+TimeoutStartSec=30

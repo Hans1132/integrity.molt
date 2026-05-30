@@ -1,0 +1,8 @@
+[Unit]
+Description=Run heartbeat.sh on moltbot trigger
+
+[Service]
+Type=oneshot
+ExecStart=/root/heartbeat.sh
+ExecStartPost=/bin/rm -f /var/run/moltbot/trigger-heartbeat
+TimeoutStartSec=120
