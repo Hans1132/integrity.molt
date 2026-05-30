@@ -582,6 +582,10 @@
     .iris-grade-circle.medium   { background: #1f180d; color: var(--yellow); border-color: #3a2e1e; }
     .iris-grade-circle.high     { background: #1f0d0d; color: var(--red);    border-color: #3a1e1e; }
     .iris-grade-circle.critical { background: #200a0a; color: #ff4444;       border-color: #5a1a1a; }
+    .iris-grade-circle.safe     { background: #0d1f18; color: var(--green);  border-color: #1e3a2f; }
+    .iris-grade-circle.caution  { background: #1f180d; color: var(--yellow); border-color: #3a2e1e; }
+    .iris-grade-circle.danger   { background: #1f0d0d; color: var(--red);    border-color: #3a1e1e; }
+    .iris-grade-circle.unknown  { background: #1a1a1a; color: var(--text-faint); border-color: #333; }
     .iris-badge-meta { flex: 1; min-width: 140px; }
     .iris-grade-label {
       font-size: 13px; font-weight: 700; text-transform: uppercase;
@@ -591,6 +595,10 @@
     .iris-grade-label.medium   { color: var(--yellow); }
     .iris-grade-label.high     { color: var(--red);    }
     .iris-grade-label.critical { color: #ff4444;       }
+    .iris-grade-label.safe     { color: var(--green);  }
+    .iris-grade-label.caution  { color: var(--yellow); }
+    .iris-grade-label.danger   { color: var(--red);    }
+    .iris-grade-label.unknown  { color: var(--text-faint); }
     .iris-badge-sub {
       font-family: var(--mono); font-size: 10px; color: var(--text-faint);
       text-transform: uppercase; letter-spacing: .6px;
@@ -1529,16 +1537,27 @@ function renderIrisBadge(iris) {
   if (!iris || iris.score == null) return '';
 
   const score = iris.score;
-  const grade = (iris.grade || 'LOW').toUpperCase();
+  const gradeRaw = (iris.grade || iris.risk_level || 'safe');
+  const grade = String(gradeRaw).toLowerCase();
 
-  // grade → CSS class
+  // grade → CSS class. Accepts both v1 uppercase (low/medium/high/critical/unknown)
+  // and v2 lowercase (safe/caution/danger/unknown).
   const cls =
-    grade === 'CRITICAL' ? 'critical' :
-    grade === 'HIGH'     ? 'high'     :
-    grade === 'MEDIUM'   ? 'medium'   : 'low';
+    grade === 'danger'   || grade === 'critical' ? 'danger'   :
+    grade === 'caution'  || grade === 'high'     ? 'caution'  :
+    grade === 'medium'                            ? 'caution'  :   // v1 medium maps to v2 caution band
+    grade === 'safe'     || grade === 'low'       ? 'safe'     :
+    grade === 'unknown'                           ? 'unknown'  :
+    /* default */                                   'safe';
 
   // human-readable label
-  const gradeLabel = grade + ' RISK';
+  const gradeLabelMap = {
+    safe:    'SAFE',
+    caution: 'CAUTION RISK',
+    danger:  'DANGER',
+    unknown: 'UNKNOWN',
+  };
+  const gradeLabel = gradeLabelMap[cls] || 'UNKNOWN';
 
   let html = `
     <div class="iris-badge reveal reveal-4" title="IRIS v1.0 — Inflows + Rights + Imbalance + Speed">

@@ -3,6 +3,7 @@
 const puppeteer = require('puppeteer');
 const fs        = require('fs').promises;
 const path      = require('path');
+const { classifyRisk } = require('../lib/risk-classification');
 
 let browser = null;
 const cache   = new Map(); // address -> { buffer, timestamp }
@@ -59,13 +60,15 @@ function buildFactorsHtml(data) {
 
 function buildHtml(template, data, address) {
   const score = typeof data.iris?.score === 'number' ? data.iris.score : (data.risk_score ?? 0);
-  const grade = (data.iris?.grade ?? data.risk_level ?? 'UNKNOWN').toUpperCase();
+  const tier  = classifyRisk(typeof score === 'number' ? score : null);
+  const grade = tier.toUpperCase(); // display label for {{RISK_LEVEL}} template placeholder
 
+  // OG card CSS class names — independent of IRIS enum, kept as styling buckets
   const riskClass =
-    grade === 'LOW'    || grade === 'SAFE'    ? 'low'      :
-    grade === 'MEDIUM' || grade === 'CAUTION' ? 'medium'   :
-    grade === 'HIGH'                          ? 'high'     :
-    grade === 'CRITICAL' || grade === 'DANGER'? 'critical' : 'low';
+    tier === 'safe'    ? 'low'      :
+    tier === 'caution' ? 'medium'   :
+    tier === 'danger'  ? 'high'     :
+    /* unknown */        'low';
 
   const offset       = CIRC - (score / 100) * CIRC;
   const addressShort = address.length > 20

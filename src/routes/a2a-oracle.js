@@ -20,7 +20,8 @@ const router = express.Router();
 
 const { asyncSign, canonicalJSON } = require('../crypto/sign');
 const { isSolanaAddress } = require('../validation/address');
-const { calculateIRIS } = require('../features/iris-score');
+const { calculateIRIS_v1, calculateIRIS_v2 } = require('../features/iris-score');
+const { getGoplusReport }  = require('../enrichment/goplus');
 const { enrichScanResult } = require('../enrichment');
 const { lookupScamDb, lookupScamCreator } = require('../scam-db/lookup');
 const { evaluateTransaction, parseEnhancedTransaction } = _requireParseEnhancedTx();
@@ -336,65 +337,76 @@ router.post('/verify/v1/signed-receipt', express.json({ limit: '128kb' }), _veri
 router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (req, res) => {
   const address = req.params.address.trim();
 
+  // Migration marker per Amendment v2 §3 R11 — clients keying on uppercase enum
+  // can branch on this header (paired with in-body iris_version field).
+  // Decision 5 (G10/R5): IRIS_VERSION=1 routes to legacy calculateIRIS_v1 for rollback safety.
+  const useV1 = process.env.IRIS_VERSION === '1';
+  const irisVersion = useV1 ? '1.0' : '2.0';
+  res.setHeader('X-IRIS-Version', irisVersion);
+
   try {
     // 1. DB-first cache — vrátí uložený podepsaný výsledek pokud je čerstvý (30 min)
-    const cached = await getCachedScanFromDb(address, 'a2a_scan', A2A_SCAN_CACHE_TTL_MS).catch(() => null);
+    //    Cache namespace 'a2a_scan_v2' isolates v2 envelopes from any v1 records.
+    const cached = await getCachedScanFromDb(address, 'a2a_scan_v2', A2A_SCAN_CACHE_TTL_MS).catch(() => null);
     if (cached) {
       return res.json({ ...cached, cached: true });
     }
 
-    const [enrichment, scamDb] = await Promise.all([
+    // Parallel enrichment: rugcheck/tracker/extensions + scamDb + goplus
+    const [enrichment, scamDb, goplus] = await Promise.all([
       enrichScanResult(address).catch(() => null),
       lookupScamDb(address).catch(() => ({ known_scam: null, rugcheck: null, db_match: false })),
+      getGoplusReport(address).catch(() => ({ source_health: 'circuit_breaker_open' })),
     ]);
 
-    const iris = calculateIRIS(enrichment, scamDb);
-
-    // Normalise risk_level to lowercase for A2A consumers
-    let riskLevel = (iris.grade || 'unknown').toLowerCase();
-    let irisScore = iris.score;
-    let irisBreakdown = iris.breakdown || null;
-    let riskFactors = iris.risk_factors || [];
-
-    // Whitelist override — top SPL tokens skip scam_db penalty
-    // and return baseline low-risk score consistent with IRIS semantics
-    // (lower score = lower risk).
-    if (scamDb && scamDb.whitelisted) {
-      irisScore = 0;
-      riskLevel = 'low';
-      riskFactors = [];
-      irisBreakdown = {
-        inflows:   { score: 0, max: 25, details: ['whitelisted_legit_token'] },
-        rights:    { score: 0, max: 25, details: ['whitelisted_legit_token'] },
-        imbalance: { score: 0, max: 25, details: ['whitelisted_legit_token'] },
-        speed:     { score: 0, max: 25, details: ['whitelisted_legit_token'] },
-        whitelist_meta: scamDb.whitelist_meta || null,
-      };
+    // Augment scamDb with creator scam lookup for Lineage dimension (was duplicated in old handler)
+    const creatorAddress = enrichment?.external_sources?.rugcheck?.creator
+      || enrichment?.token_extensions?.mint_authority
+      || null;
+    if (creatorAddress && !scamDb?.whitelisted) {
+      try {
+        scamDb.scam_creators = lookupScamCreator(creatorAddress) || null;
+      } catch { scamDb.scam_creators = null; }
     }
 
-    // 2. Guilt-by-association — creator wallet z RugCheck enrichment
-    const creatorAddress = enrichment?.rugcheck?.creator || enrichment?.extensions?.mint_authority || null;
-    let creatorRisk = null;
-    if (creatorAddress && !scamDb?.whitelisted) {
-      creatorRisk = lookupScamCreator(creatorAddress);
-      if (creatorRisk?.isKnownScammer) {
-        riskFactors = [...riskFactors, 'known_scam_creator'];
-        irisScore = Math.max(irisScore, 55);  // floor: HIGH
-        if (irisScore >= 55 && riskLevel === 'low')   riskLevel = 'medium';
-        if (irisScore >= 55 && riskLevel === 'medium') riskLevel = 'high';
-      }
+    // Run scoring — v2 by default, v1 if rollback flag set (Decision 5).
+    // goplus enrichment runs unconditionally above for cost-uniformity; unused in v1 branch.
+    const iris = useV1
+      ? calculateIRIS_v1(enrichment, scamDb)
+      : calculateIRIS_v2(enrichment, scamDb, goplus);
+
+    // Decision 4 (G9): HTTP 503 insufficient_data path per spec §5 + Amendment v2 §5
+    // When ≥3 enrichment sources fail, return 503 with Retry-After (don't sign degraded scores).
+    // v1 never sets confidence_level/insufficient — check is a no-op for v1 path.
+    if (!useV1 && (iris.confidence_level === 'insufficient' || iris.score === null)) {
+      const failedCount = Object.values(iris.breakdown || {})
+        .filter(d => d.source_health === 'circuit_breaker_open').length;
+      res.set('Retry-After', '30');
+      res.set('X-Insufficient-Data', String(failedCount));
+      return res.status(503).json({
+        status: 'insufficient_data',
+        address,
+        iris_version: '2.0',
+        failed_dimensions: failedCount,
+        detail: 'Multiple enrichment sources unavailable. Retry-After 30s.',
+      });
     }
 
     const reportPayload = {
       address,
-      iris_score:   irisScore,
-      risk_level:   riskLevel,
-      risk_factors: riskFactors,
-      iris_breakdown: irisBreakdown,
-      ...(creatorRisk?.isKnownScammer ? { creator_risk: {
+      iris_version:     irisVersion,
+      iris_score:       iris.score,
+      risk_level:       useV1 ? (iris.grade || '').toLowerCase() : iris.risk_level,
+      risk_factors:     iris.risk_factors || [],
+      iris_breakdown:   iris.breakdown,
+      confidence_level: iris.confidence_level,
+      weights_version:  iris.weights_version,
+      renormalized:     iris.renormalized,
+      methodology:      iris.methodology,
+      ...(scamDb?.scam_creators?.isKnownScammer ? { creator_risk: {
         address:    creatorAddress,
-        scam_count: creatorRisk.scamCount,
-        patterns:   creatorRisk.patterns,
+        scam_count: scamDb.scam_creators.scamCount,
+        patterns:   scamDb.scam_creators.patterns,
       } } : {}),
     };
 
@@ -417,12 +429,12 @@ router.get('/scan/v1/:address', _scanRL, validateSolanaParam('address'), async (
       algorithm:  envelope.algorithm  || 'Ed25519',
     };
 
-    // 3. Uložit do scan_history pro příští requesty
+    // Uložit do scan_history pro příští requesty — v2 cache namespace
     logScanToHistory({
       address,
-      scan_type:   'a2a_scan',
-      risk_score:  irisScore,
-      risk_level:  riskLevel,
+      scan_type:   'a2a_scan_v2',
+      risk_score:  iris.score,
+      risk_level:  iris.risk_level,
       result_json: responseObj,
     }).catch(() => {});
 

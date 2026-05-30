@@ -1,0 +1,35 @@
+{
+  "version": "v2.0.1",
+  "calibrated_against": "SolRPDS 2025 + iris-analysis-results.json",
+  "calibrated_at": "2026-05-19",
+  "weights": {
+    "liquidity":     18,
+    "authority":     15,
+    "concentration": 13,
+    "lineage":       13,
+    "reputation":    12,
+    "trading":       11,
+    "honeypot":      10,
+    "age":            8
+  },
+  "thresholds": {
+    "soft_floor_min_confidence":            0.5,
+    "soft_floor_offset":                    50,
+    "soft_floor_scale":                     40,
+    "soft_whitelist_reduction":             0.7,
+
+    "external_oracle_floor_min_score_norm": 50,
+    "external_oracle_floor_offset":         51,
+    "external_oracle_floor_scale":          0.6,
+
+    "grade_safe_max":                       39,
+    "grade_caution_max":                    69,
+    "grade_danger_min":                     70
+  },
+  "circuit_breaker": {
+    "enrichment_timeout_ms":          600,
+    "consecutive_failures_open":      3,
+    "cooldown_ms":                    60000,
+    "confidence_drop_per_failed_dim": 1
+  }
+}

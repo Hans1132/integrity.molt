@@ -16,6 +16,7 @@
 const { getRugCheckReport }    = require('./rugcheck');
 const { getSolanaTrackerData } = require('./solana-tracker');
 const { checkTokenExtensions } = require('./token-extensions');
+const { classifyRisk }         = require('../lib/risk-classification');
 
 // ── Aggregated risk scoring ───────────────────────────────────────────────────
 //
@@ -175,11 +176,7 @@ function calculateAggregatedRisk(rugcheck, tracker, extensions) {
 
   score = Math.min(100, Math.max(0, score));
 
-  let risk_level;
-  if      (score >= 75) risk_level = 'CRITICAL';
-  else if (score >= 50) risk_level = 'HIGH';
-  else if (score >= 25) risk_level = 'MEDIUM';
-  else                  risk_level = 'LOW';
+  const risk_level = classifyRisk(score);
 
   return { score, risk_level, flags };
 }

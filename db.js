@@ -257,6 +257,25 @@ function initSchema() {
     );
     CREATE INDEX IF NOT EXISTS rugcheck_cache_fetched ON rugcheck_cache (fetched_at DESC);
 
+    -- GoPlus Token Security API cache — TTL 24h success, 1h negative (IRIS v2.0 Scope A)
+    CREATE TABLE IF NOT EXISTS goplus_cache (
+      mint                TEXT    PRIMARY KEY,
+      is_malicious        INTEGER,                                              -- 0/1/null
+      can_buy             INTEGER,                                              -- 0/1/null
+      can_sell            INTEGER,                                              -- 0/1/null
+      cannot_sell_all     INTEGER,                                              -- 0/1/null honeypot signal
+      transfer_fee        REAL,                                                 -- 0.0-1.0 fraction
+      blacklist_function  INTEGER,                                              -- 0/1/null
+      slippage_modifiable INTEGER,                                              -- 0/1/null
+      risk_count          INTEGER NOT NULL DEFAULT 0,
+      raw_json            TEXT,                                                 -- full GoPlus response
+      fetched_at          INTEGER NOT NULL DEFAULT (strftime('%s','now')*1000), -- ms epoch
+      err_reason          TEXT                                                  -- non-null when fetch failed
+    );
+
+    CREATE INDEX IF NOT EXISTS goplus_cache_fetched
+      ON goplus_cache (fetched_at DESC);
+
     -- Validation log — záznam každé validace reportu před podpisem
     CREATE TABLE IF NOT EXISTS validation_log (
       id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -557,6 +576,8 @@ setInterval(() => {
   try { db.prepare("DELETE FROM used_signatures WHERE created_at < (strftime('%s','now') - 3600)").run(); } catch {}
   // RugCheck cache: TTL 25h — stará data, která JS přeskakuje, se nikdy nemaží
   try { db.prepare("DELETE FROM rugcheck_cache WHERE fetched_at < datetime('now', '-25 hours')").run(); } catch {}
+  // GoPlus cache: success 24h, error 1h (IRIS v2.0 Scope A)
+  try { cleanupGoplusCache(); } catch {}
   // D-1: TTL cleanup pro stará data (nerostou donekonečna)
   try { db.prepare("DELETE FROM events WHERE created_at < datetime('now', '-90 days')").run(); } catch {}
   try { db.prepare("DELETE FROM abuse_events WHERE occurred_at < datetime('now', '-30 days')").run(); } catch {}
@@ -1627,6 +1648,77 @@ function setRugcheckCache({ mint, risk_level, score, score_norm, rugged, risks, 
   );
 }
 
+// ── GoPlus Token Security API cache (IRIS v2.0 Scope A) ─────────────────────
+// Positive cache TTL: 24h (default, override via ttlMs arg)
+// Negative cache TTL: 5 min (err_reason rows)
+// Cleanup TTL (cron): success 24h, error 1h
+const GOPLUS_CACHE_TTL_MS = 24 * 3_600_000;
+const GOPLUS_NEG_CACHE_TTL_MS = 5 * 60_000;
+
+function getGoplusCache(mint, ttlMs = GOPLUS_CACHE_TTL_MS) {
+  const row = db.prepare('SELECT * FROM goplus_cache WHERE mint = ?').get(mint);
+  if (!row) return null;
+  const age = Date.now() - row.fetched_at;
+  // Negative cache: 5 min TTL for error rows
+  if (row.err_reason && age > GOPLUS_NEG_CACHE_TTL_MS) return null;
+  // Positive cache: ttlMs TTL (default 24h)
+  if (!row.err_reason && age > ttlMs) return null;
+  return row;
+}
+
+function setGoplusCache(mint, data) {
+  db.prepare(`
+    INSERT INTO goplus_cache (
+      mint, is_malicious, can_buy, can_sell, cannot_sell_all, transfer_fee,
+      blacklist_function, slippage_modifiable, risk_count, raw_json, fetched_at, err_reason
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now')*1000, NULL)
+    ON CONFLICT(mint) DO UPDATE SET
+      is_malicious = excluded.is_malicious,
+      can_buy = excluded.can_buy,
+      can_sell = excluded.can_sell,
+      cannot_sell_all = excluded.cannot_sell_all,
+      transfer_fee = excluded.transfer_fee,
+      blacklist_function = excluded.blacklist_function,
+      slippage_modifiable = excluded.slippage_modifiable,
+      risk_count = excluded.risk_count,
+      raw_json = excluded.raw_json,
+      fetched_at = strftime('%s','now')*1000,
+      err_reason = NULL
+  `).run(
+    mint,
+    data.is_malicious ?? null,
+    data.can_buy ?? null,
+    data.can_sell ?? null,
+    data.cannot_sell_all ?? null,
+    data.transfer_fee ?? null,
+    data.blacklist_function ?? null,
+    data.slippage_modifiable ?? null,
+    data.risk_count ?? 0,
+    typeof data.raw_json === 'string' ? data.raw_json : JSON.stringify(data.raw_json || {})
+  );
+}
+
+function setGoplusCacheError(mint, reason) {
+  db.prepare(`
+    INSERT INTO goplus_cache (mint, err_reason, fetched_at)
+    VALUES (?, ?, strftime('%s','now')*1000)
+    ON CONFLICT(mint) DO UPDATE SET
+      err_reason = excluded.err_reason,
+      fetched_at = strftime('%s','now')*1000
+  `).run(mint, String(reason).slice(0, 500));
+}
+
+function cleanupGoplusCache() {
+  // Drop success rows older than 24h, error rows older than 1h
+  const successCutoff = Date.now() - 24 * 3_600_000;
+  const errorCutoff = Date.now() - 3_600_000;
+  return db.prepare(`
+    DELETE FROM goplus_cache
+    WHERE (err_reason IS NULL AND fetched_at < ?)
+       OR (err_reason IS NOT NULL AND fetched_at < ?)
+  `).run(successCutoff, errorCutoff).changes;
+}
+
 // ── Metaplex Agent Registry cache ─────────────────────────────────────────────
 const METAPLEX_CACHE_TTL_S = 6 * 3600; // 6 hodin
 
@@ -1691,6 +1783,8 @@ module.exports = {
   lookupScamCreator, rebuildScamCreators,
   // RugCheck cache
   getRugcheckCache, setRugcheckCache,
+  // GoPlus cache (IRIS v2.0 Scope A)
+  getGoplusCache, setGoplusCache, setGoplusCacheError, cleanupGoplusCache,
   // Metaplex Agent Registry cache
   getMetaplexAgentCache, setMetaplexAgentCache, cleanMetaplexAgentCache,
   // Advisor usage
