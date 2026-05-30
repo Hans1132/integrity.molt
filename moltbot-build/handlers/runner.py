@@ -1,6 +1,7 @@
 """/run-now and /logs handlers."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import subprocess
 
@@ -30,9 +31,11 @@ def make_run_now(cfg: Config):
                     f"heartbeat exceeded {int(MAX_WAIT)}s, may still be running in background"
                 )
                 return
-            # Pull the runner unit's recent journal.
+            # Pull the runner unit's recent journal. Run in a worker thread so the
+            # async event loop isn't blocked by subprocess.run (which is sync).
             try:
-                result = subprocess.run(
+                result = await asyncio.to_thread(
+                    subprocess.run,
                     ["journalctl", f"_SYSTEMD_UNIT={cfg.heartbeat_runner_unit}", "-n", "30",
                      "--no-pager", "--output=short-iso"],
                     capture_output=True, text=True, timeout=10,
@@ -42,8 +45,9 @@ def make_run_now(cfg: Config):
                 tail = f"(journal read failed: {type(e).__name__})"
             if len(tail) > TG_LIMIT:
                 tail = tail[-TG_LIMIT:]
-            await update.message.reply_text(f"heartbeat finished.\n```\n{tail}\n```",
-                                            parse_mode="Markdown")
+            # Send as plain text (no Markdown) so any backticks/asterisks in log lines
+            # can't break Telegram's parser.
+            await update.message.reply_text(f"heartbeat finished.\n{tail}")
         except Exception as e:
             log.exception("run_now failed")
             await update.message.reply_text(f"run-now error: {type(e).__name__}: {e}")
@@ -69,12 +73,15 @@ def make_logs(_cfg: Config):
                  "--no-pager", "--output=short-iso"],
             ):
                 try:
-                    r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                    r = await asyncio.to_thread(
+                        subprocess.run, cmd, capture_output=True, text=True, timeout=10,
+                    )
                     if r.returncode == 0 and r.stdout.strip():
                         out = r.stdout.strip()
                         if len(out) > TG_LIMIT:
                             out = out[-TG_LIMIT:]
-                        await update.message.reply_text(f"```\n{out}\n```", parse_mode="Markdown")
+                        # Plain text (no Markdown) to avoid parse failures on log content.
+                        await update.message.reply_text(out)
                         return
                 except (subprocess.TimeoutExpired, FileNotFoundError):
                     continue

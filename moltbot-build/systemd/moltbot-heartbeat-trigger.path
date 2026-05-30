@@ -3,6 +3,7 @@ Description=Watch for moltbot heartbeat trigger
 
 [Path]
 PathExists=/var/run/moltbot/trigger-heartbeat
+Unit=moltbot-heartbeat-runner.service
 
 [Install]
 WantedBy=multi-user.target

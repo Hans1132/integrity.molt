@@ -20,7 +20,12 @@ log() {
 source /root/.secrets/budget-check.sh || exit 0
 
 call_openrouter() {
-    curl -s -X POST "https://openrouter.ai/api/v1/chat/completions" \
+    # --connect-timeout: cap TCP connect at 10s
+    # --max-time: cap whole request at 60s (LLM gen can be slow)
+    # --fail-with-body: non-2xx → curl exits nonzero AND keeps body on stdout
+    #   so jq still receives meaningful input for diagnostic logging.
+    curl -sS --connect-timeout 10 --max-time 60 --fail-with-body \
+        -X POST "https://openrouter.ai/api/v1/chat/completions" \
         -H "Authorization: Bearer $OPENROUTER_API_KEY" \
         -H "Content-Type: application/json" \
         -d "{
@@ -61,7 +66,8 @@ Challenge: $challenge_text"
     log "  Submitting verification answer: $math_answer"
 
     local verify_resp
-    verify_resp=$(curl -s -X POST \
+    verify_resp=$(curl -sS --connect-timeout 10 --max-time 30 --fail-with-body \
+        -X POST \
         -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
         -H "Content-Type: application/json" \
         -d "{\"verification_code\": \"$verify_code\", \"answer\": \"$math_answer\"}" \
@@ -99,6 +105,11 @@ fi
 # --- topic rotation + recent-history (Stage 8.3) ---
 DAY_OF_YEAR=$(date -u +%-j)
 TOPIC_COUNT=${MOLTBOT_TOPICS_COUNT:-1}
+# Defensive: arithmetic $(( a % 0 )) errors, and non-numeric would too.
+# Coerce to 1 if empty/zero/non-numeric.
+if ! [[ "$TOPIC_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+    TOPIC_COUNT=1
+fi
 TOPIC_IDX=$(( DAY_OF_YEAR % TOPIC_COUNT ))
 TOPIC_VAR="MOLTBOT_TOPIC_${TOPIC_IDX}"
 TOPIC_OF_DAY="${!TOPIC_VAR:-AI agent security on Solana}"
@@ -186,7 +197,8 @@ PAYLOAD=$(jq -n \
     --arg submolt "$SECURITY_SUBMOLT" \
     '{"title": $title, "content": $content, "submolt": $submolt}')
 
-POST_RESP=$(curl -s -X POST \
+POST_RESP=$(curl -sS --connect-timeout 10 --max-time 30 --fail-with-body \
+    -X POST \
     -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
     -H "Content-Type: application/json" \
     -d "$PAYLOAD" \

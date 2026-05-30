@@ -22,15 +22,17 @@ log() {
     echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $1" | tee -a "$LOG_FILE"
 }
 
-# Lockfile mechanism: exit if lock exists and is less than 20 minutes old
-if [ -f "$LOCK_FILE" ]; then
-    LOCK_AGE=$(( $(date +%s) - $(stat -c %Y "$LOCK_FILE") ))
-    if [ "$LOCK_AGE" -lt 1200 ]; then
-        echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] Lock file exists (age ${LOCK_AGE}s), exiting." | tee -a "$LOG_FILE"
-        exit 0
-    fi
+# Lockfile mechanism: atomic flock on a dedicated fd. Race-free vs the prior
+# check-then-touch (which let two cron firings squeeze through and double-run).
+# If a previous run crashed without releasing, the file may exist but the kernel
+# flock is gone → this run can acquire and proceed. If a previous run is genuinely
+# stuck still holding the lock, this run silently exits (correct — no overlap).
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+    echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] Lock held by another heartbeat run, exiting." | tee -a "$LOG_FILE"
+    exit 0
 fi
-touch "$LOCK_FILE"
+# fd 200 auto-released on shell exit; remove the lock file too for tidiness.
 trap 'rm -f "$LOCK_FILE"' EXIT
 
 # Budget check: exit if daily API call limit reached (also loads comment helpers)
@@ -92,7 +94,10 @@ call_openrouter() {
         log "ERROR: OPENROUTER_API_KEY is not set"
         return 1
     fi
-    curl -s -X POST "https://openrouter.ai/api/v1/chat/completions" \
+    # --connect-timeout 10s TCP, --max-time 60s total (opus can take 30s+ on long prompts),
+    # --fail-with-body so non-2xx still gives jq a body to surface error info.
+    curl -sS --connect-timeout 10 --max-time 60 --fail-with-body \
+        -X POST "https://openrouter.ai/api/v1/chat/completions" \
         -H "Authorization: Bearer $OPENROUTER_API_KEY" \
         -H "Content-Type: application/json" \
         -d "{

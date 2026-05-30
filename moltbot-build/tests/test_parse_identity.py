@@ -31,26 +31,27 @@ def test_parse_free_skills_preserves_newlines(good_identity_md):
 
 def test_parse_missing_required_section_raises(fixtures_dir):
     md = (fixtures_dir / "identity_missing_section.md").read_text()
-    with pytest.raises(ParseError, match="missing required sections.*Topics"):
+    with pytest.raises(ParseError, match=r"missing required sections.*Topics"):
         parse(md)
 
 
 def test_parse_too_few_topics_raises(fixtures_dir):
     md = (fixtures_dir / "identity_few_topics.md").read_text()
-    with pytest.raises(ParseError, match="need >=5 topics, found 3"):
+    with pytest.raises(ParseError, match=r"need >=5 topics, found 3"):
         parse(md)
 
 
 def test_parse_empty_input_raises():
-    with pytest.raises(ParseError, match="no '## ' sections found"):
+    with pytest.raises(ParseError, match=r"no '## ' sections found"):
         parse("")
 
 
 def test_parse_no_sections_raises():
-    with pytest.raises(ParseError, match="no '## ' sections found"):
+    with pytest.raises(ParseError, match=r"no '## ' sections found"):
         parse("# Just a title\n\nSome body text with no h2.\n")
 
 
+import shlex
 import subprocess
 import tempfile
 from pathlib import Path
@@ -80,22 +81,23 @@ def test_to_env_bash_source_roundtrip(good_identity_md, tmp_path):
     env = to_env(parsed, "abc1234", "2026-05-23T13:45:12Z")
     env_file = tmp_path / "identity.env"
     env_file.write_text(env)
+    env_q = shlex.quote(str(env_file))  # safe against spaces/metacharacters in path
 
     # bash -c 'source <file>; echo "$MOLTBOT_ROLE"' should return the role string.
     result = subprocess.run(
-        ["bash", "-c", f"set -e; source {env_file}; echo \"$MOLTBOT_ROLE\""],
+        ["bash", "-c", f"set -e; source {env_q}; echo \"$MOLTBOT_ROLE\""],
         capture_output=True, text=True, check=True,
     )
     assert result.stdout.strip() == "security oracle for Solana"
 
     result = subprocess.run(
-        ["bash", "-c", f"set -e; source {env_file}; echo \"$MOLTBOT_TOPIC_0\""],
+        ["bash", "-c", f"set -e; source {env_q}; echo \"$MOLTBOT_TOPIC_0\""],
         capture_output=True, text=True, check=True,
     )
     assert result.stdout.strip() == "Mint authority risks"
 
     result = subprocess.run(
-        ["bash", "-c", f"set -e; source {env_file}; echo \"$MOLTBOT_TAGLINE\""],
+        ["bash", "-c", f"set -e; source {env_q}; echo \"$MOLTBOT_TAGLINE\""],
         capture_output=True, text=True, check=True,
     )
     assert result.stdout.strip() == "On-chain risk scoring, rug detection, signed receipts."
@@ -116,27 +118,28 @@ def test_to_env_escapes_single_quotes():
     with tempfile.NamedTemporaryFile("w", suffix=".env", delete=False) as f:
         f.write(env)
         path = f.name
+    path_q = shlex.quote(path)  # safe against spaces/metacharacters
     try:
         result = subprocess.run(
-            ["bash", "-c", f"set -e; source {path}; echo \"$MOLTBOT_ROLE\""],
+            ["bash", "-c", f"set -e; source {path_q}; echo \"$MOLTBOT_ROLE\""],
             capture_output=True, text=True, check=True,
         )
         assert result.stdout.strip() == "don't worry about it"
 
         result = subprocess.run(
-            ["bash", "-c", f"set -e; source {path}; echo \"$MOLTBOT_PAID_SKILLS\""],
+            ["bash", "-c", f"set -e; source {path_q}; echo \"$MOLTBOT_PAID_SKILLS\""],
             capture_output=True, text=True, check=True,
         )
         assert result.stdout.strip() == "two '' quotes"
 
         result = subprocess.run(
-            ["bash", "-c", f"set -e; source {path}; echo \"$MOLTBOT_TOPIC_0\""],
+            ["bash", "-c", f"set -e; source {path_q}; echo \"$MOLTBOT_TOPIC_0\""],
             capture_output=True, text=True, check=True,
         )
         assert result.stdout.strip() == "t'1"
 
         result = subprocess.run(
-            ["bash", "-c", f"set -e; source {path}; echo \"$MOLTBOT_FREE_SKILLS\""],
+            ["bash", "-c", f"set -e; source {path_q}; echo \"$MOLTBOT_FREE_SKILLS\""],
             capture_output=True, text=True, check=True,
         )
         assert result.stdout.strip() == "single ' quote"

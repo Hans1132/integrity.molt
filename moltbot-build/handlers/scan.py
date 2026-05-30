@@ -46,12 +46,14 @@ def make_handler(cfg: Config):
             payload = json.dumps(body, indent=2, default=str) if isinstance(body, dict) else str(body)
             if len(payload) > 500:
                 payload = payload[:500] + "… (truncated)"
+            # Plain text reply: payload may contain backticks/asterisks that would
+            # break Markdown parsing. Operator readability is fine without formatting.
             text = (
-                f"*scan iris* `{mint[:8]}…{mint[-4:]}`\n"
+                f"scan iris {mint[:8]}…{mint[-4:]}\n"
                 f"http={status} · risk={risk_str} · {elapsed:.2f}s\n"
-                f"```\n{payload}\n```"
+                f"{payload}"
             )
-            await update.message.reply_markdown(text)
+            await update.message.reply_text(text)
         except Exception as e:
             log.exception("scan failed")
             await update.message.reply_text(f"scan error: {type(e).__name__}: {e}")

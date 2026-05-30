@@ -37,7 +37,7 @@ Audit scoped to the four openclaw-related paths plus cross-checks against `/root
 
 Top-level `dependencies` (depth 0, partial — `npm ls --depth=0` reported **6 UNMET DEPENDENCY** entries):
 
-```
+```text
 @agentclientprotocol/sdk@0.15.0
 @aws-sdk/client-bedrock@3.1004.0
 @buape/carbon@0.0.0-beta-20260216184201
@@ -82,7 +82,7 @@ The unmet entries are mostly dev/UI deps; gateway process runs fine without them
 
 ### 1.2 User data `/root/.openclaw/` (mode `drwx------`, root)
 
-```
+```text
 openclaw.json                (7.5 K, last touched 2026-03-20)
 openclaw.json.bak[.1..4]     (5 historical config snapshots)
 node.json                    (186 B)
@@ -169,7 +169,7 @@ logs/config-audit.jsonl      (5.3 K, last write 2026-03-16)
 
 `workspace/HEARTBEAT.md` (first 40 lines) is the **authoritative behavioral spec** for the moltbook bot. Key excerpts:
 
-```
+```markdown
 # Periodic tasks for the moltbook agent (integrity_molt).
 # Runs via heartbeat-secure.sh every 30 minutes.
 # Agent identity: integrity_molt on moltbook | integrity.molt on Solana (molt.id)
@@ -228,13 +228,13 @@ logs/config-audit.jsonl      (5.3 K, last write 2026-03-16)
 
 No system-wide unit exists for openclaw. The process is managed by **per-user systemd as root**:
 
-```
+```ini
 Unit file: /root/.config/systemd/user/openclaw-gateway.service
 Loaded:    enabled, active (running) since 2026-05-03 23:11:04 UTC
 Cgroup:    /user.slice/user-0.slice/user@0.service/app.slice/openclaw-gateway.service
 ExecStart: /usr/bin/node /usr/lib/node_modules/openclaw/dist/index.js gateway --port 18789
 Restart=always, RestartSec=5, KillMode=control-group
-Environment=OPENROUTER_API_KEY=sk-or-v1-7c7f...8262e91   ← plaintext in unit file
+Environment=OPENROUTER_API_KEY=<REDACTED_TOKEN>   ← plaintext in unit file
 ```
 
 A second unit `openclaw-node.service` exists in unit-files (disabled, not running).
@@ -270,7 +270,7 @@ No outbound ESTABLISHED connections were observed during the audit window (Teleg
 
 `ufw status verbose`:
 
-```
+```text
 Status: active
 Default: deny (incoming), allow (outgoing)
 Allowed inbound: 22/tcp, 80/tcp, 443/tcp (v4 + v6)
@@ -305,7 +305,7 @@ Allowed inbound: 22/tcp, 80/tcp, 443/tcp (v4 + v6)
 
 ### 4.2 Identity & branding string grep (`openclaw.json`, `identity/`, `devices/`, `agents/`)
 
-```
+```text
 openclaw.json:185: "name": "integrity.molt Agent"
 openclaw.json:186: "theme": "molt.id autonomous agent"
 openclaw.json:208: "webhookUrl": "https://intmolt.org/telegram-webhook"
@@ -326,7 +326,7 @@ devices/paired.json:50:   "displayName": "integrity.molt"
 
 Grep over `/root/x402-server/` (excluding `node_modules`):
 
-```
+```text
 server.js:1387: ## A2A Relay (via moltbook)
 server.js:1389: Agents in the molt.id ecosystem can also call integrity.molt via the moltbook relay:
 server.js:1392: POST https://multiclaw.moltid.workers.dev/c/integrity/a2a
@@ -339,7 +339,7 @@ The only crossover is the **public** A2A relay URL (which is hosted on Cloudflar
 
 Grep for openclaw paths/ports in `x402-server/.env`, `server.js`, `config/`, and `/etc/systemd/system/integrity*.service`:
 
-```
+```text
 (no hits to '.openclaw', 'openclaw-gateway', '18789', '18791', '18792')
 ```
 
@@ -384,7 +384,7 @@ Only **Telegram** is enabled. `dmPolicy=open`, `groupPolicy=allowlist`. Webhook 
 
 Journal (today) contains:
 
-```
+```text
 [skills] Skipping skill path that resolves outside its configured root.
 ```
 
@@ -400,7 +400,7 @@ The process writes to its systemd journal (fd 1/2 → journal socket). No standa
 
 ### 6.2 Last 200 lines (representative)
 
-```
+```text
 2026-05-22T23:48:01 [telegram] setMyCommands failed: Call to 'setMyCommands' failed! (401: Unauthorized)
 2026-05-22T23:48:01 [telegram] command sync failed: GrammyError: Call to 'setMyCommands' failed! (401: Unauthorized)
 2026-05-22T23:49:22 [telegram] [default] starting provider
@@ -416,7 +416,7 @@ The process writes to its systemd journal (fd 1/2 → journal socket). No standa
 
 ### 6.3 Last-24h hourly line counts (truncated to last 25 buckets)
 
-```
+```text
 8, 2, 32, 8, 8, 8, 1, 8, 2, 24, 16, 8, 8, 8, 2, 32, 8, 8, 8, 1, 2, 24, 8, 8, 8
 ```
 
@@ -464,7 +464,7 @@ A separate concern: VmSwap peaked at **747 MB**. The host has had to swap this p
 
 ### 8.1 Cron entries (root crontab)
 
-```
+```text
 0 */12 * * *  /root/scanner/outreach.sh             >> /root/heartbeat.log
 0 14 */2 * *  /root/daily-post.sh
 0 20 * * *    /root/scanner/daily-reputation-report.sh >> /root/heartbeat.log
@@ -511,7 +511,7 @@ Combined with §1.3 (`gateway.controlUi.dangerouslyDisableDeviceAuth = true` and
 - Top-level deps depth 0: see §1.1. **Six UNMET DEPENDENCY** entries — install is partially broken but the gateway runs.
 - Most recently modified user-data files (top 5):
 
-```
+```text
 2026-05-22 23:42:59  /root/.openclaw/agents/main/sessions/sessions.json
 2026-05-22 23:42:59  /root/.openclaw/agents/main/agent/auth-profiles.json
 2026-05-22 23:42:59  /root/.openclaw/agents/main/sessions/90758ada-0470-48fa-b1fd-e101bbf5e1d6.jsonl

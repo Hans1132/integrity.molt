@@ -186,7 +186,7 @@ Three independent layers; each compensates if another degrades.
 
 | Layer | Mechanism | Failure mode it covers |
 |---|---|---|
-| 1. Deterministic rotation | `TOPIC_OF_DAY=$MOLTBOT_TOPIC_$((DAY_OF_YEAR % MOLTBOT_TOPICS_COUNT))` | LLM primacy bias |
+| 1. Deterministic rotation | `TOPIC_IDX=$((DAY_OF_YEAR % MOLTBOT_TOPICS_COUNT))`<br>`TOPIC_VAR="MOLTBOT_TOPIC_${TOPIC_IDX}"`<br>`TOPIC_OF_DAY="${!TOPIC_VAR}"` (bash indirect expansion) | LLM primacy bias |
 | 2. History injection | `RECENT POSTS (DO NOT repeat themes): {last 5 daily-post titles from heartbeat.log archives}` | Topic-pool drift / two similar topics |
 | 3. Scan-stats hook | `RECENT FINDING: {last scan summary from /root/scanner/reports/*.txt}` | Generic abstract advice |
 
@@ -206,6 +206,7 @@ Description=Watch for moltbot identity-pull trigger
 
 [Path]
 PathExists=/var/run/moltbot/trigger-identity-pull
+Unit=moltbot-identity-pull-runner.service
 
 [Install]
 WantedBy=multi-user.target
@@ -320,9 +321,12 @@ async def handler(update, context):
         await update.message.reply_text(f"parse failed: {type(e).__name__}: {e}")
         return  # keep old identity.env intact
 
-    # 5. Get commit SHA from pulled state
+    # 5. Get commit SHA the file was just checked out FROM.
+    # The runner does `git checkout origin/main -- docs/IDENTITY.md` (file-only,
+    # HEAD does not move), so `rev-parse HEAD` would return the stale working-tree
+    # commit. Resolve `origin/main` instead — the ref that supplied the content.
     commit = subprocess.run(
-        ["git", "-C", "/root/x402-server", "rev-parse", "--short", "HEAD"],
+        ["git", "-C", "/root/x402-server", "rev-parse", "--short", "origin/main"],
         capture_output=True, text=True, timeout=5,
     ).stdout.strip() or "unknown"
 

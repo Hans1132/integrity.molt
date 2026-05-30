@@ -3,6 +3,7 @@ Description=Watch for moltbot identity-pull trigger
 
 [Path]
 PathExists=/var/run/moltbot/trigger-identity-pull
+Unit=moltbot-identity-pull-runner.service
 
 [Install]
 WantedBy=multi-user.target

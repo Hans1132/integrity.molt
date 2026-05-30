@@ -20,7 +20,7 @@ The PermissionError described in the brief is **no longer reproducible** — an 
 
 Ran `/usr/bin/cat /root/.secrets/moltbook_api_key` as uid=moltbot under the **identical** hardening profile of the live unit:
 
-```
+```ini
 NoNewPrivileges=yes  ProtectSystem=strict  ProtectHome=read-only
 PrivateTmp=yes  PrivateDevices=yes  ProtectKernelTunables=yes
 ProtectKernelModules=yes  ProtectControlGroups=yes
@@ -47,7 +47,7 @@ Bisect to confirm what *would* block:
 
 `journalctl -u moltbot.service -n 40` (sampled while NRestarts climbed from 113 → 119):
 
-```
+```text
 python[…]: 2026-05-23 10:05:51,050 INFO root moltbot v0.1.0 starting
 python[…]: Traceback (most recent call last):
 python[…]:   File "/opt/moltbot/main.py", line 69, in <module>
@@ -106,7 +106,7 @@ Two character-level edits: `run-now` → `runnow` at the registration site and i
 
 ### `systemctl status moltbot.service` (post-fix)
 
-```
+```text
 ● moltbot.service - Moltbot Telegram control bot
      Loaded: loaded (/etc/systemd/system/moltbot.service; enabled; preset: enabled)
      Active: active (running) since Sat 2026-05-23 10:26:49 UTC; 10s ago
@@ -118,7 +118,7 @@ Two character-level edits: `run-now` → `runnow` at the registration site and i
 
 ### Stability check after 60+ seconds (acceptance #2)
 
-```
+```text
 $ systemctl show moltbot.service -p NRestarts -p MainPID -p ExecMainStartTimestamp
 NRestarts=0
 MainPID=1449569
@@ -135,7 +135,7 @@ Acceptance criterion #2 met: NRestarts unchanged across the 60-s window.
 
 ### Last 30 journal lines (post-fix, bot token redacted)
 
-```
+```text
 May 23 10:26:49 integrity systemd[1]: Started moltbot.service - Moltbot Telegram control bot.
 May 23 10:26:49 integrity python[1449569]: 2026-05-23 10:26:49,904 INFO root moltbot v0.1.0 starting
 May 23 10:26:53 integrity python[1449569]: 2026-05-23 10:26:53,793 INFO httpx HTTP Request: POST https://api.telegram.org/bot<REDACTED>/getMe "HTTP/1.1 200 OK"
@@ -150,7 +150,7 @@ Successful startup signal: `INFO telegram.ext.Application Application started` (
 
 ### PermissionError / Traceback grep (acceptance #3)
 
-```
+```text
 $ journalctl -u moltbot.service --since "2026-05-23 10:26:49" | grep -iE 'PermissionError|Traceback'
 (empty)
 ```
@@ -159,7 +159,7 @@ Empty since `ExecMainStartTimestamp`. (The brief's literal "since 5 minutes ago"
 
 ### Confirming the bot's file path is still readable
 
-```
+```text
 $ systemd-run --uid=moltbot --gid=moltbot \
     --property=…(live hardening profile)… \
     /usr/bin/test -r /root/.secrets/moltbook_api_key

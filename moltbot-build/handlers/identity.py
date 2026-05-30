@@ -21,9 +21,12 @@ log = logging.getLogger(__name__)
 MAX_WAIT = 30.0
 TG_LIMIT = 4000
 
-# Match KEY='value' lines from a generated identity.env; captures value
-# (single-quoted, ANSI-C-escape '\\'' for internal quotes).
-ENV_LINE_RE = re.compile(r"^([A-Z_][A-Z0-9_]*)='((?:[^']|'\\'')*)'$", re.MULTILINE)
+# Match KEY=value lines from a generated identity.env; values are either:
+#   - single-quoted (ANSI-C-escape '\\'' for internal quotes), captured as group(2)
+#   - unquoted bare token (e.g. MOLTBOT_TOPICS_COUNT=15), captured as group(3)
+ENV_LINE_RE = re.compile(
+    r"^([A-Z_][A-Z0-9_]*)=(?:'((?:[^']|'\\'')*)'|(\S+))$", re.MULTILINE
+)
 
 
 def _unescape(v: str) -> str:
@@ -31,12 +34,15 @@ def _unescape(v: str) -> str:
 
 
 def _read_current_env(path: Path) -> dict[str, str]:
-    """Read existing identity.env into {KEY: value} dict; missing file → empty dict."""
+    """Read existing identity.env into {KEY: value} dict; missing file → empty dict.
+    Handles both single-quoted values (with ANSI-C escape unescape) and unquoted tokens.
+    """
     if not path.is_file():
         return {}
     out: dict[str, str] = {}
     for m in ENV_LINE_RE.finditer(path.read_text()):
-        out[m.group(1)] = _unescape(m.group(2))
+        quoted, bare = m.group(2), m.group(3)
+        out[m.group(1)] = _unescape(quoted) if quoted is not None else bare
     return out
 
 
@@ -87,7 +93,7 @@ def _diff_report(old: dict[str, str], new_parsed: dict, commit: str) -> str:
 
     old_commit = old.get("MOLTBOT_IDENTITY_COMMIT", "")
     if old_commit == commit and old_commit:
-        return f"identity already up-to-date (commit {commit})"
+        lines.append(f"identity already up-to-date (commit {commit})")
     return "\n".join(lines)
 
 
@@ -125,10 +131,14 @@ def make_handler(cfg: Config):
                 )
                 return
 
-            # 5. Look up current commit SHA in the repo
+            # 5. Look up the commit SHA that the file was just checked out FROM.
+            # The runner does `git checkout origin/main -- docs/IDENTITY.md` which extracts
+            # one file but does NOT move HEAD. So `rev-parse HEAD` would return whatever
+            # the working tree was on before (potentially stale). Use `origin/main` — the
+            # ref that just supplied the file's content.
             try:
                 r = subprocess.run(
-                    ["git", "-C", str(cfg.identity_repo_path), "rev-parse", "--short", "HEAD"],
+                    ["git", "-C", str(cfg.identity_repo_path), "rev-parse", "--short", "origin/main"],
                     capture_output=True, text=True, timeout=5, check=True,
                 )
                 commit = r.stdout.strip() or "unknown"

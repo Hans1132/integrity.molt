@@ -10,14 +10,15 @@ Replaces the openclaw Telegram channel with a small, non-root, polling-only Pyth
 - `/report [YYYY-MM-DD]` — fetch the daily transparency report for that date (default today UTC)
 - `/scan <mint>` — call `http://127.0.0.1:3402/scan/iris?token=<mint>` (free, loopback-exempt)
 - `/model` / `/model list` / `/model set <name>` — read/list/switch the model heartbeat.sh uses
-- `/run-now` — trigger `/root/heartbeat.sh` via a systemd path-unit (no sudo)
+- `/runnow` — trigger `/root/heartbeat.sh` via a systemd path-unit (no sudo)
+- `/refreshidentity` — pull `docs/IDENTITY.md` from repo, refresh `/etc/moltbot/identity.env`
 - `/logs [N]` — tail moltbot's own journal (default 20, max 100)
 
 All commands are gated by a single-user whitelist (`AUTHORIZED_USER_ID`). Other users get silent reject + log line.
 
 ## Architecture
 
-```
+```text
 Telegram  ← polling →  moltbot.service (user moltbot)
                               │
                               │ touch trigger file
@@ -50,11 +51,11 @@ journalctl -u moltbot.service -f
 
 ## File layout
 
-```
+```text
 /opt/moltbot/             — Python source, venv, .env
-/etc/moltbot/             — llm-config.env (writable by moltbot), allowed-models.txt
-/var/run/moltbot/         — trigger-heartbeat, last-heartbeat
-/etc/systemd/system/      — three units (moltbot.service, …-trigger.path, …-runner.service)
+/etc/moltbot/             — llm-config.env (writable by moltbot), allowed-models.txt, identity.env
+/var/run/moltbot/         — trigger-heartbeat, last-heartbeat, trigger-identity-pull
+/etc/systemd/system/      — five units (moltbot.service, heartbeat-trigger.path, heartbeat-runner.service, identity-pull-trigger.path, identity-pull-runner.service)
 ```
 
 ## Permissions model
@@ -77,7 +78,7 @@ Because the scanner files live under `/root/`, the installer relaxes `/root` fro
 
 A `.pre-moltbot.bak` snapshot of the original `heartbeat.sh` is kept next to it.
 
-**Note:** `heartbeat.sh` currently hard-codes `"model": "google/gemini-2.5-flash"` inside `call_openrouter()`. To make `/model set` effective, you must also edit the script body to replace the literal with `"${MOLTBOT_LLM_MODEL:-google/gemini-2.5-flash}"` in each of the four call sites — installer does not touch the body to avoid breaking the script.
+**Note:** `heartbeat.sh`'s `call_openrouter()` reads `MOLTBOT_LLM_MODEL` from the sourced `/etc/moltbot/llm-config.env` (default `anthropic/claude-opus-4-7`). The `/model set` Telegram command updates that file atomically and the next heartbeat run picks up the new model. The installer does NOT modify the script body — model selection is purely env-var-driven at runtime.
 
 ## Out of scope
 
@@ -86,11 +87,17 @@ Multi-user, webhook mode, database, wallet signing, paid x402 scans, Discord/Sla
 ## Uninstall
 
 ```bash
-systemctl disable --now moltbot.service moltbot-heartbeat-trigger.path
-rm /etc/systemd/system/moltbot.service /etc/systemd/system/moltbot-heartbeat-*.{path,service}
+systemctl disable --now moltbot.service \
+    moltbot-heartbeat-trigger.path \
+    moltbot-identity-pull-trigger.path
+rm /etc/systemd/system/moltbot.service \
+   /etc/systemd/system/moltbot-heartbeat-*.{path,service} \
+   /etc/systemd/system/moltbot-identity-pull-*.{path,service}
 systemctl daemon-reload
 rm -rf /opt/moltbot /etc/moltbot /var/run/moltbot
 userdel moltbot
 groupdel moltbook-readers      # only if no other consumer
 mv /root/heartbeat.sh.pre-moltbot.bak /root/heartbeat.sh
+mv /root/heartbeat.sh.pre-identity-refactor.bak /root/heartbeat.sh  # if newer
+mv /root/daily-post.sh.pre-identity-refactor.bak /root/daily-post.sh
 ```

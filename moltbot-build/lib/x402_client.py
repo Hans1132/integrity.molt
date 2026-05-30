@@ -25,22 +25,29 @@ class X402Client:
         (request validation rejects the empty token) — so any 4xx there counts as "up".
         """
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            last_5xx: tuple[str, int] | None = None
             for p in HEALTH_PATHS:
                 try:
                     r = await client.get(f"{self._base}{p}")
                     if 200 <= r.status_code < 300:
                         return True, f"{p}={r.status_code}"
                     if r.status_code >= 500:
-                        return False, f"{p}={r.status_code}"
-                    # 3xx/4xx → endpoint missing or unexpected, fall through
+                        # Record but keep probing — one endpoint's 5xx doesn't
+                        # prove the whole server is down (could be a single bad path).
+                        last_5xx = (p, r.status_code)
+                    # 3xx/4xx → endpoint missing/unexpected, try the next probe
                 except httpx.HTTPError:
                     continue
+            # Final fallback: /scan/iris with no params. Server-alive answers
+            # with a 4xx (validation reject). Any 4xx means UP.
             try:
                 r = await client.get(f"{self._base}/scan/iris")
                 if r.status_code < 500:
                     return True, f"/scan/iris={r.status_code} (server alive)"
                 return False, f"/scan/iris={r.status_code}"
             except httpx.HTTPError as e:
+                if last_5xx:
+                    return False, f"{last_5xx[0]}={last_5xx[1]}, /scan/iris {type(e).__name__}"
                 return False, f"unreachable: {type(e).__name__}"
 
     async def scan_iris(self, token_mint: str) -> tuple[int, Any, float]:

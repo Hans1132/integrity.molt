@@ -8,7 +8,7 @@ Read-only follow-up to `openclaw-audit-report.md`. Answers the open question: *w
 
 ### 1.1 Loopback connections to 18789–18792 (snapshot)
 
-```
+```text
 ss -tunap state established '(sport/dport in 18789..18792)' → 0 rows
 ```
 
@@ -16,7 +16,7 @@ ss -tunap state established '(sport/dport in 18789..18792)' → 0 rows
 
 ### 1.2 `lsof -p 19934 -i`
 
-```
+```text
 openclaw- 19934 root 21u IPv4 70585 TCP localhost:18791 (LISTEN)
 openclaw- 19934 root 24u IPv4 70582 UDP *:mdns
 openclaw- 19934 root 25u IPv4 70583 UDP *:mdns
@@ -32,7 +32,7 @@ Listeners only.
 
 ### 1.4 Per-thread `comm` / `wchan`
 
-```
+```text
 19934 openclaw-gatewa  ep_poll          ← main event loop, idle
 19936 DelayedTaskSche  ep_poll          ← v8 task scheduler, idle
 19937 node             futex_wait_queue ← v8 worker pool
@@ -58,7 +58,7 @@ The "real agent traffic" first audit attributed to "something dialing the loopba
 
 ### 2.1 Currently logged in (`who` / `w`)
 
-```
+```text
 root tty1  03May26  19days     -bash                      (the console session that started the box; idle 19d)
 root pts/0 23May26 08:08       sshd: root@pts/0           (37.188.246.196, idle 25 min)
 root pts/3 22May26 23:02       (tmux ns_LFTGyY pane 0)    attached
@@ -73,7 +73,7 @@ All from the `37.188.x.x` IP range (looks like the same residential ISP — oper
 
 ### 2.3 `tmux ls`
 
-```
+```text
 ns_LFTGyY: 2 windows (created Fri May 22 23:02:41 2026) (attached)
   window 0 "claude" — pane runs `claude` (PID 1411110, ~8h21m elapsed) at cwd /root/x402-server
   window 1 "bash"   — two bash panes at cwd /root
@@ -87,7 +87,7 @@ ns_LFTGyY: 2 windows (created Fri May 22 23:02:41 2026) (attached)
 
 Almost every line is a variation of:
 
-```
+```bash
 cd /root/x402-server
 claude
 clear
@@ -107,7 +107,7 @@ No openclaw client invocations (`openclaw`, `claw`, `openclaw chat`, etc.) in th
 
 ### 3.1 Top 10 most recently modified files in `/root/.openclaw/agents/main/sessions/`
 
-```
+```text
 2026-05-23 07:43  sessions.json                                          (69 KB)
 2026-05-23 07:43  c2a629ec-7a36-4960-8bb3-5d17a1a64365.jsonl             (8.7 KB)  ← live session
 2026-05-23 03:42  90758ada-...jsonl.reset.2026-05-23T04-12-59.489Z       (48.7 KB) ← previous, rotated
@@ -126,7 +126,7 @@ No openclaw client invocations (`openclaw`, `claw`, `openclaw chat`, etc.) in th
 
 Parsed view (full timestamps; redactions inline):
 
-```
+```text
 [04:12:59.713] session start
 [04:12:59.727] model_change          (model selected for the new session)
 [04:12:59.728] thinking_level_change
@@ -153,7 +153,7 @@ Parsed view (full timestamps; redactions inline):
 
 ### 3.3 `sessions.json` — session-state index
 
-```
+```text
 TYPE: dict
 KEYS:
   agent:main:main                          (the persistent main session — same UUID lineage)
@@ -178,7 +178,7 @@ Holds four redundant copies of the same OpenRouter API key (`sk-o...2e91`, len 7
 
 Crontab from first audit reproduced for reference:
 
-```
+```text
 0 */12 * * *  /root/scanner/outreach.sh             >> /root/heartbeat.log
 0 14 */2 * *  /root/daily-post.sh
 0 20 * * *    /root/scanner/daily-reputation-report.sh >> /root/heartbeat.log
@@ -194,7 +194,7 @@ Crontab from first audit reproduced for reference:
 
 ### 4.1 `/root/heartbeat.sh` — main moltbook bot
 
-```
+```text
 -rwxr-xr-x 1 root root 27332 May  6 08:59 /root/heartbeat.sh
 ```
 
@@ -216,7 +216,7 @@ Key implementation details:
 
 LLM grep hits in `heartbeat.sh`:
 
-```
+```text
 4  : MOLTBOOK_TOKEN  ← /root/.secrets/moltbook_api_key
 79 : OPENROUTER_API_KEY
 87 : curl POST https://openrouter.ai/api/v1/chat/completions   (call_openrouter helper)
@@ -231,7 +231,7 @@ LLM grep hits in `heartbeat.sh`:
 
 ### 4.2 `/root/daily-post.sh`
 
-```
+```text
 -rwx------ 1 root root 6581 Mar 17 07:43
 ```
 
@@ -242,7 +242,7 @@ Posts one original entry per day to the `security` submolt. **Alternates tip ↔
 
 Model: `google/gemini-2.5-flash` via OpenRouter. CTA appended after LLM output (not LLM-generated) to guarantee link integrity:
 
-```
+```text
 Quick scans: free. Deep audits: 0.01 USDC via x402. Contact: @integrity_molt_bot on Telegram.
 ```
 
@@ -252,7 +252,7 @@ This is **the moltbook driver**, not openclaw, not Twitter.
 
 ### 4.3 `/root/proactive-scan.sh`
 
-```
+```text
 -rwx------ 1 root root 7126 Mar 19 07:43
 ```
 
@@ -260,7 +260,7 @@ Same scaffolding as `heartbeat.sh`. Scans moltbook feed for **new** project post
 
 ### 4.4 `/root/scanner/outreach.sh`
 
-```
+```text
 -rwx------ 1 root root 10090 Mar 19 07:42
 ```
 
@@ -268,7 +268,7 @@ Runs every 12 h (`0 */12 * * *`). Posts max 1 helpful security comment per run; 
 
 ### 4.5 `/root/scanner/daily-reputation-report.sh`
 
-```
+```text
 -rwx------ 1 root root 4920 Mar 20 06:47
 ```
 
@@ -276,7 +276,7 @@ Runs at 20:00. Not opened in detail — not the activity source. Likely posts a 
 
 ### 4.6 `/root/scripts/disk-alert.sh` — `NOTE` (orthogonal admin alert)
 
-```
+```text
 -rwxr-xr-x 1 root root 1326 Apr 10 12:36
 ```
 
@@ -284,7 +284,7 @@ Threshold 85% disk. Sends Telegram alert via `/root/.secrets/telegram_bot_token`
 
 ### 4.7 `/root/scripts/cleanup.sh`
 
-```
+```text
 -rwxr-xr-x 1 root root 1202 Apr 10 12:36
 ```
 
@@ -292,7 +292,7 @@ Daily 03:00. Deletes nginx `.gz` logs >7d, scan reports >14d, journal entries >7
 
 ### 4.8 `/root/scripts/uptime-check.sh`
 
-```
+```text
 -rwxr-xr-x 1 root root 2262 Apr 10 12:39
 ```
 
@@ -300,7 +300,7 @@ Every 5 min, GET `https://intmolt.org/health`, alert via Telegram on failure or 
 
 ### 4.9 `/root/scripts/abuse-monitor.sh` — `NOTE`
 
-```
+```text
 -rwxr-xr-x 1 root root 1825 Apr 19 05:03
 ```
 
@@ -310,7 +310,7 @@ Hourly. Queries `/root/x402-server/data/intmolt.db` (`abuse_events` table) for I
 
 ### 4.10 Other `/root/*.sh`
 
-```
+```text
 /root/heartbeat-secure.sh → /root/heartbeat.sh                              (symlink)
 /root/scheduled-post.sh    7-mode 0755, 3888 bytes — March 2026 one-off services-announcement post (see §6.x)
 /root/twitter-bot.sh       mode 0755, 10736 bytes — Twitter publisher driven by Birdeye trending tokens
@@ -320,7 +320,7 @@ Hourly. Queries `/root/x402-server/data/intmolt.db` (`abuse_events` table) for I
 
 ### 4.11 `/root/.openclaw/cron/jobs.json`
 
-```
+```json
 {"version": 1, "jobs": []}
 ```
 
@@ -357,7 +357,7 @@ Real scan data is fetched from `/root/scanner/reports/*.txt` (script-emitted rep
 
 ### 5.5 Moltbook API key path
 
-```
+```text
 -rw------- 1 root root 45 Mar 30 11:17 /root/.secrets/moltbook_api_key
 ```
 
@@ -419,7 +419,7 @@ Existence map:
 
 ### 7.1 `HEARTBEAT.md` (full)
 
-```
+```markdown
 # HEARTBEAT.md — integrity_molt agent tasks
 
 # Periodic tasks for the moltbook agent (integrity_molt).
@@ -467,7 +467,7 @@ Existence map:
 
 ### 7.2 `SOUL.md` (full, from `/root/clawd/workspace/SOUL.md`)
 
-```
+```markdown
 You are integrity_molt, an AI security auditor on the Moltbook social network. ...
 - FREE Quick Scan: automated on-chain analysis ...
 - PAID Deep Audit (0.5 USDC): comprehensive manual review ...
@@ -517,7 +517,7 @@ The 7874-byte openclaw default workspace doc. Contains the canonical heartbeat d
 
 ### 8.1 Tree (depth 2, all files; no `node_modules`)
 
-```
+```text
 /root/scanner/
   format-report.py
   format-for-moltbook.py
@@ -553,7 +553,7 @@ No `package.json`, no `pyproject.toml`. **Pure bash + python-stdlib + curl + jq.
 
 ### 8.2 Most recently modified (non-report) files
 
-```
+```text
 2026-05-23 00:00  /root/scanner/outreach-history.json     ← state, mutated by outreach.sh
 2026-05-06 10:16  /root/scanner/reputation.json           ← state
 2026-05-04 12:13  /root/scanner/wallet-deep-scan.sh
@@ -573,7 +573,7 @@ Not exhaustively greped, but `quick-scan.sh` (from the historical session log) c
 
 Grep over `/root/x402-server/src/`, `/root/x402-server/server.js`, `/root/x402-server/handler.js`, `/root/x402-server/config/` for `openclaw|18789|18790|18791|18792|moltbook|daily-post|proactive-scan|heartbeat`:
 
-```
+```text
 server.js:1387 ## A2A Relay (via moltbook)
 server.js:1389 Agents in the molt.id ecosystem can also call integrity.molt via the moltbook relay:
 server.js:1403 - **moltbook profile:** https://app.molt.id/integrity
@@ -583,7 +583,7 @@ server.js:1772 // 127.0.0.1 is exempt from rate limit (Moltbook heartbeat).
 
 ### 9.1 The only new finding: `server.js:1772`
 
-```
+```javascript
 // 127.0.0.1 is exempt from rate limit (Moltbook heartbeat).
 ```
 
@@ -637,7 +637,7 @@ WantedBy=default.target
 
 ### 10.2 `systemctl --user status` (current)
 
-```
+```text
 ● openclaw-gateway.service - OpenClaw Gateway (v2026.3.8)
      Loaded: loaded (.../openclaw-gateway.service; enabled; preset: enabled)
      Active: active (running) since Sun 2026-05-03 23:11:04 UTC; 2 weeks 6 days ago

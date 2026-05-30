@@ -38,9 +38,16 @@ def _require(name: str) -> str:
 
 
 def _read_secret(path: Path) -> str:
+    """Read a secret file at startup; fail fast with a clear message on any problem."""
     if not path.is_file():
         raise RuntimeError(f"moltbook api key file not readable: {path}")
-    return path.read_text().strip()
+    try:
+        content = path.read_text().strip()
+    except OSError as e:
+        raise RuntimeError(f"moltbook api key file read failed: {path}: {e}") from e
+    if not content:
+        raise RuntimeError(f"moltbook api key file empty or unreadable: {path}")
+    return content
 
 
 def load() -> Config:

@@ -7,6 +7,7 @@ import re
 
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
 
 from lib.config import Config
 from lib.moltbook_api import MoltbookAPI
@@ -130,7 +131,11 @@ def make_report_handler(cfg: Config):
                 )
                 return
             body_text = match.get("content") or match.get("body") or "(no body)"
-            text = f"*{match.get('title', '(untitled)')}*\n\n{body_text}"
+            # Escape both fields for legacy Markdown (v1) before composing so backticks,
+            # underscores, asterisks, or brackets in user content don't break the parser.
+            title_esc = escape_markdown(match.get("title") or "(untitled)", version=1)
+            body_esc = escape_markdown(body_text, version=1)
+            text = f"*{title_esc}*\n\n{body_esc}"
             if len(text) > TG_LIMIT:
                 text = text[:TG_LIMIT] + "… (truncated)"
             await update.message.reply_markdown(text)
