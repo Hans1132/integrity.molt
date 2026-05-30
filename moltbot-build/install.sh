@@ -58,6 +58,7 @@ rsync -a --delete \
     --exclude 'etc' \
     --exclude 'install.sh' \
     --exclude 'README.md' \
+    --exclude '.env' \
     --exclude '.env.example' \
     "$SRC_DIR/" "$APP_DIR/"
 # Carry templates separately so the destination tree is exactly what main.py expects.
