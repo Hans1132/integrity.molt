@@ -12,6 +12,13 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-05-30: Test coverage — Tier 1 gaps closed [qa]
+- **Změny:** 5 nových test souborů: `tests/validation/address.test.js` (10), `tests/enrichment/token-extensions.test.js` (12), `tests/enrichment/goplus.test.js` (8), `tests/crypto/sign-timeout.test.js` (5), `tests/monitor/webhook-auth.test.js` (5). Přidány do `npm test` chainu v package.json.
+- **Důvod:** Coverage analýza odhalila security-critical moduly bez unit testů: chain-gating address validace, Token-2022 binární parser (PermanentDelegate/TransferHook), GoPlus circuit breaker, signing-SPOF semaphore release, Helius webhook auth.
+- **Dopad:** +40 testů, vše offline (db/fetch/spawn mockované). Žádná produkční změna chování.
+- **Test:** Všech 5 souborů exit 0 přes `node tests/...`. token-extensions buffer fuzz (truncated TLV) bez throw.
+- **Gotcha:** node_modules chybí v čerstvém web kontejneru — `npm ci` nutné. sign-timeout vyžaduje python3 (skip-guard pokud chybí).
+
 ### 2026-05-21: Metaplex Agent Registry endpoints updated → intmolt.org direct [strategy]
 - **Změny:** Update Arweave registry dokumentu přes Metaplex dashboard. `services.web` z `https://molt.id/agent/integrity.molt` (404) na `https://intmolt.org`. `services.A2A` z `https://multiclaw.moltid.workers.dev/c/integrity/a2a` (401 + nedostupné z venku) na `https://intmolt.org/a2a`. Description zúžená na `"Solana security oracle. Eleven A2A skills, x402 paid tier, Ed25519 signed receipts."`. Nový Arweave URL: `gateway.irys.xyz/EXnibJZltm1nzeE1_Nx7ad1ty8qIIFQMaPVufEVqGCU`.
 - **Důvod:** Open question z architecture.md (canonical A2A endpoint vs multiclaw proxy molt.id týmu) resolved bez DM molt.id, přímou editací v Metaplex dashboardu. Direct endpoint: nižší latence, žádný third-party SPOF, žádná 401 wall blokující veřejný access. Trade-off: molt.id ztrácí observability do volání, která přes multiclaw tekla.
