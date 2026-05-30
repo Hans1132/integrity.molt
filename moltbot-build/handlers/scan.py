@@ -36,12 +36,14 @@ def make_handler(cfg: Config):
             if status >= 500:
                 await update.message.reply_text(f"x402 server error: HTTP {status}")
                 return
-            risk = (
-                body.get("iris_score")
-                or body.get("risk_score")
-                or body.get("score")
-                if isinstance(body, dict) else None
-            )
+            # Explicit lookup so a legitimate risk score of 0 isn't treated as
+            # missing (the `or`-chain version would silently fall through).
+            risk = None
+            if isinstance(body, dict):
+                for k in ("iris_score", "risk_score", "score"):
+                    if k in body:
+                        risk = body[k]
+                        break
             risk_str = f"{risk}" if risk is not None else "(no risk score in response)"
             payload = json.dumps(body, indent=2, default=str) if isinstance(body, dict) else str(body)
             if len(payload) > 500:

@@ -154,12 +154,14 @@ def make_handler(cfg: Config):
                 await update.message.reply_text(f"write failed: {e} (identity.env unchanged)")
                 return
 
-            # 7. Diff and report
+            # 7. Diff and report — plain text (no Markdown). The diff is internally
+            # generated but may contain backticks/asterisks in identity field values,
+            # which would break Telegram's parser.
             diff = _diff_report(old, parsed, commit)
-            text = f"*identity refreshed* (commit `{commit}`)\n```\n{diff}\n```"
+            text = f"identity refreshed (commit {commit})\n{diff}"
             if len(text) > TG_LIMIT:
                 text = text[:TG_LIMIT] + "…"
-            await update.message.reply_markdown(text)
+            await update.message.reply_text(text)
         except Exception as e:
             log.exception("refreshidentity failed")
             await update.message.reply_text(f"refreshidentity error: {type(e).__name__}: {e}")

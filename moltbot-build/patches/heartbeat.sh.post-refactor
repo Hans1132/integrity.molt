@@ -136,7 +136,7 @@ Challenge: $challenge_text"
 
     log "  Submitting verification answer: $MATH_ANSWER"
 
-    VERIFY_RESPONSE=$(curl -s -X POST \
+    VERIFY_RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 -X POST \
         -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
         -H "Content-Type: application/json" \
         -d "{\"verification_code\": \"$verify_code\", \"answer\": \"$MATH_ANSWER\"}" \
@@ -155,7 +155,7 @@ Challenge: $challenge_text"
 log "=== Heartbeat starting ==="
 
 # Step 1: Get home feed
-HOME_RESPONSE=$(curl -s -H "Authorization: Bearer $MOLTBOOK_TOKEN" "$MOLTBOOK_BASE/home")
+HOME_RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $MOLTBOOK_TOKEN" "$MOLTBOOK_BASE/home")
 if [ -z "$HOME_RESPONSE" ]; then
     log "ERROR: Failed to fetch home feed"
     exit 1
@@ -175,7 +175,7 @@ if [ "$ACTIVITY_COUNT" -gt 0 ]; then
         log "Processing post [$((i+1))/$ACTIVITY_COUNT]: \"$POST_TITLE\" (id=$POST_ID, new=$NEW_COUNT)"
 
         # Fetch recent comments (newest first)
-        COMMENTS_RESPONSE=$(curl -s \
+        COMMENTS_RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 \
             -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
             "$MOLTBOOK_BASE/posts/$POST_ID/comments?sort=new&limit=20")
 
@@ -292,7 +292,7 @@ Write a thoughtful, genuine reply of 2-4 sentences. Be specific and helpful — 
                 --arg content "$REPLY_TEXT" \
                 '{"content": $content}')
 
-            POST_RESPONSE=$(curl -s -X POST \
+            POST_RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 -X POST \
                 -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
                 -H "Content-Type: application/json" \
                 -d "$POST_PAYLOAD" \
@@ -322,7 +322,7 @@ Write a thoughtful, genuine reply of 2-4 sentences. Be specific and helpful — 
         done
 
         # Mark notifications as read for this post
-        curl -s -X POST \
+        curl -sS --connect-timeout 10 --max-time 30 -X POST \
             -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
             "$MOLTBOOK_BASE/notifications/read-by-post/$POST_ID" > /dev/null
         log "  Notifications marked as read for post $POST_ID"
@@ -334,7 +334,7 @@ fi
 # Step 3: Browse feed, upvote 3 interesting posts, comment on the best one
 log "=== Browsing feed ==="
 
-FEED_RESPONSE=$(curl -s -H "Authorization: Bearer $MOLTBOOK_TOKEN" "$MOLTBOOK_BASE/feed?limit=20")
+FEED_RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $MOLTBOOK_TOKEN" "$MOLTBOOK_BASE/feed?limit=20")
 FEED_COUNT=$(echo "$FEED_RESPONSE" | jq '.posts | length' 2>/dev/null)
 
 if [ -z "$FEED_COUNT" ] || [ "$FEED_COUNT" = "null" ] || [ "$FEED_COUNT" -eq 0 ]; then
@@ -379,7 +379,7 @@ Use 0-based indices from the list above. Output only the JSON, nothing else."
             continue
         fi
 
-        UPVOTE_RESPONSE=$(curl -s -X POST \
+        UPVOTE_RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 -X POST \
             -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
             "$MOLTBOOK_BASE/posts/$FEED_POST_ID/upvote")
 
@@ -425,7 +425,7 @@ Post content: $COMMENT_POST_BODY"
                     log "  Posting comment on \"$COMMENT_POST_TITLE\": ${FEED_COMMENT:0:100}..."
 
                     FEED_PAYLOAD=$(jq -n --arg content "$FEED_COMMENT" '{"content": $content}')
-                    FEED_POST_RESPONSE=$(curl -s -X POST \
+                    FEED_POST_RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 -X POST \
                         -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
                         -H "Content-Type: application/json" \
                         -d "$FEED_PAYLOAD" \
@@ -578,7 +578,7 @@ if [ "$DM_TODAY" -lt "$TOKEN_AUDIT_DAILY_LIMIT" ] && [ -n "$FEED_RESPONSE" ]; th
             log "  Candidate post: \"$TITLE_PREVIEW\" by $AUTHOR ($POST_ID)"
 
             # Fetch full post to check for mint address
-            POST_DETAIL=$(curl -s -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
+            POST_DETAIL=$(curl -sS --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
                 "$MOLTBOOK_BASE/posts/$POST_ID" 2>/dev/null)
             FULL_CONTENT=$(echo "$POST_DETAIL" | jq -r '(.content // .body // "")[0:800]' 2>/dev/null)
 
@@ -620,7 +620,7 @@ Write a brief, genuine DM (3-5 sentences) offering a Token Security Audit at \$0
             # Creates new conversation with initial message
             DM_PAYLOAD=$(jq -n --arg rn "$AUTHOR" --arg msg "$DM_TEXT" \
                 '{"recipient_name": $rn, "message": $msg}')
-            DM_RESPONSE=$(curl -s -X POST \
+            DM_RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 -X POST \
                 -H "Authorization: Bearer $MOLTBOOK_TOKEN" \
                 -H "Content-Type: application/json" \
                 -d "$DM_PAYLOAD" \

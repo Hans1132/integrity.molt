@@ -97,7 +97,21 @@ systemctl daemon-reload
 rm -rf /opt/moltbot /etc/moltbot /var/run/moltbot
 userdel moltbot
 groupdel moltbook-readers      # only if no other consumer
-mv /root/heartbeat.sh.pre-moltbot.bak /root/heartbeat.sh
-mv /root/heartbeat.sh.pre-identity-refactor.bak /root/heartbeat.sh  # if newer
+# heartbeat.sh: restore the NEWEST backup (whichever install layered last).
+# Two possible backups exist: .pre-moltbot.bak (from original moltbot install)
+# and .pre-identity-refactor.bak (from this PR's install). Whichever has the
+# later mtime is the most recent pre-modification snapshot.
+HB_BAKS=(/root/heartbeat.sh.pre-moltbot.bak /root/heartbeat.sh.pre-identity-refactor.bak)
+NEWEST=""
+for b in "${HB_BAKS[@]}"; do
+    [[ -f "$b" ]] || continue
+    if [[ -z "$NEWEST" ]] || [[ "$(stat -c %Y "$b")" -gt "$(stat -c %Y "$NEWEST")" ]]; then
+        NEWEST="$b"
+    fi
+done
+[[ -n "$NEWEST" ]] && mv "$NEWEST" /root/heartbeat.sh
+# Optional: delete the older backup if you no longer need it
+# rm -f /root/heartbeat.sh.pre-moltbot.bak /root/heartbeat.sh.pre-identity-refactor.bak
+
 mv /root/daily-post.sh.pre-identity-refactor.bak /root/daily-post.sh
 ```
