@@ -9,6 +9,7 @@ User=moltbot
 Group=moltbot
 WorkingDirectory=/opt/moltbot
 EnvironmentFile=/opt/moltbot/.env
+Environment=HOME=/opt/moltbot
 ExecStart=/opt/moltbot/venv/bin/python -u /opt/moltbot/main.py
 Restart=on-failure
 RestartSec=10
