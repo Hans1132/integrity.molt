@@ -12,6 +12,14 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-06-04: NGINX hotfix — placené /api/v1/* routy z 301 na 402 — [conductor]
+- **Změny:** `/etc/nginx/sites-available/intmolt` (mimo repo, netrackováno) — 4 explicit `location` bloky PŘED regex `~ ^/api/v1/(.*)$` 301 shim: `= /api/v1/scan/agent-token`, `= /api/v1/scan/token-audit`, `= /api/v1/adversarial/simulate`, `^~ /api/v1/delta/`. Každý `proxy_pass http://127.0.0.1:3402;` (bez URI → plná cesta), proxy_set_header zrcadlené z `/api/v2/` (vč. X-Payment), per-route timeout (agent-token 90s, token-audit 120s, adversarial 420s, delta 150s).
+- **Důvod:** regex 301→/api/v2/ stripoval prefix na neexistující Express `/scan/*` → placené POST routy mountnuté na `/api/v1/*` (server.js:3004/2781/3177/3288) dostaly 301 (zahodí POST body + X-PAYMENT) → 404. Group A scan routy jsou na `/scan/*` a fungují přes `/api/v2/` strip, proto je 301 míjel.
+- **Dopad:** 4 placené routy nyní vrací 402 challenge veřejně; klienti čtoucí accepts (v1) dosáhnou handleru. Working set (`/api/v2/*`, governance-change, frontend, /stripe/webhook, stats) beze změny. Kanonická cesta = v2; Fáze 2 (Express remount group-B + accepts→v2) zůstává samostatný task.
+- **Test:** veřejné probes po `systemctl reload nginx`: agent-token/token-audit/adversarial(POST)+delta(GET) → 402 + valid x402 challenge, redirect_url prázdný (žádný 301). Regrese: group A 402/400, governance 402, frontend/stats 200, stripe-webhook 400 — nic nově 404/502. `nginx -t` PASS.
+- **Backup:** `/root/backups/nginx-intmolt-20260604-042112.conf` (rollback: cp → `nginx -t` → reload).
+- **Gotcha:** nginx location precedence `=`/`^~` > regex `~` → bloky vyhrají nad 301 bez ohledu na pořadí (stejný princip jako existující `= /api/v1/create-checkout-session` výjimka). Conf je PUBLIC-repo-sensitive → netrackuje se v repu, jen tento log.
+
 ### 2026-05-21: Metaplex Agent Registry endpoints updated → intmolt.org direct [strategy]
 - **Změny:** Update Arweave registry dokumentu přes Metaplex dashboard. `services.web` z `https://molt.id/agent/integrity.molt` (404) na `https://intmolt.org`. `services.A2A` z `https://multiclaw.moltid.workers.dev/c/integrity/a2a` (401 + nedostupné z venku) na `https://intmolt.org/a2a`. Description zúžená na `"Solana security oracle. Eleven A2A skills, x402 paid tier, Ed25519 signed receipts."`. Nový Arweave URL: `gateway.irys.xyz/EXnibJZltm1nzeE1_Nx7ad1ty8qIIFQMaPVufEVqGCU`.
 - **Důvod:** Open question z architecture.md (canonical A2A endpoint vs multiclaw proxy molt.id týmu) resolved bez DM molt.id, přímou editací v Metaplex dashboardu. Direct endpoint: nižší latence, žádný third-party SPOF, žádná 401 wall blokující veřejný access. Trade-off: molt.id ztrácí observability do volání, která přes multiclaw tekla.
