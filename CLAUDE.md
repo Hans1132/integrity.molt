@@ -49,7 +49,7 @@ v0.dev (předplacené) pro rapid UI prototyping v browseru.
 8. x402 header: klienti posílají `x402-payment`, middleware čte oba.
 9. `executeSkill`: REST body snake_case, handler musí matchovat.
 10. YAML frontmatter: spaces po colons.
-11. SolRPDS poller: `lib/helius-poller.js` paginates 5 DEX programy, `MAX_PAGES` inkrement PŘED fetch (jinak overrun).
+11. SolRPDS poller: `lib/alchemy-dex-poller.js` — Alchemy RPC (getSignaturesForAddress `until` cursor + getTransaction jsonParsed). Jen SWAP eventy (REMOVE dodává Bitquery v4 poller). Cap MAX_SIG_PAGES=3×100 sigs/DEX/cyklus, burst gap akceptovaný. Alchemy address index NEpokrývá Raydium CPMM a Meteora DLMM → signatures fallback na public RPC (getTransaction Alchemy OK). `credits` sloupce v polling_state = počet RPC callů.
 12. Migrace: spouštěj přes `node scripts/run-migration.js` (idempotent). Schema migrace v `db.js` startupu pro nové sloupce.
 13. PM2 cron: `solrpds-poller` proces — poll v :00, inactivity scan v :30. Restart limit 500M paměti.
 

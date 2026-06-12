@@ -12,6 +12,19 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-06-12: Alchemy DEX poller nasazen, helius-poller smazán — [db]
+- **Změny:** lib/alchemy-dex-poller.js (create, +public RPC fallback pro getSignaturesForAddress), scripts/start-poller-cron.js (require+logy), package.json (test chain), lib/helius-poller.js (delete). Commity b2d0583, 8d8122f.
+- **Důvod:** Task 2+3 plánu 2026-06-12-alchemy-dex-poller.md — Helius Enhanced API 403.
+- **Dopad:** pool_activity opět živá (MAX last_activity_ts 2026-06-12 06:31). Initial PM2 cyklus 444 txs/652 calls; smoke Orca 146 tx, CPMM 57 tx, Meteora 21 tx; polling_state last_error NULL 5/5 DEX.
+- **Test:** tests/lib/alchemy-dex-poller.test.js 7/7; npm test bez nového failu (a2a-oracle :memory: schema + monitor 5/19 = pre-existing, ověřeno na snapshotu 3a40889).
+- **Gotcha:** první cyklus po deploy resetuje cursor na newest — gap 2.–12. 6. se nedoplňuje (sampling feed). Alchemy address index nepokrývá Raydium CPMM a Meteora DLMM (getSignaturesForAddress vrací 0) → fallback na public RPC; getTransaction na Alchemy funguje pro všechny. Bitquery v4 poller hlásí „402 No active billing period" (jen záznam, neřešeno).
+
+### 2026-06-12: Failing testy pro alchemy-dex-poller (TDD red) — [qa]
+- **Změny:** tests/fixtures/alchemy-raydium-swap.json (reálná jsonParsed Raydium v4 tx z /tmp vzorku, blockTime 1781244822), tests/lib/alchemy-dex-poller.test.js (7 testů: extractSwapEvents + filterNewSignatures).
+- **Důvod:** Task 1 plánu docs/superpowers/plans/2026-06-12-alchemy-dex-poller.md — testy před implementací (Helius→Alchemy migrace polleru).
+- **Dopad:** žádný runtime; test failuje na `Cannot find module '../../lib/alchemy-dex-poller'` dokud db agent nedodá Task 2.
+- **Test:** `node tests/lib/alchemy-dex-poller.test.js` → MODULE_NOT_FOUND, exit 1 (očekávaný red). Commit a21e736.
+
 ### 2026-06-12: KOREKCE — Helius Enhanced API 403, poller běží ale bez dat — [conductor]
 - **Změny:** žádné v kódu; korekce dnešního dřívějšího závěru „Helius FREE tier stačí".
 - **Důvod:** Poll cyklus 06:00 po PM2 resurrect: všech 5 DEX → `Helius API 403: Forbidden`. Basic RPC (getHealth) funguje, ale `api.helius.xyz/v0/addresses/{prog}/transactions` (Enhanced API, lib/helius-poller.js:127) je na propadlém plánu zakázané. Reprodukováno přímým curl.
