@@ -12,6 +12,35 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-06-12: Commit živých změn + PM2 resurrect/systemd + IRIS root cause — [conductor]
+- **Změny:** Commit `b7af0e4` fix(auth) bypass guard (db.js+server.js), `b521fab` feat(payment) scheme 'solana-settled' (generátory). `pm2 resurrect` → solrpds-poller + bitquery online; `pm2 startup systemd` + `pm2 save` → `pm2-root.service` enabled (root cause výpadku: reboot 2. 6. bez startup unitu).
+- **Důvod:** Hans approved REVIEW_PACKET („commit a pokracuj"). Gate FAIL (viz níže) ortogonální k diffu — reprodukováno 4. 6. na čistém stromě, scoring nedotčen diffem.
+- **Dopad:** Repo == produkce. Poller: 5 kreditů/cyklus → Helius FREE tier stačí (~3,6k/měsíc vs 100k limit).
+- **Test:** test-gate kroky 1-15 PASS (72/72 MCP). Krok 16: 19/30 — ROOT CAUSE: 9 LEGIT tokenů je v known_scams (solrpds bulk 13. 4., conf=0.5) a G1 fix (`>=0.5`) jim dal floor 70. **Kohorta conf=0.5 má 14 082 záznamů (42 % DB)** — Hans decision: floor threshold vs DB cleanup vs labels. Krok 17: 3/4 buckety FAIL na 503 — RugCheck free-tier rate limit po ~130 scanech, gate je na live službě strukturálně flaky (96 bucket scanů v řadě limit vyčerpá vždy).
+- **Gotcha:** krok 16 `out=$(curl -sf …)` pod `set -e` → transient HTTP chyba zabije celý gate (exit 22) dřív než graceful handling. Fix v test-gate.sh = sdílený soubor, čeká na potvrzení. Workaround: pre-warm 30 tokenů s 3s rozestupy.
+
+### 2026-06-12: Status review po pauze + REVIEW_PACKET pro živý uncommitted diff — [conductor]
+- **Změny:** `REVIEW_PACKET.md` přepsán (starý z 5. 4. byl stale, whitelist fix dávno merged) — nový packet pro 2 changesety: bypass guard (6. 5.) + x402 scheme (6. 4.), 6 review otázek, commit/rollback plán.
+- **Důvod:** Hans request po návratu k projektu. KLÍČOVÝ NÁLEZ: restart služby 2026-06-10 06:43 nasadil necommitnutý working tree do produkce (memory 5. 6. říkal „NERESTARTOVÁNO") — repo a produkce se rozcházejí.
+- **Dopad:** Druhý nález: VPS reboot 2026-06-02 10:24 zabil PM2 (žádný `pm2 startup`) → solrpds-poller mrtvý, `pool_activity` data končí 2. 6. 10:00. Helius klíč ŽIJE (getHealth 200, nejspíš free tier) — konec předplatného poller nezabil, reboot ano. `dump.pm2` existuje → `pm2 resurrect` možný.
+- **Test:** živý JUP scan → `iris_score: 2, safe` (step-16 LEGIT fail z 4. 6. nereprodukuje); `node --check` server.js+db.js OK; 14× X402_SCHEME / 0× 'exact'; 0 aktivních api_keys; 2 subs `status='active'` ale expirované period_end (stale status sloupec — Q3 v packetu).
+- **Gotcha:** žádná verified platba zatím neprošla novým kódem (payment id=11 je z 5. 6., před restartem). `/status` skill má zastaralou DB cestu (root `intmolt.db` místo `data/intmolt.db`).
+
+### 2026-06-05: API-key bypass guard fail-closed + revokace 4 test klíčů — [backend/db]
+- **Změny:** `db.js` nový `keyEntitlesBypass(keyRecord)` (~ř.892) + const `BYPASS_TIERS=Set('pro','builder','pro_trader')`, export přidán; `server.js:724` gate `if (req.apiKey && await db.keyEntitlesBypass(req.apiKey))`. DB: `api_keys` id 1-4 → `active=0` (revoked_at set).
+- **Důvod:** `if (req.apiKey)` bypass důvěřoval JAKÉMUKOLI aktivnímu klíči bez kontroly placené subscription → 4 test/dev klíče dostávaly placené skilly zdarma. Guard: bypass jen pokud email má AKTIVNÍ NEPROŠLOU sub v BYPASS_TIERS. Fail-closed: chyba/neznámý/expirovaný → propadne na x402.
+- **Dopad:** verifyPayment + x402 per-call cesta NEZMĚNĚNY (gate jen u apiKey bypassu). req.apiKey zůstává nastaven → atribuce/account-auth fungují. keyEntitlesBypass záměrně NEpoužívá getActiveSubscription (ta bere period_end IS NULL jako aktivní = fail-open; tady NULL = deny). Revokace okamžitá (validateApiKey čte active=1 live, žádný cache). 0 aktivních klíčů zbývá.
+- **Test:** node --check server.js+db.js OK; keyEntitlesBypass 7/7 (null/no-email/no-sub/2× expired-sub vč. valid tier/active-builder=true/free-tier=false); pricing+anti-replay+autopilot+verify-pda+free-quota PASS. Per-key RATE LIMIT NENÍ (schéma nemá window/limit sloupec) → oprávněný klíč je unmetered (defer do comp-key tasku).
+- **Backup:** `/root/backups/intmolt-pre-minimal-now-*.db`, `server-pre-*.js`, `db-pre-*.js`.
+- **Gotcha:** NERESTARTOVÁNO — guard kód čeká na Hansův §6 review + restart (restart by deployoval i necommitnutý x402 scheme change z 2026-06-04). Revokace ALE už LIVE (DB). bgIsolation vypnuto v settings.local.json (worktree nemá live DB/node_modules, §9 DB-on-main).
+
+### 2026-06-04: x402 scheme advertisement honest — 'exact' → 'solana-settled' — [backend]
+- **Změny:** `server.js` (nový const `X402_SCHEME='solana-settled'` před quickPaymentAccepts ~ř.768; `scheme:'exact'`→`X402_SCHEME` ve všech 13 accepts blocích, 3 různá zarovnání zachována), `src/docs/generate-x402-discovery.js` (nový `scheme:'solana-settled'` v buildServices + nový top-level `payment_contract` blok se 4 requirements po `version:'2.0'`), `src/docs/generate-openapi.js:32` (`scheme:'exact'`→`'solana-settled'`).
+- **Důvod:** advertised scheme 'exact' (standardní signed-auth/facilitator) klamal standardní x402 klienty — implementace je bespoke facilitator-less settle-then-prove (X-PAYMENT = base64(JSON{transaction:sig})). Děláme advertisement honest.
+- **Dopad:** verifyPayment NEZMĚNĚN (nečte `scheme`/`network`) → zero functional risk. Discovery doc nyní publikuje payment_contract kontrakt. `network`/`asset`/`payTo`/`maxAmountRequired` beze změny.
+- **Test:** `node --check` všech 3 souborů PASS; generátory loadují, emitují 'solana-settled' (service.scheme, payment_contract.scheme, openapi x-payment.scheme); grep 14× X402_SCHEME / 0× scheme:'exact'; pricing-consistency.test.js 15/15 PASS. POZOR: `test-gate.sh` exit 22 — PRE-EXISTING fail v live IRIS accuracy stage (krok 16), reprodukováno na CLEAN tree přes stash (LEGIT tokeny scoring 70, expect ≤24); NESOUVISÍ s touto změnou (stage volá live deployed service přes localhost, ne working tree). Kroky 1–15 zelené.
+- **Gotcha:** NECOMMITNUTO, NERESTARTOVÁNO — sensitive x402 change, čeká na Hansův manuální review (CLAUDE.md §6). `set -e` v test-gate + transient curl timeout v live IRIS stage → script abortuje na různých místech (non-deterministic), ale deterministický symptom je LEGIT misclassifikace v deployed service.
+
 ### 2026-06-04: NGINX hotfix — placené /api/v1/* routy z 301 na 402 — [conductor]
 - **Změny:** `/etc/nginx/sites-available/intmolt` (mimo repo, netrackováno) — 4 explicit `location` bloky PŘED regex `~ ^/api/v1/(.*)$` 301 shim: `= /api/v1/scan/agent-token`, `= /api/v1/scan/token-audit`, `= /api/v1/adversarial/simulate`, `^~ /api/v1/delta/`. Každý `proxy_pass http://127.0.0.1:3402;` (bez URI → plná cesta), proxy_set_header zrcadlené z `/api/v2/` (vč. X-Payment), per-route timeout (agent-token 90s, token-audit 120s, adversarial 420s, delta 150s).
 - **Důvod:** regex 301→/api/v2/ stripoval prefix na neexistující Express `/scan/*` → placené POST routy mountnuté na `/api/v1/*` (server.js:3004/2781/3177/3288) dostaly 301 (zahodí POST body + X-PAYMENT) → 404. Group A scan routy jsou na `/scan/*` a fungují přes `/api/v2/` strip, proto je 301 míjel.
