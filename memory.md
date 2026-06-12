@@ -12,6 +12,13 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-06-12: KOREKCE — Helius Enhanced API 403, poller běží ale bez dat — [conductor]
+- **Změny:** žádné v kódu; korekce dnešního dřívějšího závěru „Helius FREE tier stačí".
+- **Důvod:** Poll cyklus 06:00 po PM2 resurrect: všech 5 DEX → `Helius API 403: Forbidden`. Basic RPC (getHealth) funguje, ale `api.helius.xyz/v0/addresses/{prog}/transactions` (Enhanced API, lib/helius-poller.js:127) je na propadlém plánu zakázané. Reprodukováno přímým curl.
+- **Dopad:** solrpds-poller proces zdravý (PM2+systemd OK), ale pool_activity stojí od 2. 6. → inactivity scanner běží nad stale daty, žádné nové rug flagy. spl_mints feed (Alchemy) nedotčen.
+- **Test:** curl Enhanced API → 403; getHealth → 200; poll log „success:false, Helius API 403" 5/5 DEX.
+- **Gotcha:** Hans decision: (a) Helius dashboard — free tier/nový klíč?, (b) obnovit předplatné, (c) migrace polleru na Alchemy getSignaturesForAddress+getTransaction (ADR-004 konzistentní, pattern v spl-mint-poller, ~půlden db agenta).
+
 ### 2026-06-12: Confidence boundary fix v IRIS scoringu (>= → >) — [backend]
 - **Změny:** src/features/iris-score.js ř. 252 (`conf > 0.5` direct hit), ř. 427–428 (soft floor strict `>` vs soft_floor_min_confidence) + komentáře k base prior. DELETE 87 řádků scan_history (9 cohort adres).
 - **Důvod:** G1 fix 2026-05-21 (`>=`) dal kohortě 14 082 known_scams záznamů conf=0.5 (bulk SolRPDS, nulová korroborace) floor 70/danger. 0.5 = neinformativní base prior (inactivity-scanner.js:114), scanner nikdy nezapíše čistou 0.5. Ground truth 9/9 labelů legit.
