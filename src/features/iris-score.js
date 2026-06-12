@@ -247,7 +247,9 @@ function scoreReputation(enrichment, scamDb, goplus) {
   }
   if (scamDb?.known_scam) {
     const conf = scamDb.known_scam.confidence_score ?? scamDb.known_scam.confidence ?? 0;
-    if (conf >= 0.5) {
+    // 0.5 = uninformative base prior z bulk SolRPDS importu (žádná korroborace);
+    // direct hit vyžaduje confidence STRIKTNĚ nad prior (proto >, ne >=)
+    if (conf > 0.5) {
       s += 35; signals.push({ name: 'scam_db_direct_hit', score: 35 });
     }
   }
@@ -417,11 +419,13 @@ function calculateIRIS_v2(enrichment, scamDb, goplus) {
     .flatMap(d => (d.signals || []).map(s => s.name))
     .filter(Boolean);
 
-  // Floor 1: known_scam soft floor — only if scam_db_confidence > min_confidence
+  // Floor 1: known_scam soft floor — only if scam_db_confidence STRICTLY > min_confidence.
+  // min_confidence (0.5) = uninformative base prior z bulk SolRPDS importu (nulová korroborace);
+  // floor vyžaduje confidence striktně nad prior, proto >, ne >= (G1 boundary fix 2026-06-12).
   const knownScam = scamDb?.known_scam || null;
   const confidence = knownScam?.confidence_score ?? knownScam?.confidence ?? 0;
-  const hasHighConfidenceKnownScam = (knownScam != null && confidence >= T.soft_floor_min_confidence);
-  if (confidence >= T.soft_floor_min_confidence) {
+  const hasHighConfidenceKnownScam = (knownScam != null && confidence > T.soft_floor_min_confidence);
+  if (confidence > T.soft_floor_min_confidence) {
     const floor = T.soft_floor_offset + confidence * T.soft_floor_scale;
     if (total < floor) total = floor;
   }

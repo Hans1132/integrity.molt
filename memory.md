@@ -12,6 +12,13 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-06-12: Confidence boundary fix v IRIS scoringu (>= → >) — [backend]
+- **Změny:** src/features/iris-score.js ř. 252 (`conf > 0.5` direct hit), ř. 427–428 (soft floor strict `>` vs soft_floor_min_confidence) + komentáře k base prior. DELETE 87 řádků scan_history (9 cohort adres).
+- **Důvod:** G1 fix 2026-05-21 (`>=`) dal kohortě 14 082 known_scams záznamů conf=0.5 (bulk SolRPDS, nulová korroborace) floor 70/danger. 0.5 = neinformativní base prior (inactivity-scanner.js:114), scanner nikdy nezapíše čistou 0.5. Ground truth 9/9 labelů legit.
+- **Dopad:** Cohort conf=0.5 ztrácí soft floor i +35 direct hit. Conf>0.5 beze změny (0.9→floor 86).
+- **Test:** Scany po fixu: 3tS6…np69=8/safe, Av6q…9eNm=5/safe, AT79…DMQY=54/caution; SCAM AEun…1kVo=86/danger (zachováno); JUP=2/safe. `node --check` PASS.
+- **Backup:** /root/backups/iris-score-pre-conf-boundary-20260612-0552.js, /root/backups/intmolt-pre-cache-clear-20260612-0552.db
+
 ### 2026-06-12: Commit živých změn + PM2 resurrect/systemd + IRIS root cause — [conductor]
 - **Změny:** Commit `b7af0e4` fix(auth) bypass guard (db.js+server.js), `b521fab` feat(payment) scheme 'solana-settled' (generátory). `pm2 resurrect` → solrpds-poller + bitquery online; `pm2 startup systemd` + `pm2 save` → `pm2-root.service` enabled (root cause výpadku: reboot 2. 6. bez startup unitu).
 - **Důvod:** Hans approved REVIEW_PACKET („commit a pokracuj"). Gate FAIL (viz níže) ortogonální k diffu — reprodukováno 4. 6. na čistém stromě, scoring nedotčen diffem.
