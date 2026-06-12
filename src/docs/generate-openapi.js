@@ -29,7 +29,7 @@ function buildPayment(pricingKey, path, usdcAta) {
   }
   return {
     version:       1,
-    scheme:        'exact',
+    scheme:        'solana-settled',
     network:       'solana-mainnet',
     asset:         'USDC',
     amount,

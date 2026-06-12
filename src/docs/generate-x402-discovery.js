@@ -51,6 +51,7 @@ function buildServices(usdcAta) {
     return {
       path:        `/api/v1${displayPath}`.replace('/api/v1/api/', '/api/'),  // avoid double prefix for already-prefixed paths
       method:      spec.method,
+      scheme:      'solana-settled',
       description: spec.description,
       price,
       currency:    'USDC',
@@ -79,6 +80,18 @@ function generateX402Discovery(usdcAta) {
     x402:         true,
     x402_version: '2.0',
     version:      '2.0',
+    payment_contract: {
+      scheme:      'solana-settled',
+      style:       'facilitator-less, settle-then-prove (NOT standard x402 "exact")',
+      header:      'X-PAYMENT',
+      envelope:    'base64(JSON.stringify({ "transaction": "<USDC transfer signature>" }))',
+      requirements: [
+        'Transfer >= maxAmountRequired micro-USDC of `asset` to `payTo` on Solana mainnet yourself.',
+        'Wait for the transfer to confirm, then take its transaction signature.',
+        'Send NO Authorization/API-key header on a pay-per-call request.',
+        'Each signature is single-use (atomic anti-replay) — one fresh transfer per call.'
+      ]
+    },
     agent: {
       name:                'integrity.molt',
       agent_id:            '2tWPw22bqgLaLdYCwe7599f7guQudwKpCCta4gvhgZZy',
