@@ -889,6 +889,34 @@ async function validateApiKey(rawKey) {
   return db.prepare('SELECT * FROM api_keys WHERE key_hash = ? AND active = 1 LIMIT 1').get(hash) || null;
 }
 
+// Tiery, jejichž aktivní (neprošlá) subscription opravňuje k x402 payment bypassu.
+// CONFIRM s Hansem které tiery mají API access. Prázdná množina = deny-all (fail-closed).
+// 'builder' = marketing tier s "API access (100 req/min)" (server.js:1598).
+const BYPASS_TIERS = new Set(['pro', 'builder', 'pro_trader']);
+
+// Fail-closed entitlement check: klíč opravňuje k x402 bypassu JEN pokud jeho email
+// má AKTIVNÍ, NEPROŠLOU subscription v jednom z BYPASS_TIERS. Cokoli jiného / chyba → false.
+// verifyPayment ani x402 per-call cesta se tím NEMĚNÍ — gate jen u apiKey bypassu.
+// POZN: záměrně NEpoužívá getActiveSubscription() — ta bere current_period_end IS NULL
+// jako "aktivní napořád" (fail-open). Tady NULL period_end = NEoprávněn (fail-closed).
+async function keyEntitlesBypass(keyRecord) {
+  try {
+    if (!keyRecord || !keyRecord.email) return false;
+    const sub = db.prepare(`
+      SELECT tier FROM subscriptions
+      WHERE email = ?
+        AND status = 'active'
+        AND datetime(current_period_end) > datetime('now')
+      ORDER BY datetime(current_period_end) DESC
+      LIMIT 1
+    `).get(keyRecord.email);
+    return !!sub && BYPASS_TIERS.has(sub.tier);
+  } catch (e) {
+    console.error('[api-key] entitlement check failed → deny:', e.message);
+    return false;  // fail-closed: jakákoli chyba = žádný bypass
+  }
+}
+
 async function incrementApiKeyUsage(id) {
   db.prepare(
     "UPDATE api_keys SET usage_count = usage_count + 1, last_used_at = datetime('now') WHERE id = ?"
@@ -1755,7 +1783,7 @@ module.exports = {
   addUserWatchlistEntry, removeUserWatchlistEntry, getUserWatchlist,
   upsertSubscription, getActiveSubscription, getActiveSubscriptionByChatId,
   countWatchlistForEmail, countWatchlistForChat,
-  createApiKey, validateApiKey, incrementApiKeyUsage, listApiKeys, revokeApiKey,
+  createApiKey, validateApiKey, incrementApiKeyUsage, listApiKeys, revokeApiKey, keyEntitlesBypass,
   logScanToHistory, getScanHistory, getCachedScanFromDb,
   getAdForPlacement, trackAdImpression, trackAdClick, listAds, createAd, updateAd,
   // Users (přesunuto z auth.js)

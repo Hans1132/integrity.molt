@@ -720,8 +720,11 @@ async function requireApiKey(req, res, next) {
 
 function requirePayment(accepts, requiredMicroUsdc = 0) {
   return async (req, res, next) => {
-    // Subscribers s platným API klíčem přeskočí x402 platební bránu
-    if (req.apiKey) {
+    // Subscribers přeskočí x402 JEN pokud je klíč krytý AKTIVNÍ placenou subscription.
+    // Fail-closed: jakýkoli jiný stav (neznámý/expirovaný/free-tier klíč, chyba) → žádný
+    // bypass → propadne na xPayment kontrolu níže (402, pokud není validní X-PAYMENT).
+    // req.apiKey zůstává nastaven pro atribuci/labeling i když bypass neprojde.
+    if (req.apiKey && await db.keyEntitlesBypass(req.apiKey)) {
       req.paymentVerified = true;
       return next();
     }
@@ -765,8 +768,12 @@ function requirePayment(accepts, requiredMicroUsdc = 0) {
   };
 }
 
+// Bespoke, facilitator-less settle-then-prove contract — NOT standard x402 "exact".
+// verifyPayment never reads this field; it only labels the advertisement honestly.
+const X402_SCHEME = 'solana-settled';
+
 const quickPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING.quick),
   resource: 'https://intmolt.org/api/v2/scan/quick',
@@ -793,7 +800,7 @@ const quickPaymentAccepts = [{
 }];
 
 const deepPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING.deep),
   resource: 'https://intmolt.org/api/v2/scan/deep',
@@ -820,7 +827,7 @@ const deepPaymentAccepts = [{
 }];
 
 const tokenAuditPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING.token),
   resource: 'https://intmolt.org/api/v2/scan/token',
@@ -847,7 +854,7 @@ const tokenAuditPaymentAccepts = [{
 }];
 
 const walletProfilePaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING.wallet),
   resource: 'https://intmolt.org/api/v2/scan/wallet',
@@ -874,7 +881,7 @@ const walletProfilePaymentAccepts = [{
 }];
 
 const poolScanPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING.pool),
   resource: 'https://intmolt.org/api/v2/scan/pool',
@@ -901,7 +908,7 @@ const poolScanPaymentAccepts = [{
 }];
 
 const evmTokenPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING['evm-token']),
   resource: 'https://intmolt.org/api/v2/scan/evm-token',
@@ -917,7 +924,7 @@ const evmTokenPaymentAccepts = [{
 }];
 
 const evmScanPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING['evm-scan']),
   resource: 'https://intmolt.org/api/v2/scan/evm',
@@ -933,7 +940,7 @@ const evmScanPaymentAccepts = [{
 }];
 
 const contractAuditPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING.contract),
   resource: 'https://intmolt.org/api/v2/scan/contract',
@@ -968,7 +975,7 @@ const contractAuditPaymentAccepts = [{
 }];
 
 const tokenSecurityAuditPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING['token-audit']),
   resource: 'https://intmolt.org/api/v1/scan/token-audit',
@@ -1015,7 +1022,7 @@ const tokenSecurityAuditPaymentAccepts = [{
 
 // ── Agent Token Scan payment accepts (0.15 USDC = 150000 micro-USDC) ─────────
 const agentTokenPaymentAccepts = [{
-  scheme: 'exact',
+  scheme: X402_SCHEME,
   network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING['agent-token']),
   resource: 'https://intmolt.org/api/v1/scan/agent-token',
@@ -1156,7 +1163,7 @@ const a2aOracleRouter = require('./src/routes/a2a-oracle');
 
 // Governance endpoint payment accepts (0.15 USDC = 150_000 micro-USDC)
 const governancePaymentAccepts = [{
-  scheme:            'exact',
+  scheme:            X402_SCHEME,
   network:           'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING['governance-change'] || 150_000),
   resource:          'https://intmolt.org/monitor/v1/governance-change',
@@ -3114,7 +3121,7 @@ app.post(
 // POST /api/v1/adversarial/simulate           — run simulation (paid, 10.00 USDC)
 
 const adversarialPaymentAccepts = [{
-  scheme:            'exact',
+  scheme:            X402_SCHEME,
   network:           'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING.adversarial),
   resource:          'https://intmolt.org/api/v1/adversarial/simulate',
@@ -3236,7 +3243,7 @@ app.post(
 // GET  /api/v1/delta/:address/:ts1/:ts2 — delta between two specific snapshots (paid)
 
 const deltaPaymentAccepts = [{
-  scheme:           'exact',
+  scheme:           X402_SCHEME,
   network:          'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
   maxAmountRequired: String(PRICING.delta),
   resource:         'https://intmolt.org/api/v1/delta',
