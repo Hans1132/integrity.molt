@@ -2,14 +2,14 @@
 require('dotenv').config({ path: '/root/x402-server/.env' });
 
 const cron = require('node-cron');
-const { pollAllDexes } = require('../lib/helius-poller');
+const { pollAllDexes } = require('../lib/alchemy-dex-poller');
 const { scanForInactivity } = require('../lib/inactivity-scanner');
 
 console.log('[solrpds-poller] Starting SolRPDS extension poller...');
 
 // Hourly Helius poll at :00
 cron.schedule('0 * * * *', async () => {
-  console.log('[POLL] Starting hourly Helius poll cycle');
+  console.log('[POLL] Starting hourly Alchemy poll cycle');
   try {
     const results = await pollAllDexes();
     console.log('[POLL] Cycle complete:', JSON.stringify(results));
@@ -39,4 +39,4 @@ setTimeout(async () => {
   }
 }, 30000);
 
-console.log('[solrpds-poller] Scheduled: Helius poll at :00, inactivity scan at :30');
+console.log('[solrpds-poller] Scheduled: Alchemy poll at :00, inactivity scan at :30');
