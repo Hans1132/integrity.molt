@@ -1,0 +1,91 @@
+{
+  "enrichment": {
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "external_sources": {
+      "rugcheck": {
+        "source": "rugcheck",
+        "score": 1,
+        "score_normalised": 1,
+        "risk_level": "good",
+        "rugged": false,
+        "risks": [],
+        "insiders_detected": 0,
+        "insider_networks": null,
+        "top_holders": [],
+        "total_liquidity_usd": 0,
+        "lp_locked_pct": null,
+        "mint_authority": {
+          "lamports": 55633622,
+          "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "data": [
+            "AgQBLPbkMyvhlW/NY/UMLCX4IA6DrDDRu5UmhitYZDqPNOyik5PMhjOpmmazSFqVh/Vv5h31XQ8tqe3MRsGpxFSTNgL8blIMCOkM9KO2ir4ZvJZgoXYZrZ/GsNfoJa2EBe7g+3xHeFhsNO5/G3sQykquyPazZClsPm6dZL4Ig2wqHi0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+            "base64"
+          ],
+          "executable": false,
+          "rentEpoch": 18446744073709552000,
+          "space": 355
+        },
+        "freeze_authority": {
+          "lamports": 16361680,
+          "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "data": [
+            "AgQBj3k+MN0UzDQyerBJ6uO0Yvxb2F4gK1ODmR9Bvh1FuKh2PX4D8tcWavPnxWaeYuQdyVDGLNX0SwM/uQdtzuMopNJcfBVeMdoga//wzFhe1gzNwdINlto5j0p9FC2+7Vu3Rx0Dao6xJQ5z2prdkBPMRhzvqHQv7MkOOxUovEiolBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+            "base64"
+          ],
+          "executable": false,
+          "rentEpoch": 18446744073709552000,
+          "space": 355
+        },
+        "token_program": "spl-token",
+        "verified": true,
+        "verification_meta": {
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "payer": "",
+          "name": "USD Coin",
+          "symbol": "usdc",
+          "description": "",
+          "jup_verified": true,
+          "jup_strict": true,
+          "links": []
+        },
+        "launchpad": null,
+        "markets_count": 0,
+        "creator": "2wmVCSfPxGPjrnMMn7rchp4uaeoTqN39mXFC2zhPdri9",
+        "rugged_events": [],
+        "fetched_at": "2026-06-17T07:46:23.867Z"
+      },
+      "solana_tracker": null
+    },
+    "token_extensions": {
+      "is_token_2022": false,
+      "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "extensions": []
+    },
+    "aggregated_risk": {
+      "score": 25,
+      "risk_level": "safe",
+      "flags": [
+        "freeze_authority_active",
+        "mint_authority_active",
+        "verified"
+      ]
+    },
+    "data_confidence": {
+      "sources_queried": 3,
+      "sources_responded": 2,
+      "timestamp": "2026-06-17T07:46:23.959Z",
+      "enrich_ms": 93
+    }
+  },
+  "goplus": {
+    "source_health": "ok",
+    "is_malicious": 0,
+    "can_buy": null,
+    "can_sell": null,
+    "cannot_sell_all": null,
+    "transfer_fee": null,
+    "blacklist_function": null,
+    "slippage_modifiable": null,
+    "risk_count": 0
+  }
+}

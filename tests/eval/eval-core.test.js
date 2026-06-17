@@ -60,5 +60,38 @@ test('empty id → error', () => {
   assert.ok(validateGoldEntry(bad).some(e => e.includes('id')));
 });
 
+// ── Task 4: eval-core + leakage guard ─────────────────────────────────────
+const { evalToken, EVAL_SCAM_DB } = require('../../scripts/eval/lib/eval-core');
+const { calculateIRIS_v2 } = require('../../src/features/iris-score');
+const sampleSnapshot = require('./fixtures/sample-enrichment.json');
+
+test('LEAKAGE GUARD: empty scamDb yields LOW score; injected known_scam floors it high', () => {
+  const { enrichment, goplus } = sampleSnapshot;
+  const guarded = calculateIRIS_v2(enrichment, EVAL_SCAM_DB, goplus);
+  const leaked  = calculateIRIS_v2(enrichment, { known_scam: { confidence: 0.9 }, scam_creators: null, whitelisted: false }, goplus);
+  // Guard path must NOT apply the known_scam floor:
+  assert.ok(guarded.score < 86, `guarded score should be below soft floor 86, got ${guarded.score}`);
+  // Leaked path (real scamDb) WOULD apply Floor 1 (50 + 0.9*40 = 86):
+  assert.ok(leaked.score >= 86, `leaked score should hit floor >=86, got ${leaked.score}`);
+  // Proves EVAL_SCAM_DB bypasses the leakage floor:
+  assert.ok(guarded.score < leaked.score, 'guard must produce a strictly lower score than the leaked path');
+});
+
+test('EVAL_SCAM_DB is frozen and carries no known_scam / whitelist', () => {
+  assert.strictEqual(EVAL_SCAM_DB.known_scam, null);
+  assert.strictEqual(EVAL_SCAM_DB.whitelisted, false);
+  assert.ok(Object.isFrozen(EVAL_SCAM_DB));
+});
+
+test('evalToken is deterministic (same snapshot → same score) and returns match fields', () => {
+  const token = { category: 'legit', label: { verdict: 'safe', score_range: [0, 39] },
+                  must_flag: [], must_not_flag: ['nonexistent_factor_xyz'], snapshot: sampleSnapshot };
+  const r1 = evalToken(token);
+  const r2 = evalToken(token);
+  assert.strictEqual(r1.predictedScore, r2.predictedScore, 'eval must be deterministic');
+  assert.ok('verdictMatch' in r1 && 'scoreInRange' in r1 && 'mustFlagOk' in r1 && 'mustNotFlagOk' in r1);
+  assert.strictEqual(r1.mustNotFlagOk, true, 'a non-existent factor must not be flagged');
+});
+
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
