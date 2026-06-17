@@ -4461,7 +4461,7 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
   if (!address) return res.status(400).json({ error: 'Missing address' });
 
   // Matematická CAPTCHA verifikace (přeskočí se pro interní A2A volání ze stejného serveru)
-  const isInternalA2A = req.headers['x-a2a-caller'] === '1' && _getClientIp(req) === '127.0.0.1';
+  const isInternalA2A = req.headers['x-a2a-caller'] === '1' && isInternalCall(req);
   const captchaOk = isInternalA2A || verifyCaptcha(captchaToken, captchaAnswer);
   if (!captchaOk) {
     logAbuseEvent(_getClientIp(req), 'captcha_failed', { reason: 'invalid_answer' });
