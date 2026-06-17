@@ -23,6 +23,9 @@ data/*
 data/ground-truth/*
 !data/ground-truth/gold-v1.json
 !data/ground-truth/SCHEMA.md
+!data/ground-truth/reports/
+data/ground-truth/reports/*
+!data/ground-truth/reports/.gitkeep
 logs/
 *.log
 server.log
