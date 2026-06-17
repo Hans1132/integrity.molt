@@ -1808,7 +1808,7 @@ const validateSolanaAddress = (req, res, next) => {
   next();
 };
 
-app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, async (req, res) => {
+app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, checkFreeQuota, async (req, res) => {
   const ip = _getClientIp(req);
   if (ip !== '127.0.0.1') {
     if (_freeScanRL.size >= _FREE_SCAN_RL_MAX) {
@@ -1828,21 +1828,10 @@ app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, as
   const address = req.body?.address || req.body?.target;
   const safeAddress = address; // validated by validateSolanaAddress middleware
 
-  if (!isInternalCall(req)) {
-    const quota = getQuotaStatus(ip);
-    if (quota.remaining <= 0) {
-      return res.status(429).json({
-        error:       'Daily free scan limit reached',
-        message:     `You've used ${quota.used}/${quota.limit} free scans today. Limit resets at midnight UTC.`,
-        used:        quota.used,
-        limit:       quota.limit,
-        remaining:   0,
-        resets_at:   'midnight UTC',
-        upgrade_url: 'https://intmolt.org/scan',
-      });
-    }
-    consumeFreeQuota(ip);
-  }
+  // Daily free-tier quota is enforced atomically by the checkFreeQuota middleware
+  // above (check + consume in one transaction, internal calls skipped). The prior
+  // inline getQuotaStatus()+consumeFreeQuota() pair never consumed — consumeFreeQuota
+  // is a no-op outside the middleware — so the per-IP/day cap was never applied here.
 
   try {
     const [enrichment, scamDb, accountRes] = await Promise.all([
@@ -4472,10 +4461,10 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
   if (!address) return res.status(400).json({ error: 'Missing address' });
 
   // Matematická CAPTCHA verifikace (přeskočí se pro interní A2A volání ze stejného serveru)
-  const isInternalA2A = req.headers['x-a2a-caller'] === '1' && req.ip === '127.0.0.1';
+  const isInternalA2A = req.headers['x-a2a-caller'] === '1' && _getClientIp(req) === '127.0.0.1';
   const captchaOk = isInternalA2A || verifyCaptcha(captchaToken, captchaAnswer);
   if (!captchaOk) {
-    logAbuseEvent(req.ip, 'captcha_failed', { reason: 'invalid_answer' });
+    logAbuseEvent(_getClientIp(req), 'captcha_failed', { reason: 'invalid_answer' });
     return res.status(403).json({ error: 'CAPTCHA verification failed', captcha_required: true });
   }
   if (!['quick', 'deep', 'token', 'wallet', 'pool', 'evm-token', 'contract', 'agent-token'].includes(type)) {
@@ -4561,7 +4550,7 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
     });
   }
 
-  const ip          = req.ip;
+  const ip          = _getClientIp(req);
   const quotaStatus = getQuotaStatus(ip);
   const used        = quotaStatus.used;
 
