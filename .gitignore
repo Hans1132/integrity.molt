@@ -19,6 +19,10 @@ data/*
 !data/legit-tokens.json
 !data/rules-v2.json
 !data/rules-v2.weights.md
+!data/ground-truth/
+data/ground-truth/*
+!data/ground-truth/gold-v1.json
+!data/ground-truth/SCHEMA.md
 logs/
 *.log
 server.log

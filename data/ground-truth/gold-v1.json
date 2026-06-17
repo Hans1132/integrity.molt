@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "frozen_at": "2026-06-17",
+    "snapshot_level": "findings (enrichment+goplus)",
+    "verdict_enum": "safe|caution|danger (lowercase, classifyRisk)",
+    "counts": { "scam": 0, "legit": 2, "edge": 0 },
+    "split": { "tune": 1, "holdout": 1 },
+    "stop_criteria": null,
+    "note": "Seed kotva. Cíl 100/100/100 přes scripts/eval/capture.js + ruční label."
+  },
+  "tokens": [
+    {
+      "id": "gt-0001",
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "symbol": "USDC", "name": "USD Coin",
+      "category": "legit", "split": "tune",
+      "label": { "verdict": "safe", "score_range": [0, 39], "scam_type": null,
+                 "anchor_confidence": 1.0, "verified_at": "2026-06-17", "verified_by": "hans",
+                 "rationale": "Circle stablecoin, mint/freeze authority null" },
+      "sources": [{ "name": "onchain", "verdict": "confirmed" }],
+      "snapshot": { "enrichment": {}, "goplus": {} },
+      "must_flag": [], "must_not_flag": ["authority_active"]
+    },
+    {
+      "id": "gt-0002",
+      "mint": "So11111111111111111111111111111111111111112",
+      "symbol": "wSOL", "name": "Wrapped SOL",
+      "category": "legit", "split": "holdout",
+      "label": { "verdict": "safe", "score_range": [0, 39], "scam_type": null,
+                 "anchor_confidence": 1.0, "verified_at": "2026-06-17", "verified_by": "hans",
+                 "rationale": "Canonical wrapped SOL" },
+      "sources": [{ "name": "onchain", "verdict": "confirmed" }],
+      "snapshot": { "enrichment": {}, "goplus": {} },
+      "must_flag": [], "must_not_flag": ["authority_active"]
+    }
+  ]
+}
