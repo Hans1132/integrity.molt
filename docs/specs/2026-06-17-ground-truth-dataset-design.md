@@ -37,7 +37,7 @@ Security oracle stojí a padá s přesností verdiktů. Současný stav to ale n
 
 Čtyři oddělené jednotky, každá samostatně testovatelná:
 
-```
+```text
                     ┌─────────────────────────────┐
                     │  1. GOLD ANCHOR (immutable)  │
                     │  data/ground-truth/          │
@@ -187,7 +187,7 @@ Recall(scam) a FPR jsou **dvě oddělené primární metriky** — chyby jsou as
 
 **Princip:** scanner kandidáta jen navrhne, label rozhodne nezávislá verifikace.
 
-```
+```text
 1. TRIGGER (automatický, z harness)
    scanner ≠ realita → zápis do gold_candidates
    - false_negative: scanner řekl SAFE, ale zdroje křičí scam
@@ -217,7 +217,7 @@ Recall(scam) a FPR jsou **dvě oddělené primární metriky** — chyby jsou as
 
 **Stop kritéria nejsou hádaná čísla** (memory `feedback_evidence_over_guesswork`). Vzejdou z první kalibrace.
 
-```
+```text
 FÁZE 0 — Baseline (jednorázově)
   harness s aktuální rules-v2.json proti gold-v1 (jen tune split, 240)
   → zmraz baseline metriky do data/ground-truth/baseline.json
@@ -236,7 +236,7 @@ FÁZE 3 — Promoce (občas, viz sekce 6) → re-baseline
 ```
 
 **Regresní brána** (`test-gate.sh`) — **non-regression, ne absolutní cíl:**
-```
+```text
 PASS pokud: recall_scam ≥ baseline.recall_scam − tolerance
        AND: FPR        ≤ baseline.FPR        + tolerance
        AND: žádný must_flag/must_not_flag regres
@@ -269,4 +269,10 @@ TDD, temp SQLite + syntetické fixtures, nikdy živá data (vzor `scripts/test-s
 - Pořadí stavby: schéma + seed gold → harness + leakage guard → baseline → ladící smyčka → promotion + staging → regresní brána.
 - Skutečný formát výstupu scanner pipeline (verdikt enum, score škála) ověřit proti `handler.js` / scannerům před psaním harness comparátoru.
 - Zdroj 300 kandidátů na seed: SolRPDS (scam), Jupiter validated list (legit), edge ručně z historických false positives. Sběr je agent-assisted, label rozhoduje Hans.
-- Konkrétní `tolerance` v regresní bráně — také deferred, z baseline variability.
+- **Sekvenční závislost baseline → brána (deferred calibration):** regresní brána (sekce 7) a její test (sekce 8) NEJDOU napsat s konkrétními assertions, dokud neproběhne Fáze 0. Pořadí je vynucené:
+  1. **Fáze 0 — baseline run** změří metriky a jejich variabilitu na tune splitu (240).
+  2. Z naměřené variability se odvodí konkrétní `tolerance` hodnoty (ne odhad — viz `feedback_evidence_over_guesswork`).
+  3. **Teprve pak** se test regresní brány (`test-gate.sh`) napíše s těmi konkrétními čísly.
+  4. **Teprve pak** se brána zapne jako blokující v CI.
+
+  Proto `stop_criteria: null` ve schématu (sekce 4) a chybějící čísla v sekcích 7–8 nejsou nedokončené — jsou to vědomé deferred-calibration placeholdery, které se doplní po baseline běhu.
