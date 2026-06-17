@@ -79,10 +79,25 @@ async function asyncSign(reportText, scriptPath) {
   await _acquireSemaphore();
   return new Promise((resolve, reject) => {
     const script = scriptPath || SIGN_SCRIPT;
+    // settled guard: the semaphore must be released EXACTLY once per acquire and
+    // the promise settled once — regardless of which event fires (close / error /
+    // stdin EPIPE) or whether JSON.parse throws on the success path. Previously the
+    // success branch released the semaphore and then a JSON.parse failure routed
+    // into fail(), which released it a SECOND time, drifting _active negative and
+    // breaking the concurrency cap.
+    let settled = false;
     const fail = (msg) => {
+      if (settled) return;
+      settled = true;
       _releaseSemaphore();
       _recordFailure(msg);
       reject(new SignPipelineError(msg));
+    };
+    const succeed = (val) => {
+      if (settled) return;
+      settled = true;
+      _releaseSemaphore();
+      resolve(val);
     };
     const proc = spawn('python3', [script], { timeout: SIGN_TIMEOUT_MS });
     let stdout = '';
@@ -91,12 +106,14 @@ async function asyncSign(reportText, scriptPath) {
     proc.stderr.on('data', d => { stderr += d; });
     proc.on('close', code => {
       if (code === 0) {
+        let parsed;
         try {
-          _releaseSemaphore();
-          resolve(JSON.parse(stdout.trim()));
+          parsed = JSON.parse(stdout.trim());
         } catch {
           fail('sign-report.py invalid JSON: ' + stdout.slice(0, 200));
+          return;
         }
+        succeed(parsed);
       } else {
         fail('sign-report.py exited ' + code + ': ' + stderr.slice(0, 200));
       }
@@ -136,4 +153,8 @@ function buildMetaplexAgentPayload(auditData) {
   };
 }
 
-module.exports = { asyncSign, canonicalJSON, SignPipelineError, SIGN_SCRIPT, buildMetaplexAgentPayload };
+// Test-only: current semaphore in-flight count. Lets tests assert the semaphore
+// is released EXACTLY once per acquire (a double-release drifts this negative).
+function _activeCountForTest() { return _active; }
+
+module.exports = { asyncSign, canonicalJSON, SignPipelineError, SIGN_SCRIPT, buildMetaplexAgentPayload, _activeCountForTest };
