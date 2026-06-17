@@ -26,6 +26,7 @@ data/ground-truth/*
 !data/ground-truth/reports/
 data/ground-truth/reports/*
 !data/ground-truth/reports/.gitkeep
+!data/ground-truth/baseline.json
 logs/
 *.log
 server.log
