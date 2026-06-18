@@ -1,38 +1,2763 @@
 {
   "_meta": {
     "version": "1.0",
-    "frozen_at": "2026-06-17",
+    "frozen_at": "2026-06-18",
     "snapshot_level": "findings (enrichment+goplus)",
     "verdict_enum": "safe|caution|danger (lowercase, classifyRisk)",
-    "counts": { "scam": 0, "legit": 2, "edge": 0 },
-    "split": { "tune": 1, "holdout": 1 },
+    "counts": {
+      "scam": 5,
+      "legit": 6,
+      "edge": 5
+    },
+    "split": {
+      "tune": 13,
+      "holdout": 3
+    },
     "stop_criteria": null,
-    "note": "Seed kotva. Cíl 100/100/100 přes scripts/eval/capture.js + ruční label."
+    "note": "Seed kotva s 16 reálnými tokeny z golden-dataset migrace."
   },
   "tokens": [
     {
       "id": "gt-0001",
       "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-      "symbol": "USDC", "name": "USD Coin",
-      "category": "legit", "split": "tune",
-      "label": { "verdict": "safe", "score_range": [0, 39], "scam_type": null,
-                 "anchor_confidence": 1.0, "verified_at": "2026-06-17", "verified_by": "hans",
-                 "rationale": "Circle stablecoin, mint/freeze authority null" },
-      "sources": [{ "name": "onchain", "verdict": "confirmed" }],
-      "snapshot": { "enrichment": {}, "goplus": {} },
-      "must_flag": [], "must_not_flag": ["authority_active"]
+      "symbol": "USDC",
+      "name": "USDC",
+      "category": "legit",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Circle stablecoin, mint authority = null, freeze authority = null, rugcheck score 0"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "safe"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 1,
+              "score_normalised": 1,
+              "risk_level": "good",
+              "rugged": false,
+              "risks": [],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [],
+              "total_liquidity_usd": 0,
+              "lp_locked_pct": null,
+              "mint_authority": {
+                "lamports": 55633622,
+                "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                "data": [
+                  "AgQBLPbkMyvhlW/NY/UMLCX4IA6DrDDRu5UmhitYZDqPNOyik5PMhjOpmmazSFqVh/Vv5h31XQ8tqe3MRsGpxFSTNgL8blIMCOkM9KO2ir4ZvJZgoXYZrZ/GsNfoJa2EBe7g+3xHeFhsNO5/G3sQykquyPazZClsPm6dZL4Ig2wqHi0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+                  "base64"
+                ],
+                "executable": false,
+                "rentEpoch": 18446744073709552000,
+                "space": 355
+              },
+              "freeze_authority": {
+                "lamports": 16361680,
+                "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                "data": [
+                  "AgQBj3k+MN0UzDQyerBJ6uO0Yvxb2F4gK1ODmR9Bvh1FuKh2PX4D8tcWavPnxWaeYuQdyVDGLNX0SwM/uQdtzuMopNJcfBVeMdoga//wzFhe1gzNwdINlto5j0p9FC2+7Vu3Rx0Dao6xJQ5z2prdkBPMRhzvqHQv7MkOOxUovEiolBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+                  "base64"
+                ],
+                "executable": false,
+                "rentEpoch": 18446744073709552000,
+                "space": 355
+              },
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                "payer": "",
+                "name": "USD Coin",
+                "symbol": "usdc",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": null,
+              "markets_count": 0,
+              "creator": "2wmVCSfPxGPjrnMMn7rchp4uaeoTqN39mXFC2zhPdri9",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:08.167Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 25,
+            "risk_level": "safe",
+            "flags": [
+              "freeze_authority_active",
+              "mint_authority_active",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:08.238Z",
+            "enrich_ms": 72
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
     },
     {
       "id": "gt-0002",
+      "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "symbol": "USDT",
+      "name": "USDT",
+      "category": "legit",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Tether stablecoin, mint authority = null, freeze authority = null, rugcheck score 0"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "safe"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 1,
+              "score_normalised": 1,
+              "risk_level": "good",
+              "rugged": false,
+              "risks": [],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [],
+              "total_liquidity_usd": 0,
+              "lp_locked_pct": null,
+              "mint_authority": {
+                "lamports": 2608126885,
+                "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                "data": [
+                  "AgMBS7YGegyWfbBxbp6MBfJJnKdbYzMabgb7UrR74dgBuVcOjJuYVChoSv0PZHDucrNpFucW9sbzfjYEGptxGuscnIZ9sLqXqI+h14k/NiZKGacqFw32d54mWSrShzev487yAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+                  "base64"
+                ],
+                "executable": false,
+                "rentEpoch": 18446744073709552000,
+                "space": 355
+              },
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+                "payer": "",
+                "name": "USDT",
+                "symbol": "usdt",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": null,
+              "markets_count": 0,
+              "creator": "Q6XprfkF8RQQKoQVG33xT88H7wi8Uk1B1CC7YAs69Gi",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:08.408Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 10,
+            "risk_level": "safe",
+            "flags": [
+              "mint_authority_active",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:08.476Z",
+            "enrich_ms": 69
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0003",
       "mint": "So11111111111111111111111111111111111111112",
-      "symbol": "wSOL", "name": "Wrapped SOL",
-      "category": "legit", "split": "holdout",
-      "label": { "verdict": "safe", "score_range": [0, 39], "scam_type": null,
-                 "anchor_confidence": 1.0, "verified_at": "2026-06-17", "verified_by": "hans",
-                 "rationale": "Canonical wrapped SOL" },
-      "sources": [{ "name": "onchain", "verdict": "confirmed" }],
-      "snapshot": { "enrichment": {}, "goplus": {} },
-      "must_flag": [], "must_not_flag": ["authority_active"]
+      "symbol": "wSOL",
+      "name": "wSOL",
+      "category": "legit",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Canonical wrapped native SOL, system token, mint/freeze null"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "safe"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "So11111111111111111111111111111111111111112",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 1,
+              "score_normalised": 1,
+              "risk_level": "good",
+              "rugged": false,
+              "risks": [],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [],
+              "total_liquidity_usd": 0,
+              "lp_locked_pct": null,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "So11111111111111111111111111111111111111112",
+                "payer": "GTTdTzrvHA5NWf4CcbHzSzqNE8uTkntTHQhb38G18wiU",
+                "name": "Wrapped SOL",
+                "symbol": "sol",
+                "description": "POWERFUL for DEVS. Fast for EVERYONE.\nBring BLOCKCHAIN to the PEEPS.\nSOLANA supports experiences for POWERFUL USERS, NEW CONSUMERS, and EVERYONE inbetween. no matter what RACE or what CREED!\n*** WELCOME ABOARD THE SOLANA TRAIN ***",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": null,
+              "markets_count": 0,
+              "creator": "AqH29mZfQFgRpfwaPoTMWSKJ5kqauoc1FwVBRksZyQrt",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:08.645Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 0,
+            "risk_level": "safe",
+            "flags": [
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:08.719Z",
+            "enrich_ms": 75
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0004",
+      "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "symbol": "JUP",
+      "name": "JUP",
+      "category": "legit",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Jupiter DEX governance token, mint/freeze authority revoked, rugcheck score 7"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "safe"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 101,
+              "score_normalised": 7,
+              "risk_level": "warn",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Mutable metadata",
+                  "level": "warn",
+                  "score": 100,
+                  "description": "Token metadata can be changed by the owner",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [
+                {
+                  "address": "EXJHiMkj6NRFDfhWBMKccHNwdSpCT7tdvQeRf87yHm6T",
+                  "pct": 24.77254859155949,
+                  "amount": 1700000000.10888,
+                  "insider": false
+                },
+                {
+                  "address": "61aq585V8cR2sZBeawJFt2NPqmN7zDi1sws4KLs5xHXV",
+                  "pct": 24.520451500920174,
+                  "amount": 1682700001.58308,
+                  "insider": false
+                },
+                {
+                  "address": "Any5gL74oUQy9Psb3goym9STaYMau4CMrTkryS37T7iz",
+                  "pct": 3.957329907653697,
+                  "amount": 271569185.486807,
+                  "insider": false
+                },
+                {
+                  "address": "FVhQ3QHvXudWSdGix2sdcG47YmrmUxRhf3KCBmiKfekf",
+                  "pct": 3.9562186147954606,
+                  "amount": 271492923.738762,
+                  "insider": false
+                },
+                {
+                  "address": "6DByueU46di4eSLW19Q5dg3oCBGL4knENTtHqVxrWA3P",
+                  "pct": 2.329936315847532,
+                  "amount": 159890361,
+                  "insider": false
+                },
+                {
+                  "address": "2zh8tSzQ2epanqh41tPuquU7dLR93Lie2QqPyxBPE1MC",
+                  "pct": 2.329936024405784,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+                  "pct": 2.0400922368212964,
+                  "amount": 140000000,
+                  "insider": false
+                },
+                {
+                  "address": "6tZT9AUcQn4iHMH79YZEXSy55kDLQ4VbA3PMtfLVNsFX",
+                  "pct": 2.017949945479048,
+                  "amount": 138480499.689198,
+                  "insider": false
+                },
+                {
+                  "address": "8gMBNeKwXaoNi9bhbVUWFt4Uc5aobL9PeYMXfYDMePE2",
+                  "pct": 1.967671161621564,
+                  "amount": 449021.057145,
+                  "insider": false
+                },
+                {
+                  "address": "CbU4oSFCk8SVgW23NLvb5BwctvWcZZHfxRD6HudP8gAo",
+                  "pct": 1.841575714360497,
+                  "amount": 126376933.041118,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 2842698.748151194,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+                "payer": "",
+                "name": "Jupiter",
+                "symbol": "jup",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 262,
+              "creator": null,
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:08.890Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 0,
+            "risk_level": "safe",
+            "flags": [
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:08.961Z",
+            "enrich_ms": 78
+          }
+        },
+        "goplus": {
+          "source_health": "fail_transient",
+          "error": "timeout"
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0005",
+      "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "symbol": "BONK",
+      "name": "BONK",
+      "category": "legit",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Largest Solana memecoin, mint/freeze authority revoked, rugcheck score 7"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "safe"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 101,
+              "score_normalised": 7,
+              "risk_level": "warn",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Mutable metadata",
+                  "level": "warn",
+                  "score": 100,
+                  "description": "Token metadata can be changed by the owner",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 3569,
+              "insider_networks": [
+                {
+                  "id": "damp-fawn-possum",
+                  "size": 3521,
+                  "type": "transfer",
+                  "tokenAmount": 1365741771847189000,
+                  "activeAccounts": 3521
+                },
+                {
+                  "id": "fluffy-blush-narwhal",
+                  "size": 48,
+                  "type": "transfer",
+                  "tokenAmount": 28954737171604570,
+                  "activeAccounts": 48
+                }
+              ],
+              "top_holders": [
+                {
+                  "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+                  "pct": 7.95123400797475,
+                  "amount": 6996666051223.375,
+                  "insider": false
+                },
+                {
+                  "address": "51yZyDSnec4xnUv7XLRVYcDyV4x3wUtzrDcRaYbmQU5j",
+                  "pct": 5.35492095834019,
+                  "amount": 4712047669409.045,
+                  "insider": false
+                },
+                {
+                  "address": "9FtGm6hJULCpA8An4sFg5ysHUExDZBtMeDCxsYnTnWh5",
+                  "pct": 5.354919858417297,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "8Tp9fFkZ2KcRBLYDTUNXo98Ez6ojGb6MZEPXfGDdeBzG",
+                  "pct": 5.354918626206887,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "AGkGWK1R669KDT4FCqgDgK7PgahGJPjD4J9xmVjuL9kn",
+                  "pct": 5.029965982436399,
+                  "amount": 4426104450305.966,
+                  "insider": false
+                },
+                {
+                  "address": "7Lp4JBapgNhXoxpJtR2twufh7oaQyqngqJpy7HFJcn7h",
+                  "pct": 3.891863756004485,
+                  "amount": 3424634590091.635,
+                  "insider": false
+                },
+                {
+                  "address": "9AdEE8AAm1XgJrPEs4zkTPozr3o4U5iGbgvPwkNdLDJ3",
+                  "pct": 3.590633462089331,
+                  "amount": 3159567838324.255,
+                  "insider": false
+                },
+                {
+                  "address": "4xLpwxgYuPwPvtQjE94RLS4WZ4aD8NJYYKr2AJk99Qdg",
+                  "pct": 3.1695737869853193,
+                  "amount": 2789057558865.159,
+                  "insider": false
+                },
+                {
+                  "address": "9RpzaFh4J8F6Qg1gjnhrhSp9eXdVDjsesZXe53qp7ubB",
+                  "pct": 3.05502282465554,
+                  "amount": 2688258761035.3022,
+                  "insider": false
+                },
+                {
+                  "address": "GJ8HjXMqQ79WRvxeAMRMng4ZTaohPcF1MZmBf9tVPpXA",
+                  "pct": 3.0499066871114326,
+                  "amount": 93153158042.95245,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 1930463.7630030117,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+                "payer": "3ZTwSXYzVATC9rei1PFe2ND5s6AbLNzLScjZg6WnfDyU",
+                "name": "Bonk",
+                "symbol": "bonk",
+                "description": "The Official Bonk Inu token",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 203,
+              "creator": "9AhKqLR67hwapvG8SA2JFXaCshXc9nALJjpKaHZrsbkw",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:09.154Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 15,
+            "risk_level": "safe",
+            "flags": [
+              "many_insiders",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:09.223Z",
+            "enrich_ms": 76
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0006",
+      "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+      "symbol": "RAY",
+      "name": "RAY",
+      "category": "legit",
+      "split": "holdout",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Raydium AMM governance token, mint/freeze authority revoked. High top10 concentration is DAO treasury — not a scam signal"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "safe"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 15651,
+              "score_normalised": 56,
+              "risk_level": "danger",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Top 10 holders high ownership",
+                  "level": "danger",
+                  "score": 7834,
+                  "description": "The top 10 users hold more than 70% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Single holder ownership",
+                  "level": "warn",
+                  "score": 4719,
+                  "description": "One user holds a large amount of the token supply",
+                  "value": "22.22%"
+                },
+                {
+                  "name": "Single holder ownership",
+                  "level": "warn",
+                  "score": 2497,
+                  "description": "One user holds a large amount of the token supply",
+                  "value": "24.97%"
+                },
+                {
+                  "name": "Missing file metadata",
+                  "level": "warn",
+                  "score": 500,
+                  "description": "No file metadata found associated to this token",
+                  "value": ""
+                },
+                {
+                  "name": "Mutable metadata",
+                  "level": "warn",
+                  "score": 100,
+                  "description": "Token metadata can be changed by the owner",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 798,
+              "insider_networks": [
+                {
+                  "id": "fancy-wisteria-puffin",
+                  "size": 798,
+                  "type": "transfer",
+                  "tokenAmount": 273935271461142,
+                  "activeAccounts": 798
+                }
+              ],
+              "top_holders": [
+                {
+                  "address": "8pFhUqCU7Fkxfg2DLytRDf7a9oK4XGtN92PrYwtVQc6G",
+                  "pct": 24.97144312257141,
+                  "amount": 138590933.144851,
+                  "insider": false
+                },
+                {
+                  "address": "8pFhUqCU7Fkxfg2DLytRDf7a9oK4XGtN92PrYwtVQc6G",
+                  "pct": 22.220631126875613,
+                  "amount": 123323990.040352,
+                  "insider": false
+                },
+                {
+                  "address": "DdHDoz94o2WJmD9myRobHCwtx1bESpHTd4SSPe6VEZaz",
+                  "pct": 6.918240041580562,
+                  "amount": 38396072.600869,
+                  "insider": false
+                },
+                {
+                  "address": "4qD717qKoj3Sm8YfHMSR7tSKjWn5An817nArA6nGdcUR",
+                  "pct": 6.819281288497346,
+                  "amount": 37846853.804609,
+                  "insider": false
+                },
+                {
+                  "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+                  "pct": 4.714114520974826,
+                  "amount": 26163226.819,
+                  "insider": false
+                },
+                {
+                  "address": "DdHDoz94o2WJmD9myRobHCwtx1bESpHTd4SSPe6VEZaz",
+                  "pct": 4.233855042874218,
+                  "amount": 23497797.79694,
+                  "insider": false
+                },
+                {
+                  "address": "DdHDoz94o2WJmD9myRobHCwtx1bESpHTd4SSPe6VEZaz",
+                  "pct": 2.5515750500599177,
+                  "amount": 14161182.653368,
+                  "insider": false
+                },
+                {
+                  "address": "8pFhUqCU7Fkxfg2DLytRDf7a9oK4XGtN92PrYwtVQc6G",
+                  "pct": 2.0000083166476967,
+                  "amount": 11100000.009656,
+                  "insider": false
+                },
+                {
+                  "address": "GThUX1Atko4tqhN2NaiTazWSeFWMuiUvfFnyJyUghFMJ",
+                  "pct": 1.5981429336911583,
+                  "amount": 8869656.406798,
+                  "insider": false
+                },
+                {
+                  "address": "8pFhUqCU7Fkxfg2DLytRDf7a9oK4XGtN92PrYwtVQc6G",
+                  "pct": 1.3153207836781484,
+                  "amount": 7300000,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 8510007.621728197,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+                "payer": "",
+                "name": "Raydium",
+                "symbol": "ray",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 167,
+              "creator": null,
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:09.422Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 95,
+            "risk_level": "danger",
+            "flags": [
+              "rugcheck_score_high",
+              "many_insiders",
+              "rugcheck_danger_risks_1",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:09.488Z",
+            "enrich_ms": 73
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0007",
+      "mint": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+      "symbol": "WIF",
+      "name": "WIF",
+      "category": "edge",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Memecoin, mint/freeze revoked, rugcheck score 1. Tests false alarm on mutable metadata + no LP lock"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "edge"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 1149,
+              "score_normalised": 23,
+              "risk_level": "warn",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "High holder concentration",
+                  "level": "warn",
+                  "score": 1148,
+                  "description": "The top 10 users hold more than 50% token supply",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 3114,
+              "insider_networks": [
+                {
+                  "id": "warm-umber-butterfly",
+                  "size": 3103,
+                  "type": "transfer",
+                  "tokenAmount": 1290285176301490,
+                  "activeAccounts": 3103
+                },
+                {
+                  "id": "icy-charcoal-horse",
+                  "size": 4,
+                  "type": "transfer",
+                  "tokenAmount": 5500000000000,
+                  "activeAccounts": 4
+                },
+                {
+                  "id": "hidden-blush-mule",
+                  "size": 7,
+                  "type": "transfer",
+                  "tokenAmount": 1026285000000,
+                  "activeAccounts": 7
+                }
+              ],
+              "top_holders": [
+                {
+                  "address": "51yZyDSnec4xnUv7XLRVYcDyV4x3wUtzrDcRaYbmQU5j",
+                  "pct": 13.724502552687603,
+                  "amount": 137085684.970017,
+                  "insider": false
+                },
+                {
+                  "address": "9FtGm6hJULCpA8An4sFg5ysHUExDZBtMeDCxsYnTnWh5",
+                  "pct": 11.606612168833394,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "8Tp9fFkZ2KcRBLYDTUNXo98Ez6ojGb6MZEPXfGDdeBzG",
+                  "pct": 11.606611750005436,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+                  "pct": 10.613345069509702,
+                  "amount": 106010230.46857,
+                  "insider": false
+                },
+                {
+                  "address": "4xLpwxgYuPwPvtQjE94RLS4WZ4aD8NJYYKr2AJk99Qdg",
+                  "pct": 5.784823934904957,
+                  "amount": 57781077.930005,
+                  "insider": false
+                },
+                {
+                  "address": "CK8i4zFXkDE2KWfyg7g9S748r6mwxajbcKcyGhQMR3qQ",
+                  "pct": 2.7512046924215916,
+                  "amount": 27480105.621714,
+                  "insider": false
+                },
+                {
+                  "address": "3gd3dqgtJ4jWfBfLYTX67DALFetjc5iS72sCgRhCkW2u",
+                  "pct": 2.6114331440202703,
+                  "amount": 26084012.876031,
+                  "insider": false
+                },
+                {
+                  "address": "CBEADkb8TZAXHjVE3zwad4L995GZE7rJcacJ7asebkVG",
+                  "pct": 2.1960062605885264,
+                  "amount": 21934567.12005,
+                  "insider": false
+                },
+                {
+                  "address": "5NUdHyuSFHPaHh1Ut2FAotfXmH6qQJu5XPvAxz1z1VMe",
+                  "pct": 2.093820528777525,
+                  "amount": 20913896.171453,
+                  "insider": false
+                },
+                {
+                  "address": "AVPKzX2QZ8E23SWR728yhMTnnqr9UjAZdgemfaE3qHg5",
+                  "pct": 1.8697453618618596,
+                  "amount": 18675746,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 4602372.081485086,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+                "payer": "",
+                "name": "dogwifhat",
+                "symbol": "$wif",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 138,
+              "creator": null,
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:09.667Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 15,
+            "risk_level": "safe",
+            "flags": [
+              "many_insiders",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:09.739Z",
+            "enrich_ms": 79
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0008",
+      "mint": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
+      "symbol": "POPCAT",
+      "name": "POPCAT",
+      "category": "edge",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Memecoin, mint/freeze revoked, rugcheck score 1. Tests 'technically clean' memecoin without LP lock"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "edge"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 1,
+              "score_normalised": 1,
+              "risk_level": "good",
+              "rugged": false,
+              "risks": [],
+              "insiders_detected": 846,
+              "insider_networks": [
+                {
+                  "id": "vivid-apricot-dove",
+                  "size": 846,
+                  "type": "transfer",
+                  "tokenAmount": 358269435039189250,
+                  "activeAccounts": 846
+                }
+              ],
+              "top_holders": [
+                {
+                  "address": "4xLpwxgYuPwPvtQjE94RLS4WZ4aD8NJYYKr2AJk99Qdg",
+                  "pct": 12.275877045753262,
+                  "amount": 120295802.28428608,
+                  "insider": false
+                },
+                {
+                  "address": "CSSJFgoeqidqVtHKSNP7i7s6WX8APHfH2kYGdLV195Jb",
+                  "pct": 6.6330836430282245,
+                  "amount": 65000009,
+                  "insider": false
+                },
+                {
+                  "address": "51yZyDSnec4xnUv7XLRVYcDyV4x3wUtzrDcRaYbmQU5j",
+                  "pct": 4.744001047137121,
+                  "amount": 46488198.75564626,
+                  "insider": false
+                },
+                {
+                  "address": "9FtGm6hJULCpA8An4sFg5ysHUExDZBtMeDCxsYnTnWh5",
+                  "pct": 4.570927294894302,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "8Tp9fFkZ2KcRBLYDTUNXo98Ez6ojGb6MZEPXfGDdeBzG",
+                  "pct": 4.570923465681535,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "9ZifroknFoYu4r6DUk6nYoJiUQnEyyoUyeAwjXbPoL2x",
+                  "pct": 3.8371658473731007,
+                  "amount": 37601789.45970256,
+                  "insider": false
+                },
+                {
+                  "address": "AC5RDfQFmDS1deWZos921JfqscXdByf8BKHs5ACWjtW2",
+                  "pct": 3.3380152022658907,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+                  "pct": 3.312015494966237,
+                  "amount": 32455649.37315668,
+                  "insider": false
+                },
+                {
+                  "address": "DwdrYTtTWHfnfJBiN2RH6EgPbquDQLjZTfTwpykPEq1g",
+                  "pct": 2.500224189348189,
+                  "amount": 24500609.905690353,
+                  "insider": false
+                },
+                {
+                  "address": "u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w",
+                  "pct": 2.451498440638371,
+                  "amount": 24023128.49958766,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 3414294.02648919,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
+                "payer": "",
+                "name": "Popcat",
+                "symbol": "popcat",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 123,
+              "creator": null,
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:09.924Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 15,
+            "risk_level": "safe",
+            "flags": [
+              "many_insiders",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:09.993Z",
+            "enrich_ms": 72
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0009",
+      "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+      "symbol": "PYUSD",
+      "name": "PYUSD",
+      "category": "edge",
+      "split": "tune",
+      "label": {
+        "verdict": "caution",
+        "score_range": [
+          40,
+          69
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Token-2022 with Permanent Delegate + Transfer Fee extensions. Legitimate stablecoin but extensions trigger false positives. Tests context-aware scanner"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "edge"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 1,
+              "score_normalised": 1,
+              "risk_level": "good",
+              "rugged": false,
+              "risks": [],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [],
+              "total_liquidity_usd": 0,
+              "lp_locked_pct": null,
+              "mint_authority": {
+                "lamports": 3452330,
+                "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+                "data": [
+                  "AQQBF4UyYe9quFMqZ/BThlqtMSk/zwfPEgq1uaFXBlSNwCsjwfxOSRzU9jIfFn4AGEKSPf280QgPAQIx8Az5Ab/kUJ5yuSpBXtTy01awwaV2oDJLAaK7i5AMANAwEsZpjMNTkyucCQxDwLWxwvI6aB20Sg3YYpChjShcGWmgi7EWTcoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+                  "base64"
+                ],
+                "executable": false,
+                "rentEpoch": 18446744073709552000,
+                "space": 355
+              },
+              "freeze_authority": {
+                "lamports": 44437443,
+                "owner": "11111111111111111111111111111111",
+                "data": [
+                  "",
+                  "base64"
+                ],
+                "executable": false,
+                "rentEpoch": 18446744073709552000,
+                "space": 0
+              },
+              "token_program": "spl-token-2022",
+              "verified": true,
+              "verification_meta": {
+                "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+                "payer": "",
+                "name": "PayPal USD",
+                "symbol": "pyusd",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": null,
+              "markets_count": 0,
+              "creator": "5gUuDFHswKi2QMA1qJHf6FEVhNCrHnyAdfWniMaUUPE4",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:10.157Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": true,
+            "owner_program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+            "extensions": [],
+            "has_critical": false,
+            "has_high": false,
+            "extension_names": [],
+            "scan_ms": 71,
+            "fetched_at": "2026-06-18T11:15:10.229Z"
+          },
+          "aggregated_risk": {
+            "score": 25,
+            "risk_level": "safe",
+            "flags": [
+              "freeze_authority_active",
+              "mint_authority_active",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:10.229Z",
+            "enrich_ms": 72
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0010",
+      "mint": "CKfatsPMUf8SkiURsDXs7eK6GWb4Jsd6UDbs7twMCWxo",
+      "symbol": "BERN",
+      "name": "BERN",
+      "category": "edge",
+      "split": "tune",
+      "label": {
+        "verdict": "caution",
+        "score_range": [
+          40,
+          69
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Token-2022 with Transfer Fee Extension. Legitimate Bonk ecosystem token but transfer fee triggers scam warning in many tools"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "edge"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "CKfatsPMUf8SkiURsDXs7eK6GWb4Jsd6UDbs7twMCWxo",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 201,
+              "score_normalised": 10,
+              "risk_level": "warn",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Fee config enabled",
+                  "level": "warn",
+                  "score": 200,
+                  "description": "The owner can change the fees at any time",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [
+                {
+                  "address": "GZHYAsikiCAAeMzJ6wX2oUx8Z9eh78wKUA9WyabB53tB",
+                  "pct": 21.372849873728285,
+                  "amount": 202853336.83265,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 6.191900257627665,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 3.8708435371144363,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 3.3863215661050305,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 3.121794398221554,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 2.120362000802457,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 1.9495786542055822,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 1.8366056277052214,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 1.3506480823190425,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "FdYxu249UjdKVSDajET9MfYWNbboBc1rPKw9Ym24zEa9",
+                  "pct": 1.0714205551075728,
+                  "amount": 10169033.89294,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 252637.6980149483,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token-2022",
+              "verified": true,
+              "verification_meta": {
+                "mint": "CKfatsPMUf8SkiURsDXs7eK6GWb4Jsd6UDbs7twMCWxo",
+                "payer": "",
+                "name": "BonkEarn",
+                "symbol": "bern",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 35,
+              "creator": null,
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:10.410Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": true,
+            "owner_program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+            "extensions": [],
+            "has_critical": false,
+            "has_high": false,
+            "extension_names": [],
+            "scan_ms": 73,
+            "fetched_at": "2026-06-18T11:15:10.484Z"
+          },
+          "aggregated_risk": {
+            "score": 0,
+            "risk_level": "safe",
+            "flags": [
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:10.485Z",
+            "enrich_ms": 76
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0011",
+      "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+      "symbol": "TRUMP",
+      "name": "TRUMP",
+      "category": "edge",
+      "split": "holdout",
+      "label": {
+        "verdict": "caution",
+        "score_range": [
+          40,
+          69
+        ],
+        "scam_type": null,
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Legitimate token (issued by Trump Org), mint/freeze revoked, but 80% supply in one wallet (CIC Digital LLC). Tests 'concentrated but legitimate' vs rug pull distinction"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "edge"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 18082,
+              "score_normalised": 58,
+              "risk_level": "danger",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Top 10 holders high ownership",
+                  "level": "danger",
+                  "score": 9060,
+                  "description": "The top 10 users hold more than 70% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Single holder ownership",
+                  "level": "danger",
+                  "score": 7625,
+                  "description": "One user holds a large amount of the token supply",
+                  "value": "76.26%"
+                },
+                {
+                  "name": "High ownership",
+                  "level": "danger",
+                  "score": 1396,
+                  "description": "The top users hold more than 80% token supply",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [
+                {
+                  "address": "2RH6rUTPBJ9rUDPpuV9b8z1YL56k1tYU6Uk5ZoaEFFSK",
+                  "pct": 76.25866455777026,
+                  "amount": 762585959.657572,
+                  "insider": false
+                },
+                {
+                  "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+                  "pct": 4.200003777757133,
+                  "amount": 42000000,
+                  "insider": false
+                },
+                {
+                  "address": "51yZyDSnec4xnUv7XLRVYcDyV4x3wUtzrDcRaYbmQU5j",
+                  "pct": 2.3711519811213315,
+                  "amount": 23711498.483527,
+                  "insider": false
+                },
+                {
+                  "address": "8N2ssXZGJbvVLszanERuCJpLZd2nuADgpZwLkDDxwNnS",
+                  "pct": 2.1500368869041044,
+                  "amount": 21500349.530208,
+                  "insider": false
+                },
+                {
+                  "address": "9d9mb8kooFfaD3SctgZtkxQypkshx6ezhbKio89ixyy2",
+                  "pct": 1.6810125842920784,
+                  "amount": 16810110.722798,
+                  "insider": false
+                },
+                {
+                  "address": "CBEADkb8TZAXHjVE3zwad4L995GZE7rJcacJ7asebkVG",
+                  "pct": 0.9991413258370274,
+                  "amount": 9991404.271442,
+                  "insider": false
+                },
+                {
+                  "address": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+                  "pct": 0.979109572415963,
+                  "amount": 9791086.91741,
+                  "insider": false
+                },
+                {
+                  "address": "9eHQR73e3U5gW9ss65XPsLXnuy8gWWKv9Fz8SxPSdq4a",
+                  "pct": 0.9089050271224192,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "9msfSDr5GZTFV7B2ZdxGyKio4WSY5ktGaGNYCUkmFnbq",
+                  "pct": 0.9089045271219695,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "8bHec5JeptUGTwsbC3ycdXrK6uhR7w6hzuPnmzmxJMnv",
+                  "pct": 0.8253024423308056,
+                  "amount": 0,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 38814684.87822103,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+                "payer": "",
+                "name": "OFFICIAL TRUMP",
+                "symbol": "trump",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": false,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 265,
+              "creator": "5e2qRc1DNEXmyxP8qwPwJhRWjef7usLyi7v5xjqLr5G7",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:10.653Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 100,
+            "risk_level": "danger",
+            "flags": [
+              "rugcheck_score_high",
+              "top_holder_critical",
+              "rugcheck_danger_risks_3",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:10.727Z",
+            "enrich_ms": 84
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0012",
+      "mint": "3Vse7Heee7Yb3U95vjQXDHqDBor6ERNQrA88GjeSVVj3",
+      "symbol": "",
+      "name": "3Vse7Hee",
+      "category": "scam",
+      "split": "tune",
+      "label": {
+        "verdict": "danger",
+        "score_range": [
+          70,
+          100
+        ],
+        "scam_type": "rug_pull",
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Verified rug pull (SolRPDS). Active mint+freeze authority same wallet, top holder 89.99%, ADD_TO_REMOVE_RATIO 1.99B, pool INACTIVE"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "scam"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "3Vse7Heee7Yb3U95vjQXDHqDBor6ERNQrA88GjeSVVj3",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 119062,
+              "score_normalised": 80,
+              "risk_level": "danger",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Mint Authority still enabled",
+                  "level": "danger",
+                  "score": 50000,
+                  "description": "More tokens can be minted by the owner",
+                  "value": ""
+                },
+                {
+                  "name": "Freeze Authority still enabled",
+                  "level": "danger",
+                  "score": 25000,
+                  "description": "Tokens can be frozen and prevented from trading",
+                  "value": ""
+                },
+                {
+                  "name": "Large Amount of LP Unlocked",
+                  "level": "danger",
+                  "score": 11000,
+                  "description": "A large amount of LP tokens are unlocked, allowing the owner to remove liquidity at any point.",
+                  "value": "100.00%"
+                },
+                {
+                  "name": "Low Amount of holders",
+                  "level": "warn",
+                  "score": 10000,
+                  "description": "Not many holders are holding the token",
+                  "value": ""
+                },
+                {
+                  "name": "Top 10 holders high ownership",
+                  "level": "danger",
+                  "score": 9099,
+                  "description": "The top 10 users hold more than 70% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Single holder ownership",
+                  "level": "danger",
+                  "score": 8999,
+                  "description": "One user holds a large amount of the token supply",
+                  "value": "89.99%"
+                },
+                {
+                  "name": "Low Liquidity",
+                  "level": "danger",
+                  "score": 2964,
+                  "description": "Low amount of liquidity in the token pool",
+                  "value": "$35.44"
+                },
+                {
+                  "name": "High ownership",
+                  "level": "danger",
+                  "score": 1399,
+                  "description": "The top users hold more than 80% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Low amount of LP Providers",
+                  "level": "warn",
+                  "score": 500,
+                  "description": "Only a few users are providing liquidity",
+                  "value": ""
+                },
+                {
+                  "name": "Mutable metadata",
+                  "level": "warn",
+                  "score": 100,
+                  "description": "Token metadata can be changed by the owner",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [
+                {
+                  "address": "G9uNGJicjHd9CNc7dAKRj8QTCJUitQQDhSdhGNc72KeG",
+                  "pct": 89.99299539187889,
+                  "amount": 89992995391.8789,
+                  "insider": false
+                },
+                {
+                  "address": "TDqw2ERGMAZgAhpgH1RA9mRGuFyzJxn2fiYbPJZPRVH",
+                  "pct": 10.000000524731105,
+                  "amount": 10000000524.731106,
+                  "insider": false
+                },
+                {
+                  "address": "GAB9t5q8AMF46g67zRsattjyq4yoWZui8FsgEVzzdaBt",
+                  "pct": 0.006666666999999999,
+                  "amount": 6666667,
+                  "insider": false
+                },
+                {
+                  "address": "788r2uFAXDzvAFwACkMmvsZJU8pVPrUhHThzKTRrRg5j",
+                  "pct": 0.00019210718,
+                  "amount": 192107.18,
+                  "insider": false
+                },
+                {
+                  "address": "9SCoCgi3U7wshxuBCr8Ex4ybQ7EEjryjiu2WwqyYoaRf",
+                  "pct": 0.00011111199999999999,
+                  "amount": 111112,
+                  "insider": false
+                },
+                {
+                  "address": "8QksQ2bfvaDLbKutNwgafDGE3bwrt7L7f4qmJcSzV6eD",
+                  "pct": 0.000022222,
+                  "amount": 22222,
+                  "insider": false
+                },
+                {
+                  "address": "H8PHCS72eZq4WbB2SwsU4Fq4PBLvqz262nbhAZA7kLZi",
+                  "pct": 0.0000100001,
+                  "amount": 10000.1,
+                  "insider": false
+                },
+                {
+                  "address": "ALEp8J7uxa6ZmrvbLaEAV9nM8r28vHBCLm7Nzz9fqk8p",
+                  "pct": 0.0000019730100000000003,
+                  "amount": 1973.01,
+                  "insider": false
+                },
+                {
+                  "address": "9orJx94xKMutZDyB5hBgqv8nsk7mPTeqwstN1CS4TsgD",
+                  "pct": 9.999999999999999e-10,
+                  "amount": 1,
+                  "insider": false
+                },
+                {
+                  "address": "81WuNv1AQ4Wr4NBLhpQFPAuSHDdLjoA23KooXfksSR1C",
+                  "pct": 9.999999999999999e-10,
+                  "amount": 1,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 9826178289.865328,
+              "lp_locked_pct": 0,
+              "mint_authority": {
+                "lamports": 360620859,
+                "owner": "11111111111111111111111111111111",
+                "data": [
+                  "",
+                  "base64"
+                ],
+                "executable": false,
+                "rentEpoch": 18446744073709552000,
+                "space": 0
+              },
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": false,
+              "verification_meta": null,
+              "launchpad": "unknown",
+              "markets_count": 1,
+              "creator": "G9uNGJicjHd9CNc7dAKRj8QTCJUitQQDhSdhGNc72KeG",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:10.896Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 100,
+            "risk_level": "danger",
+            "flags": [
+              "rugcheck_score_high",
+              "mint_authority_active",
+              "top_holder_critical",
+              "rugcheck_danger_risks_7"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:10.970Z",
+            "enrich_ms": 75
+          }
+        },
+        "goplus": {
+          "source_health": "fail_transient",
+          "error": "timeout"
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0013",
+      "mint": "5uU9Ma9vYLXmYDFMES2NYUzduDEwuf6C6cuajiw3obr4",
+      "symbol": "",
+      "name": "5uU9Ma9v",
+      "category": "scam",
+      "split": "tune",
+      "label": {
+        "verdict": "danger",
+        "score_range": [
+          70,
+          100
+        ],
+        "scam_type": "rug_pull",
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Verified honeypot (SolRPDS). Active mint authority, top holder 100% supply, ADD_TO_REMOVE_RATIO 1.82B, pool INACTIVE"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "scam"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "5uU9Ma9vYLXmYDFMES2NYUzduDEwuf6C6cuajiw3obr4",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 64576,
+              "score_normalised": 74,
+              "risk_level": "danger",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Mint Authority still enabled",
+                  "level": "danger",
+                  "score": 50000,
+                  "description": "More tokens can be minted by the owner",
+                  "value": ""
+                },
+                {
+                  "name": "Large Amount of LP Unlocked",
+                  "level": "danger",
+                  "score": 10976,
+                  "description": "A large amount of LP tokens are unlocked, allowing the owner to remove liquidity at any point.",
+                  "value": "99.76%"
+                },
+                {
+                  "name": "Low Liquidity",
+                  "level": "danger",
+                  "score": 2999,
+                  "description": "Low amount of liquidity in the token pool",
+                  "value": "$0.30"
+                },
+                {
+                  "name": "Low amount of LP Providers",
+                  "level": "warn",
+                  "score": 500,
+                  "description": "Only a few users are providing liquidity",
+                  "value": ""
+                },
+                {
+                  "name": "Mutable metadata",
+                  "level": "warn",
+                  "score": 100,
+                  "description": "Token metadata can be changed by the owner",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [
+                {
+                  "address": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+                  "pct": 99.99999931001702,
+                  "amount": 99936407669.88367,
+                  "insider": false
+                },
+                {
+                  "address": "CepE63TMRTgGcYdzNMAcSCpSgHYWWpT4ys4hchtJTqXs",
+                  "pct": 4.797043008347958e-7,
+                  "amount": 479.399249,
+                  "insider": false
+                },
+                {
+                  "address": "CQNMZgwrPihQZB5zUaSbFoMC8LULWimRFXLzD1uTi9Aj",
+                  "pct": 1.6580925482536385e-7,
+                  "amount": 165.703814,
+                  "insider": false
+                },
+                {
+                  "address": "3EVpyMMg4tsHrJrgPyD1zXoZzjwFhuNuFVaSUazV78Qy",
+                  "pct": 3.0790009872410186e-8,
+                  "amount": 30.77043,
+                  "insider": false
+                },
+                {
+                  "address": "FAVaevVrwVAFkpRqBJzoYaaQsqRjr1ScA12GwNi8ZRfh",
+                  "pct": 1.362763303541837e-8,
+                  "amount": 13.618967,
+                  "insider": false
+                },
+                {
+                  "address": "8ExMWHKdgy83AX9H6WtoGPZw86nzZ6qJzbezjpJAQnQe",
+                  "pct": 5.1784930887120256e-11,
+                  "amount": 0.051752,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 0.734053653017509,
+              "lp_locked_pct": 0.23700523971183957,
+              "mint_authority": {
+                "lamports": 21414006,
+                "owner": "11111111111111111111111111111111",
+                "data": [
+                  "",
+                  "base64"
+                ],
+                "executable": false,
+                "rentEpoch": 18446744073709552000,
+                "space": 0
+              },
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": null,
+              "launchpad": "unknown",
+              "markets_count": 1,
+              "creator": "71pgUxTbZdiTEuiNoswPi4aaum2CUCMJa71ME21cS11h",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:11.145Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 100,
+            "risk_level": "danger",
+            "flags": [
+              "rugcheck_score_high",
+              "mint_authority_active",
+              "top_holder_critical",
+              "rugcheck_danger_risks_3",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:11.214Z",
+            "enrich_ms": 70
+          }
+        },
+        "goplus": {
+          "source_health": "fail_transient",
+          "error": "timeout"
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0014",
+      "mint": "4KLEwLeVUcmSX8FtxnZpZmX8Wfd6myq3mAsCHwMFMigz",
+      "symbol": "",
+      "name": "4KLEwLeV",
+      "category": "scam",
+      "split": "tune",
+      "label": {
+        "verdict": "danger",
+        "score_range": [
+          70,
+          100
+        ],
+        "scam_type": "rug_pull",
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Verified rug pull (SolRPDS). ADD_TO_REMOVE_RATIO 972M, Large LP Unlocked, Low Liquidity, pool INACTIVE"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "scam"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "4KLEwLeVUcmSX8FtxnZpZmX8Wfd6myq3mAsCHwMFMigz",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 24500,
+              "score_normalised": 62,
+              "risk_level": "danger",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Large Amount of LP Unlocked",
+                  "level": "danger",
+                  "score": 11000,
+                  "description": "A large amount of LP tokens are unlocked, allowing the owner to remove liquidity at any point.",
+                  "value": "100.00%"
+                },
+                {
+                  "name": "Low Amount of holders",
+                  "level": "warn",
+                  "score": 10000,
+                  "description": "Not many holders are holding the token",
+                  "value": ""
+                },
+                {
+                  "name": "Low Liquidity",
+                  "level": "danger",
+                  "score": 2999,
+                  "description": "Low amount of liquidity in the token pool",
+                  "value": "$0.01"
+                },
+                {
+                  "name": "Low amount of LP Providers",
+                  "level": "warn",
+                  "score": 500,
+                  "description": "Only a few users are providing liquidity",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [
+                {
+                  "address": "GCupAdnnvRmQogw2ocAQbESA4isuV3PSFiKDkFyscS3U",
+                  "pct": 99.4071444989063,
+                  "amount": 5964428288.063344,
+                  "insider": false
+                },
+                {
+                  "address": "HvrsZ1wKDqfTHzDfiN9TvvLoJNMPtB7VrrKkfM35shoG",
+                  "pct": 0.42517737935126126,
+                  "amount": 25510641.12776324,
+                  "insider": false
+                },
+                {
+                  "address": "5v6qVjaoFs1Gxqv1XHvRiQ7aAm9nmjmZgdQ4LzckaKnC",
+                  "pct": 0.0757504012211095,
+                  "amount": 4545023.782272555,
+                  "insider": false
+                },
+                {
+                  "address": "FjFD4zaptucHhpDMSfdVaNGzSW6RDQy8YAhG6thqtmbf",
+                  "pct": 0.0498921346857288,
+                  "amount": 2993527.889483851,
+                  "insider": false
+                },
+                {
+                  "address": "As9CywHNei2UF7tEmVbDh14VHn2yFaH5Y59jUuEnZoBd",
+                  "pct": 0.033381386746732675,
+                  "amount": 2002883.076569871,
+                  "insider": false
+                },
+                {
+                  "address": "mbPU58roi6WKk6uxuiRcepPt5WVWkkCC7jJvcuk3K2b",
+                  "pct": 0.0015429252376962473,
+                  "amount": 92575.508334651,
+                  "insider": false
+                },
+                {
+                  "address": "8pHD4NVbuG7SAkehDR8YVjkCHzDD81xYiLiNuSv3yPeG",
+                  "pct": 0.0009257509862234057,
+                  "amount": 55545.055617146,
+                  "insider": false
+                },
+                {
+                  "address": "HBvkMVFBzvDeZrdJBnsW2k5ztZpJKvudEHceoui1Nahh",
+                  "pct": 0.0008228939945464795,
+                  "amount": 49373.636511654,
+                  "insider": false
+                },
+                {
+                  "address": "GgJWS3puX9NnunZ9Z8fTDvfen5kc9is7qXSwKnheu2w3",
+                  "pct": 0.0006171686256321816,
+                  "amount": 37030.115167087,
+                  "insider": false
+                },
+                {
+                  "address": "DwVoKDLTXbvGNtdPeEu4AZ5xKSBQQEdEyRKw48s5XWH9",
+                  "pct": 0.000514308615012812,
+                  "amount": 30858.51492506,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 138981190.2330797,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": false,
+              "verification_meta": null,
+              "launchpad": "unknown",
+              "markets_count": 1,
+              "creator": "HvrsZ1wKDqfTHzDfiN9TvvLoJNMPtB7VrrKkfM35shoG",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:11.378Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 100,
+            "risk_level": "danger",
+            "flags": [
+              "rugcheck_score_high",
+              "top_holder_critical",
+              "rugcheck_danger_risks_2"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:11.440Z",
+            "enrich_ms": 63
+          }
+        },
+        "goplus": {
+          "source_health": "fail_transient",
+          "error": "timeout"
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0015",
+      "mint": "H31MfvGCN4H8jH94pCyWEJThKLJ68CPugcppPQCHnDS2",
+      "symbol": "",
+      "name": "H31MfvGC",
+      "category": "scam",
+      "split": "tune",
+      "label": {
+        "verdict": "danger",
+        "score_range": [
+          70,
+          100
+        ],
+        "scam_type": "rug_pull",
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Verified rug pull (SolRPDS). Top holder 83.98%, dev wallet 16%, ADD_TO_REMOVE_RATIO 402M, pool INACTIVE"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "scam"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "H31MfvGCN4H8jH94pCyWEJThKLJ68CPugcppPQCHnDS2",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 42730,
+              "score_normalised": 69,
+              "risk_level": "danger",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Large Amount of LP Unlocked",
+                  "level": "danger",
+                  "score": 11000,
+                  "description": "A large amount of LP tokens are unlocked, allowing the owner to remove liquidity at any point.",
+                  "value": "100.00%"
+                },
+                {
+                  "name": "Low Amount of holders",
+                  "level": "warn",
+                  "score": 10000,
+                  "description": "Not many holders are holding the token",
+                  "value": ""
+                },
+                {
+                  "name": "Top 10 holders high ownership",
+                  "level": "danger",
+                  "score": 8499,
+                  "description": "The top 10 users hold more than 70% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Single holder ownership",
+                  "level": "danger",
+                  "score": 8398,
+                  "description": "One user holds a large amount of the token supply",
+                  "value": "83.98%"
+                },
+                {
+                  "name": "Low Liquidity",
+                  "level": "danger",
+                  "score": 2993,
+                  "description": "Low amount of liquidity in the token pool",
+                  "value": "$6.32"
+                },
+                {
+                  "name": "High ownership",
+                  "level": "danger",
+                  "score": 1339,
+                  "description": "The top users hold more than 80% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Low amount of LP Providers",
+                  "level": "warn",
+                  "score": 500,
+                  "description": "Only a few users are providing liquidity",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [
+                {
+                  "address": "BCeCZcYxwyULertUtiJssS6KAhfKg1fkjrCcYpVXGtrk",
+                  "pct": 83.98177190587357,
+                  "amount": 20995442976.46839,
+                  "insider": false
+                },
+                {
+                  "address": "CDnCxv3CwcbYEqDsFK1nkgdiCFEiRkhingohX7tyba2N",
+                  "pct": 16.002583341606343,
+                  "amount": 4000645835.401586,
+                  "insider": false
+                },
+                {
+                  "address": "BiYhNVgESucWxrdYaFSyngt38JzHfATa8K4S2AotJei6",
+                  "pct": 0.0057667949754199995,
+                  "amount": 1441698.743855,
+                  "insider": false
+                },
+                {
+                  "address": "3oikhgBtaJiPsd4WW4UcoJt9pPDKmcGZd8fBBHmuU3Dm",
+                  "pct": 0.005741165096636,
+                  "amount": 1435291.274159,
+                  "insider": false
+                },
+                {
+                  "address": "CHQpT9iSqu9o28XjqvdBtA5Kt3tixZqt6TDVGAvxZ68C",
+                  "pct": 0.000506803995464,
+                  "amount": 126700.998866,
+                  "insider": false
+                },
+                {
+                  "address": "8uwqvVaqyHdHgozHYPzMBpakw2FBknyTi4fXZ4eGwjmb",
+                  "pct": 0.000482304491216,
+                  "amount": 120576.122804,
+                  "insider": false
+                },
+                {
+                  "address": "536wKdCEFeEgKSGWBWHBhpdS7XZQh1Zp5Z7wwvbSp67n",
+                  "pct": 0.00048129977930000005,
+                  "amount": 120324.944825,
+                  "insider": false
+                },
+                {
+                  "address": "2xrpbm72nZU1M8uc8XtT4UB5zjXrL8eKHRQgah7tnxCL",
+                  "pct": 0.000362499644748,
+                  "amount": 90624.911187,
+                  "insider": false
+                },
+                {
+                  "address": "7nY32D82j2pdMzCCM53T38JEcCux4N9D8RrzEUTSnbuQ",
+                  "pct": 0.000022315914656,
+                  "amount": 5578.978664,
+                  "insider": false
+                },
+                {
+                  "address": "3UthNPmdyAYsEecDHC2hWjs9GFEVsZPwD9v9NrwFf74n",
+                  "pct": 0.000015752614332,
+                  "amount": 3938.153583,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 57280819.36866124,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": null,
+              "launchpad": "unknown",
+              "markets_count": 1,
+              "creator": "BCeCZcYxwyULertUtiJssS6KAhfKg1fkjrCcYpVXGtrk",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:11.594Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 100,
+            "risk_level": "danger",
+            "flags": [
+              "rugcheck_score_high",
+              "top_holder_critical",
+              "rugcheck_danger_risks_5",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:11.657Z",
+            "enrich_ms": 64
+          }
+        },
+        "goplus": {
+          "source_health": "fail_transient",
+          "error": "timeout"
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
+    },
+    {
+      "id": "gt-0016",
+      "mint": "J5gLhk6mmQ4PSoir1Ufh8JY2ytEHA93YupzYiTFVCgcL",
+      "symbol": "",
+      "name": "J5gLhk6m",
+      "category": "scam",
+      "split": "holdout",
+      "label": {
+        "verdict": "danger",
+        "score_range": [
+          70,
+          100
+        ],
+        "scam_type": "rug_pull",
+        "anchor_confidence": 1,
+        "verified_at": "2026-06-18",
+        "verified_by": "hans-pending",
+        "rationale": "Verified rug pull (SolRPDS). Active mint authority, top holders 50%+10%, ADD_TO_REMOVE_RATIO 4.17M, pool INACTIVE"
+      },
+      "sources": [
+        {
+          "name": "golden-dataset-v1",
+          "verdict": "scam"
+        },
+        {
+          "name": "onchain",
+          "verdict": "confirmed"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "J5gLhk6mmQ4PSoir1Ufh8JY2ytEHA93YupzYiTFVCgcL",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 71231,
+              "score_normalised": 75,
+              "risk_level": "danger",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Mint Authority still enabled",
+                  "level": "danger",
+                  "score": 50000,
+                  "description": "More tokens can be minted by the owner",
+                  "value": ""
+                },
+                {
+                  "name": "Large Amount of LP Unlocked",
+                  "level": "danger",
+                  "score": 11000,
+                  "description": "A large amount of LP tokens are unlocked, allowing the owner to remove liquidity at any point.",
+                  "value": "100.00%"
+                },
+                {
+                  "name": "Single holder ownership",
+                  "level": "danger",
+                  "score": 5000,
+                  "description": "One user holds a large amount of the token supply",
+                  "value": "50.00%"
+                },
+                {
+                  "name": "Low Liquidity",
+                  "level": "danger",
+                  "score": 2992,
+                  "description": "Low amount of liquidity in the token pool",
+                  "value": "$7.83"
+                },
+                {
+                  "name": "High holder concentration",
+                  "level": "warn",
+                  "score": 1138,
+                  "description": "The top 10 users hold more than 50% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Missing file metadata",
+                  "level": "warn",
+                  "score": 500,
+                  "description": "No file metadata found associated to this token",
+                  "value": ""
+                },
+                {
+                  "name": "Low amount of LP Providers",
+                  "level": "warn",
+                  "score": 500,
+                  "description": "Only a few users are providing liquidity",
+                  "value": ""
+                },
+                {
+                  "name": "Mutable metadata",
+                  "level": "warn",
+                  "score": 100,
+                  "description": "Token metadata can be changed by the owner",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 0,
+              "insider_networks": null,
+              "top_holders": [
+                {
+                  "address": "HW8wx49bfW69ivF9Xm7KuVrJL9UwhaRXkRvpa75s1bHF",
+                  "pct": 50.00317239020028,
+                  "amount": 15848604512.113878,
+                  "insider": false
+                },
+                {
+                  "address": "EFwh7KaFQUR5GYPgVqwCRw3qw4sidkEBxfb78NFoNc1j",
+                  "pct": 10.110958015123039,
+                  "amount": 1865024216.7589996,
+                  "insider": false
+                },
+                {
+                  "address": "2dvZbhcmP3A49pk1z7m84VVNfuPqJW96rX2vzyWWH7Xu",
+                  "pct": 1.1801154541635412,
+                  "amount": 217679066.345106,
+                  "insider": false
+                },
+                {
+                  "address": "A8fL6m6UBwkqDxBaMtcb1an3CLbyS9QNy4ez3ToCcyw8",
+                  "pct": 0.5421354813662234,
+                  "amount": 100000000,
+                  "insider": false
+                },
+                {
+                  "address": "8S8HDAU7oX5sJrQp1bm155noaTQCKN1YyzRM95sFbX8J",
+                  "pct": 0.5421354813662234,
+                  "amount": 100000000,
+                  "insider": false
+                },
+                {
+                  "address": "6VYLofvuBJCrxTnHVUxWkWVjd9krqFCZXzGaQG1LU9iW",
+                  "pct": 0.5421354813662234,
+                  "amount": 100000000,
+                  "insider": false
+                },
+                {
+                  "address": "FBqu4Ceqn55zBDx1sC4JGaoSrW8nifa871neFnRM8zNf",
+                  "pct": 0.5421354813662234,
+                  "amount": 100000000,
+                  "insider": false
+                },
+                {
+                  "address": "3xhp7QEg9MkmeW6Zo2Rg324k9hBZpphhr84QgnJ5Kmid",
+                  "pct": 0.2752508526324098,
+                  "amount": 50771598.9993417,
+                  "insider": false
+                },
+                {
+                  "address": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+                  "pct": 0.2518893707817331,
+                  "amount": 46462439.637219906,
+                  "insider": false
+                },
+                {
+                  "address": "3a3319S1kxbmnFEnvmtFAfDhKBBYRqtKGrsSvyhHrboq",
+                  "pct": 0.08121180178051912,
+                  "amount": 14979982.785088902,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 15.262031283083225,
+              "lp_locked_pct": 0,
+              "mint_authority": {
+                "lamports": 24069874,
+                "owner": "11111111111111111111111111111111",
+                "data": [
+                  "",
+                  "base64"
+                ],
+                "executable": false,
+                "rentEpoch": 18446744073709552000,
+                "space": 0
+              },
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": false,
+              "verification_meta": null,
+              "launchpad": "unknown",
+              "markets_count": 2,
+              "creator": "2dvZbhcmP3A49pk1z7m84VVNfuPqJW96rX2vzyWWH7Xu",
+              "rugged_events": [],
+              "fetched_at": "2026-06-18T11:15:11.822Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 100,
+            "risk_level": "danger",
+            "flags": [
+              "rugcheck_score_high",
+              "mint_authority_active",
+              "top_holder_high",
+              "rugcheck_danger_risks_4"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-18T11:15:11.886Z",
+            "enrich_ms": 64
+          }
+        },
+        "goplus": {
+          "source_health": "fail_transient",
+          "error": "timeout"
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": []
     }
   ]
 }
