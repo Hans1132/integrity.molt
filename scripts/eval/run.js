@@ -16,6 +16,11 @@ function main() {
   const data = loadAnchor(anchorPath);
   const tokens = data.tokens.filter(t => splitFilter === 'all' || t.split === splitFilter);
 
+  if (splitFilter !== 'all' && tokens.length === 0 && data.tokens.length > 0) {
+    console.error(`[eval] ❌ split '${splitFilter}' nematchuje žádný token — platné hodnoty: tune | holdout | all`);
+    process.exit(1);
+  }
+
   const rows = tokens.map(evalToken);
   const metrics = computeMetrics(rows);
   const rulesVersion = require('../../data/rules-v2.json').version;

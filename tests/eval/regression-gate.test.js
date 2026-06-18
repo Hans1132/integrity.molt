@@ -38,5 +38,23 @@ test('zlepšení (vyšší recall, nižší FPR) → PASS', () => {
   assert.strictEqual(checkRegression({ recall_scam: 0.95, fpr: 0.02 }, baseline, TOL).pass, true);
 });
 
+test('fail-closed: non-numeric baseline metric → pass false', () => {
+  const r = checkRegression({ recall_scam: 0.9, fpr: 0.05 }, { recall_scam: 'x', fpr: 0.05 }, TOL);
+  assert.strictEqual(r.pass, false);
+  assert.ok(r.reasons.some(x => x.includes('invalid')));
+});
+test('fail-closed: missing current metric → pass false', () => {
+  const r = checkRegression({ fpr: 0.05 }, baseline, TOL);
+  assert.strictEqual(r.pass, false);
+});
+test('fail-closed: negative tolerance → pass false', () => {
+  const r = checkRegression({ recall_scam: 0.9, fpr: 0.05 }, baseline, -0.1);
+  assert.strictEqual(r.pass, false);
+});
+test('fail-closed: null input → pass false', () => {
+  const r = checkRegression(null, baseline, TOL);
+  assert.strictEqual(r.pass, false);
+});
+
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

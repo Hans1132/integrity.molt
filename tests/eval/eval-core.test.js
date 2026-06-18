@@ -93,5 +93,21 @@ test('evalToken is deterministic (same snapshot → same score) and returns matc
   assert.strictEqual(r1.mustNotFlagOk, true, 'a non-existent factor must not be flagged');
 });
 
+test('score_range with non-finite values (NaN/Infinity) → error', () => {
+  const bad = { ...validEntry, label: { ...validEntry.label, score_range: [0, Infinity] } };
+  assert.ok(validateGoldEntry(bad).some(e => e.includes('score_range')));
+});
+test('score_range out of 0..100 bounds → error', () => {
+  const bad = { ...validEntry, label: { ...validEntry.label, score_range: [0, 150] } };
+  assert.ok(validateGoldEntry(bad).some(e => e.includes('score_range')));
+});
+test('loadAnchor throws when tokens is not an array', () => {
+  const { loadAnchor } = require('../../scripts/eval/lib/schema');
+  const tmp = require('path').join(process.env.CLAUDE_JOB_DIR || '/tmp', 'tmp', 'bad-anchor.json');
+  require('fs').mkdirSync(require('path').dirname(tmp), { recursive: true });
+  require('fs').writeFileSync(tmp, JSON.stringify({ _meta: {}, tokens: 'nope' }));
+  assert.throws(() => loadAnchor(tmp), /tokens missing or not an array/);
+});
+
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

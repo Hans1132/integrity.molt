@@ -17,8 +17,9 @@ function validateGoldEntry(e) {
   if (!VERDICTS.has(l.verdict)) errs.push(`label.verdict must be lowercase safe|caution|danger|unknown, got ${l.verdict}`);
   const [lo, hi] = Array.isArray(l.score_range) ? l.score_range : [];
   if (!Array.isArray(l.score_range) || l.score_range.length !== 2
-      || typeof lo !== 'number' || typeof hi !== 'number' || lo > hi)
-    errs.push('label.score_range must be [lo,hi] numbers with lo<=hi');
+      || !Number.isFinite(lo) || !Number.isFinite(hi) || lo > hi || lo < 0 || hi > 100) {
+    errs.push('label.score_range must be [lo,hi] finite numbers with 0<=lo<=hi<=100');
+  }
   if (!Array.isArray(e.sources) || e.sources.length === 0) errs.push('sources[] must be non-empty');
   const s = e.snapshot || {};
   if (s.enrichment == null) errs.push('snapshot.enrichment missing');
@@ -30,6 +31,9 @@ function validateGoldEntry(e) {
 
 function loadAnchor(filePath) {
   const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  if (!Array.isArray(data.tokens)) {
+    throw new Error('Gold anchor validation failed: data.tokens missing or not an array');
+  }
   const allErrs = [];
   (data.tokens || []).forEach((t, i) => {
     const errs = validateGoldEntry(t);

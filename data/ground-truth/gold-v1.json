@@ -3,7 +3,7 @@
     "version": "1.0",
     "frozen_at": "2026-06-18",
     "snapshot_level": "findings (enrichment+goplus)",
-    "verdict_enum": "safe|caution|danger (lowercase, classifyRisk)",
+    "verdict_enum": "safe|caution|danger|unknown (lowercase, classifyRisk)",
     "counts": {
       "scam": 5,
       "legit": 6,

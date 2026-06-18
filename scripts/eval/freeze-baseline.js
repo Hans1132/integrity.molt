@@ -13,6 +13,10 @@ const { computeMetrics } = require('./lib/metrics');
 function main() {
   const data = loadAnchor('data/ground-truth/gold-v1.json');
   const rows = data.tokens.filter(t => t.split === 'tune').map(evalToken);
+  if (rows.length === 0) {
+    console.error('[baseline] ❌ žádné tune tokeny — neukládám degenerate baseline (zkontroluj split v gold anchoru)');
+    process.exit(1);
+  }
   const metrics = computeMetrics(rows);
   const baseline = {
     frozen_at: new Date().toISOString(),

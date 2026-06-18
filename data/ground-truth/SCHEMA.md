@@ -37,7 +37,7 @@ Gold dataset pro deterministický eval loop IRIS v2 scoreru.
 
 | Pole                | Typ      | Popis |
 |---------------------|----------|-------|
-| `verdict`           | enum     | Viz výše — lowercase `safe|caution|danger|unknown` |
+| `verdict`           | enum     | Viz výše — lowercase `safe\|caution\|danger\|unknown` |
 | `score_range`       | [lo, hi] | Přijatelný rozsah IRIS skóre |
 | `scam_type`         | string\|null | Typ scamu (rug, honeypot, …) nebo null |
 | `anchor_confidence` | float    | 0.0–1.0, důvěra v label |

@@ -39,6 +39,8 @@ test('prázdný vstup → nuly, ne NaN', () => {
   const m = computeMetrics([]);
   assert.strictEqual(m.recall_scam, 0);
   assert.strictEqual(m.fpr, 0);
+  assert.strictEqual(m.precision_scam, 0);
+  assert.strictEqual(m.score_mae, 0);
 });
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
