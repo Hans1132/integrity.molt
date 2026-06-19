@@ -6,15 +6,15 @@
     "verdict_enum": "safe|caution|danger|unknown (lowercase, classifyRisk)",
     "counts": {
       "scam": 30,
-      "legit": 9,
-      "edge": 21
+      "legit": 19,
+      "edge": 13
     },
     "split": {
-      "tune": 50,
+      "tune": 52,
       "holdout": 10
     },
     "stop_criteria": null,
-    "note": "Seed kotva: 16 reálných tokenů. Recall-focused scam batch: +25 RugCheck-verified rug pulls (known_scams conf=0.85). Legit/edge rebalance 2026-06-19: +3 legit (MNDE/NOS/STEP, score<40) +16 edge-FP (major tokens over-scored by IRIS; external_oracle_danger_floor FP pattern). EXCLUDED: JTO/PYTH/bSOL/SHDW (no rugcheck data), LFNTY/BTC-Sollet/USDCet/SAMO (illiquid), UST (collapsed $422 confirmed). Invalid mint: GMT7i5KKs (47 chars)."
+    "note": "Seed kotva: 16 reálných tokenů. Recall-focused scam batch: +25 RugCheck-verified rug pulls (known_scams conf=0.85). Legit/edge rebalance 2026-06-19: +3 legit (MNDE/NOS/STEP, score<40) +16 edge-FP (major tokens over-scored by IRIS; external_oracle_danger_floor FP pattern). EXCLUDED: bSOL/SHDW (enrichment-unavailable, not verified-dead). RECOVERED: JTO+PYTH had wrong addresses (lowercase vs mixed-case) — corrected 2026-06-19, both LEGIT. EXCLUDED (illiquid/collapsed): LFNTY/BTC-Sollet/USDCet/SAMO (illiquid), UST (collapsed $422 confirmed). Invalid mint: GMT7i5KKs (47 chars). | Hybrid reklasifikace: edge=strukturální (koncentrace/Token-2022), legit=blue-chip (over-flag je měřené zjištění)."
   },
   "tokens": [
     {
@@ -8377,7 +8377,7 @@
       "mint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
       "symbol": "ORCA",
       "name": "Orca",
-      "category": "edge",
+      "category": "legit",
       "split": "tune",
       "label": {
         "verdict": "safe",
@@ -8389,7 +8389,7 @@
         "anchor_confidence": 0.85,
         "verified_at": "2026-06-19",
         "verified_by": "hans-pending",
-        "rationale": "Legit (legit-tokens.json), on-chain liquidity $1,035,928 verified alive. Orca DEX; $1M+ liquidity; IRIS over-scores (64) mint_authority_legit_context+insiders. EDGE-FP: IRIS over-scores — needs human review"
+        "rationale": "Legit (legit-tokens.json), on-chain liquidity $1,035,928 verified alive. Orca DEX; $1M+ liquidity; IRIS over-scores (64) mint_authority_legit_context+insiders. EDGE-FP: IRIS over-scores — needs human review [hybrid: blue-chip legit, caution je spurious over-flag, ne strukturální]"
       },
       "sources": [
         {
@@ -8654,7 +8654,7 @@
       "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
       "symbol": "mSOL",
       "name": "Marinade staked SOL",
-      "category": "edge",
+      "category": "legit",
       "split": "holdout",
       "label": {
         "verdict": "safe",
@@ -8666,7 +8666,7 @@
         "anchor_confidence": 0.85,
         "verified_at": "2026-06-19",
         "verified_by": "hans-pending",
-        "rationale": "Legit (legit-tokens.json), on-chain liquidity $2,756,972 verified alive. Marinade LST; $2.7M liquidity; IRIS over-scores (81) external_oracle_danger_floor — LST FP. EDGE-FP: IRIS over-scores — needs human review"
+        "rationale": "Legit (legit-tokens.json), on-chain liquidity $2,756,972 verified alive. Marinade LST; $2.7M liquidity; IRIS over-scores (81) external_oracle_danger_floor — LST FP. EDGE-FP: IRIS over-scores — needs human review [hybrid: blue-chip legit, caution je spurious over-flag, ne strukturální]"
       },
       "sources": [
         {
@@ -8849,7 +8849,7 @@
       "mint": "hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux",
       "symbol": "HNT",
       "name": "Helium Network Token",
-      "category": "edge",
+      "category": "legit",
       "split": "tune",
       "label": {
         "verdict": "safe",
@@ -8861,7 +8861,7 @@
         "anchor_confidence": 0.85,
         "verified_at": "2026-06-19",
         "verified_by": "hans-pending",
-        "rationale": "Legit (legit-tokens.json), on-chain liquidity $550,810 verified alive. Helium DePIN token; $550k liquidity; IRIS over-scores (64) insiders+mint_authority. EDGE-FP: IRIS over-scores — needs human review"
+        "rationale": "Legit (legit-tokens.json), on-chain liquidity $550,810 verified alive. Helium DePIN token; $550k liquidity; IRIS over-scores (64) insiders+mint_authority. EDGE-FP: IRIS over-scores — needs human review [hybrid: blue-chip legit, caution je spurious over-flag, ne strukturální]"
       },
       "sources": [
         {
@@ -9078,7 +9078,7 @@
       "mint": "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof",
       "symbol": "RENDER",
       "name": "Render Token",
-      "category": "edge",
+      "category": "legit",
       "split": "tune",
       "label": {
         "verdict": "safe",
@@ -9090,7 +9090,7 @@
         "anchor_confidence": 0.85,
         "verified_at": "2026-06-19",
         "verified_by": "hans-pending",
-        "rationale": "Legit (legit-tokens.json), on-chain liquidity $1,027,044 verified alive. Render DePIN token; $1M+ liquidity; IRIS over-scores (67) mint/freeze+insiders. EDGE-FP: IRIS over-scores — needs human review"
+        "rationale": "Legit (legit-tokens.json), on-chain liquidity $1,027,044 verified alive. Render DePIN token; $1M+ liquidity; IRIS over-scores (67) mint/freeze+insiders. EDGE-FP: IRIS over-scores — needs human review [hybrid: blue-chip legit, caution je spurious over-flag, ne strukturální]"
       },
       "sources": [
         {
@@ -9304,7 +9304,7 @@
       "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
       "symbol": "jitoSOL",
       "name": "Jito Staked SOL",
-      "category": "edge",
+      "category": "legit",
       "split": "tune",
       "label": {
         "verdict": "safe",
@@ -9316,7 +9316,7 @@
         "anchor_confidence": 0.85,
         "verified_at": "2026-06-19",
         "verified_by": "hans-pending",
-        "rationale": "Legit (legit-tokens.json), on-chain liquidity $11,752,749 verified alive. Jito LST; $11.7M liquidity; IRIS over-scores (64) external_oracle_danger_floor — major LST FP. EDGE-FP: IRIS over-scores — needs human review"
+        "rationale": "Legit (legit-tokens.json), on-chain liquidity $11,752,749 verified alive. Jito LST; $11.7M liquidity; IRIS over-scores (64) external_oracle_danger_floor — major LST FP. EDGE-FP: IRIS over-scores — needs human review [hybrid: blue-chip legit, caution je spurious over-flag, ne strukturální]"
       },
       "sources": [
         {
@@ -10370,7 +10370,7 @@
       "mint": "METAewgxyPbgwsseH8T16a39CQ5VyVxZi9zXiDPY18m",
       "symbol": "META",
       "name": "Metaplex",
-      "category": "edge",
+      "category": "legit",
       "split": "tune",
       "label": {
         "verdict": "safe",
@@ -10382,7 +10382,7 @@
         "anchor_confidence": 0.85,
         "verified_at": "2026-06-19",
         "verified_by": "hans-pending",
-        "rationale": "Legit (legit-tokens.json), on-chain liquidity $1,562,598 verified alive. Metaplex NFT infra token; $1.5M liquidity; IRIS over-scores (64) mint_authority+insiders. EDGE-FP: IRIS over-scores — needs human review"
+        "rationale": "Legit (legit-tokens.json), on-chain liquidity $1,562,598 verified alive. Metaplex NFT infra token; $1.5M liquidity; IRIS over-scores (64) mint_authority+insiders. EDGE-FP: IRIS over-scores — needs human review [hybrid: blue-chip legit, caution je spurious over-flag, ne strukturální]"
       },
       "sources": [
         {
@@ -10801,7 +10801,7 @@
       "mint": "poLisWXnNRwC6oBu1vHiuKQzFjGL4XDSu4g9qjz9qVk",
       "symbol": "POLIS",
       "name": "Star Atlas DAO",
-      "category": "edge",
+      "category": "legit",
       "split": "holdout",
       "label": {
         "verdict": "safe",
@@ -10813,7 +10813,7 @@
         "anchor_confidence": 0.85,
         "verified_at": "2026-06-19",
         "verified_by": "hans-pending",
-        "rationale": "Legit (legit-tokens.json), on-chain liquidity $23,132 verified alive [BORDERLINE <$50k]. Star Atlas DAO token; $23k liquidity [BORDERLINE]; IRIS over-scores (64). EDGE-FP: IRIS over-scores — needs human review"
+        "rationale": "Legit (legit-tokens.json), on-chain liquidity $23,132 verified alive [BORDERLINE <$50k]. Star Atlas DAO token; $23k liquidity [BORDERLINE]; IRIS over-scores (64). EDGE-FP: IRIS over-scores — needs human review [hybrid: blue-chip legit, caution je spurious over-flag, ne strukturální]"
       },
       "sources": [
         {
@@ -11628,7 +11628,7 @@
       "mint": "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
       "symbol": "stSOL",
       "name": "Lido Staked SOL",
-      "category": "edge",
+      "category": "legit",
       "split": "tune",
       "label": {
         "verdict": "safe",
@@ -11640,7 +11640,7 @@
         "anchor_confidence": 0.85,
         "verified_at": "2026-06-19",
         "verified_by": "hans-pending",
-        "rationale": "Legit (legit-tokens.json), on-chain liquidity $473,532 verified alive. Lido LST; $473k liquidity; IRIS over-scores (64) external_oracle_danger_floor — LST FP. EDGE-FP: IRIS over-scores — needs human review"
+        "rationale": "Legit (legit-tokens.json), on-chain liquidity $473,532 verified alive. Lido LST; $473k liquidity; IRIS over-scores (64) external_oracle_danger_floor — LST FP. EDGE-FP: IRIS over-scores — needs human review [hybrid: blue-chip legit, caution je spurious over-flag, ne strukturální]"
       },
       "sources": [
         {
@@ -11810,6 +11810,404 @@
       },
       "must_flag": [],
       "must_not_flag": []
+    },
+    {
+      "id": "gt-0061",
+      "mint": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+      "symbol": "JTO",
+      "name": "Jito",
+      "category": "legit",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "anchor_confidence": 0.9,
+        "rationale": "Jito governance token — top Solana LST protocol, $197k rugcheck liquidity, IRIS score=5 (safe), established DeFi infrastructure"
+      },
+      "sources": [
+        {
+          "name": "rugcheck",
+          "verdict": "legit",
+          "total_liquidity_usd": 197541.32,
+          "note": "capture 2026-06-19"
+        },
+        {
+          "name": "goplus",
+          "verdict": "ok"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 3232,
+              "score_normalised": 35,
+              "risk_level": "warn",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "Single holder ownership",
+                  "level": "warn",
+                  "score": 2122,
+                  "description": "One user holds a large amount of the token supply",
+                  "value": "21.23%"
+                },
+                {
+                  "name": "High holder concentration",
+                  "level": "warn",
+                  "score": 1009,
+                  "description": "The top 10 users hold more than 50% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Mutable metadata",
+                  "level": "warn",
+                  "score": 100,
+                  "description": "Token metadata can be changed by the owner",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 1678,
+              "insider_networks": [
+                {
+                  "id": "vast-steel-mongoose",
+                  "size": 1661,
+                  "type": "transfer",
+                  "tokenAmount": 962840273813109000,
+                  "activeAccounts": 1661
+                },
+                {
+                  "id": "smart-sunset-prawn",
+                  "size": 11,
+                  "type": "transfer",
+                  "tokenAmount": 26369460318219090,
+                  "activeAccounts": 11
+                },
+                {
+                  "id": "clean-bronze-sardine",
+                  "size": 6,
+                  "type": "transfer",
+                  "tokenAmount": 13159840170000000,
+                  "activeAccounts": 6
+                }
+              ],
+              "top_holders": [
+                {
+                  "address": "5eosrve6LktMZgVNszYzebgmmC7BjLK8NoWyRQtcmGTF",
+                  "pct": 21.228298145826475,
+                  "amount": 209422044.3294855,
+                  "insider": false
+                },
+                {
+                  "address": "5SybwTvGno6SBApbGinXyLqhnPzs47aaBG4PShyPT8ey",
+                  "pct": 7.124916545976181,
+                  "amount": 70288940.66238,
+                  "insider": false
+                },
+                {
+                  "address": "7r5xFtcJZpc8vtzBCc1S9ooR2xadHt1jcT8HiH23a1x1",
+                  "pct": 4.362747197397714,
+                  "amount": 43039504.66002802,
+                  "insider": false
+                },
+                {
+                  "address": "ESnLXehGeReTRw3WxxEZwB4u2C9gAe8dMbob8Q4gm9Yg",
+                  "pct": 3.1179179563795283,
+                  "amount": 30758977.850750875,
+                  "insider": false
+                },
+                {
+                  "address": "71sDbduLVe1rULyKNKofBmYcbRXZ4WLLQ7WAamjgYV2m",
+                  "pct": 3.04098230981775,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "11111111111111111111111111111111",
+                  "pct": 2.789319754282628,
+                  "amount": 0,
+                  "insider": false
+                },
+                {
+                  "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+                  "pct": 2.69069184452735,
+                  "amount": 26544293.983,
+                  "insider": false
+                },
+                {
+                  "address": "2RFu5Vp4uzECctKfTi7twpSLyFkBUg8erCmHZ8ay1Dvv",
+                  "pct": 2.4042144314806473,
+                  "amount": 23718128.40522579,
+                  "insider": false
+                },
+                {
+                  "address": "jjCAwuuNpJCNMLAanpwgJZ6cdXzLPXe2GfD6TaDQBXt",
+                  "pct": 2.147042442827308,
+                  "amount": 21181067.58018504,
+                  "insider": false
+                },
+                {
+                  "address": "FQnVcnwEXREJ3D4j7LzNGzCiMUVVqxkGEqZ2KffRY8ud",
+                  "pct": 2.0273222187238975,
+                  "amount": 20000000.0303,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 197541.32253561236,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+                "payer": "",
+                "name": "JITO",
+                "symbol": "jto",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 63,
+              "creator": null,
+              "rugged_events": [],
+              "fetched_at": "2026-06-19T07:55:29.444Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 24,
+            "risk_level": "safe",
+            "flags": [
+              "many_insiders",
+              "rugcheck_warn_risks_3",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-19T07:55:29.446Z",
+            "enrich_ms": 97
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0,
+          "raw_json": "{\"balance_mutable_authority\":{\"authority\":[],\"status\":\"0\"},\"closable\":{\"authority\":[],\"status\":\"0\"},\"creators\":[],\"default_account_state\":\"1\",\"default_account_state_upgradable\":{\"authority\":[],\"status\":\"0\"},\"dex\":[{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"829805.723378075000\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.003\",\"id\":\"G2FiE1yn9N9ZJx5e1E2LxxMnHvb1H3hCuHLPfKJ98smA\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"23876317.23332590\"},\"open_time\":\"0\",\"price\":\"0.00829137676511737673\",\"tvl\":\"1289204.71\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"7746807.25131302\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"7659.506018538800\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.01\",\"id\":\"4UVvSVdeth9mxpPe4nwwZseXPd2bqqDm4xVaJSve3DXw\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"240348.687961464000\"},\"open_time\":\"0\",\"price\":\"0.00835954261381880001\",\"tvl\":\"94741.02\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"69411.032461772000\"}},{\"burn_percent\":0,\"day\":{\"price_max\":\"104.46336074248492\",\"price_min\":\"90.9554298713961\",\"volume\":\"16381.14183218481\"},\"dex_name\":\"raydium\",\"fee_rate\":\"0.01\",\"id\":\"JVoPtWWDsRcLvQosu5fWc2CaNF6jEtJzbxdPtcEuvZo\",\"lp_amount\":null,\"month\":{\"price_max\":\"176.2659795334857\",\"price_min\":\"84.25735184739511\",\"volume\":\"906285.5368528512\"},\"open_time\":\"0\",\"price\":\"92.97010739416446\",\"tvl\":\"47188.41\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"129.0586764608626\",\"price_min\":\"84.25735184739511\",\"volume\":\"139178.7051360476\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"15626.631704775100\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.003\",\"id\":\"2UhFnySoJi6c89aydGAGS7ZRemo2dbkFRhvSJqDX4gHJ\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"1219519.12122759\"},\"open_time\":\"0\",\"price\":\"93.8399033490411832\",\"tvl\":\"42547.01\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"183776.454266445000\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"4293.187619846740\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.01\",\"id\":\"93MjUKNKxazKmgS3GBX2Gj2BttEjJUyi7NYeyDHdHSc2\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"91227.509888653900\"},\"open_time\":\"0\",\"price\":\"0.7373867197454028\",\"tvl\":\"31740.41\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"26663.535095063900\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"79.3961212979451000\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.003\",\"id\":\"AwBhvNXf5X5hNbC1jAqrJ7Stx5xLuG97xDjJ9PNy1h65\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"6317.958878385910\"},\"open_time\":\"0\",\"price\":\"0.73511658888031592000\",\"tvl\":\"1899.35\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"4172.045077582770\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"63.2377920968533000\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.01\",\"id\":\"2x6oDcyFpWqogTMxbbTAHHMqAsefFdApDdpiTJbgzPHQ\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"2146.737613345640\"},\"open_time\":\"0\",\"price\":\"92.8812137888689573\",\"tvl\":\"1788.43\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"582.560087662127\"}},{\"burn_percent\":0,\"day\":{\"price_max\":\"103.16628293681248\",\"price_min\":\"91.44245169491523\",\"volume\":\"25.34492202269248\"},\"dex_name\":\"raydium\",\"fee_rate\":\"0.0025\",\"id\":\"296QdpvTmcnmNwzXu3VRuFV13UMaj2LsV65sGRrUnjBv\",\"lp_amount\":null,\"month\":{\"price_max\":\"172.65095093495285\",\"price_min\":\"84.2779177868022\",\"volume\":\"2062.4953618980703\"},\"open_time\":\"0\",\"price\":\"92.83020834456718\",\"tvl\":\"1568.68\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"127.76975233744916\",\"price_min\":\"84.2779177868022\",\"volume\":\"2027.824652773964\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"17.1732067171641000\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.01\",\"id\":\"69pZkiUKgFrHj2EzGnFZbZQs9czo131hTVqrh4L1azjv\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"555.834068159515\"},\"open_time\":\"0\",\"price\":\"92.8973186715413834\",\"tvl\":\"567.32\",\"type\":\"Standard\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"152.880679961475\"}},{\"burn_percent\":25,\"day\":{\"price_max\":\"103.7425667098137\",\"price_min\":\"91.57347150537916\",\"volume\":\"49.60399233264028\"},\"dex_name\":\"raydium\",\"fee_rate\":\"0.0025\",\"id\":\"EzLBvtY6gwdz5BGJnKDZGgYrMzm1PLKcxdViqRx5fSL1\",\"lp_amount\":\"4.110970426\",\"month\":{\"price_max\":\"178.65317515910067\",\"price_min\":\"81.54518314857496\",\"volume\":\"1392.4230507151915\"},\"open_time\":\"1708298588\",\"price\":\"92.64229553916222\",\"tvl\":\"302.28\",\"type\":\"Standard\",\"week\":{\"price_max\":\"128.3754902053193\",\"price_min\":\"81.54518314857496\",\"volume\":\"423.4519111927003\"}}],\"freezable\":{\"authority\":[],\"status\":\"0\"},\"holder_count\":\"82024\",\"holders\":[{\"account\":\"5eosrve6LktMZgVNszYzebgmmC7BjLK8NoWyRQtcmGTF\",\"balance\":\"209422044.3294855\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.2123\",\"tag\":\"\",\"token_account\":\"2Ch9AWnbAaummLkWTTtNgTAvrFq8YMATUaaN77TB2Y6C\"},{\"account\":\"5SybwTvGno6SBApbGinXyLqhnPzs47aaBG4PShyPT8ey\",\"balance\":\"70288940.66238\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0712\",\"tag\":\"\",\"token_account\":\"4AxcNk9TY2df2XNzyHHJAQMHs3TxdtqihDUtfqchXRBi\"},{\"account\":\"7r5xFtcJZpc8vtzBCc1S9ooR2xadHt1jcT8HiH23a1x1\",\"balance\":\"43039504.66002802\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0436\",\"tag\":\"\",\"token_account\":\"GAXBfxvDvunuCbF3kmH8QDiV5CA7478zcZZ47PvNJ67g\"},{\"account\":\"ESnLXehGeReTRw3WxxEZwB4u2C9gAe8dMbob8Q4gm9Yg\",\"balance\":\"30758977.850750875\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0312\",\"tag\":\"\",\"token_account\":\"39UEXZFE38ypxswoL12vKE2tG8Ab2vJvEQDY2VsiBNvX\"},{\"account\":\"MbzL6v1mDkF8QW6r9TJKV6eaiYSf6MNtpVei2ciFQHN\",\"balance\":\"27517281.0\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0279\",\"tag\":\"\",\"token_account\":\"GyUg73gULEjkqQdi2tKgqi3HeRbeQ8dMfmp3STHqoosX\"},{\"account\":\"9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM\",\"balance\":\"26544293.983\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0269\",\"tag\":\"\",\"token_account\":\"Es11aV9LTeSchn4dJoZxGsjjpFtxWnZ6L8UwDfwRCFc\"},{\"account\":\"2RFu5Vp4uzECctKfTi7twpSLyFkBUg8erCmHZ8ay1Dvv\",\"balance\":\"23718128.40522579\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0240\",\"tag\":\"\",\"token_account\":\"9WB1LCjVVDEjhRAJa2joQTaq5tZd6FDGtKEWGNFvfNhq\"},{\"account\":\"jjCAwuuNpJCNMLAanpwgJZ6cdXzLPXe2GfD6TaDQBXt\",\"balance\":\"21181067.58018504\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0215\",\"tag\":\"\",\"token_account\":\"5HvmiQoySwMDgxxAKzAqW1L5QPkGKAMpgW2cnLRUn1Bu\"},{\"account\":\"FQnVcnwEXREJ3D4j7LzNGzCiMUVVqxkGEqZ2KffRY8ud\",\"balance\":\"20000000.0303\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0203\",\"tag\":\"\",\"token_account\":\"EWGYAthsZDpGdieMwes9FQYSK37xb7YAvSjmhQEkyaBK\"},{\"account\":\"CsWayfMjUmFU4Cbndn1QyciPhfNgirRJGPkS2h2LSUyK\",\"balance\":\"20000000.0\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0203\",\"tag\":\"\",\"token_account\":\"2CKBFL5kqhkLZDcwHS8YqixgxhQvmwThw9WuoL1z3ZTC\"}],\"lp_holders\":[],\"metadata\":{\"description\":\"JTO is the official governance token for the Jito Network.\",\"name\":\"JITO\",\"symbol\":\"JTO\",\"uri\":\"https://metadata.jito.network/token/jto\"},\"metadata_mutable\":{\"metadata_upgrade_authority\":[{\"address\":\"Pay5KQqvaPxEey8xdibLiB3WfGfdKo3SfPreuSXeGWm\",\"malicious_address\":0}],\"status\":\"1\"},\"mintable\":{\"authority\":[],\"status\":\"0\"},\"non_transferable\":\"0\",\"total_supply\":\"986523002.884516569\",\"transfer_fee\":{},\"transfer_fee_upgradable\":{\"authority\":[],\"status\":\"0\"},\"transfer_hook\":[],\"transfer_hook_upgradable\":{\"authority\":[],\"status\":\"0\"},\"trusted_token\":1}"
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": [
+        "external_oracle_danger_floor_applied"
+      ]
+    },
+    {
+      "id": "gt-0062",
+      "mint": "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
+      "symbol": "PYTH",
+      "name": "Pyth Network",
+      "category": "legit",
+      "split": "tune",
+      "label": {
+        "verdict": "safe",
+        "score_range": [
+          0,
+          39
+        ],
+        "anchor_confidence": 0.9,
+        "rationale": "Pyth Network oracle token — major Solana DeFi oracle infrastructure, $308k rugcheck liquidity, IRIS score=7 (safe), widely integrated"
+      },
+      "sources": [
+        {
+          "name": "rugcheck",
+          "verdict": "legit",
+          "total_liquidity_usd": 308019.58,
+          "note": "capture 2026-06-19"
+        },
+        {
+          "name": "goplus",
+          "verdict": "ok"
+        }
+      ],
+      "snapshot": {
+        "enrichment": {
+          "mint": "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
+          "external_sources": {
+            "rugcheck": {
+              "source": "rugcheck",
+              "score": 1122,
+              "score_normalised": 23,
+              "risk_level": "warn",
+              "rugged": false,
+              "risks": [
+                {
+                  "name": "High holder concentration",
+                  "level": "warn",
+                  "score": 1021,
+                  "description": "The top 10 users hold more than 50% token supply",
+                  "value": ""
+                },
+                {
+                  "name": "Mutable metadata",
+                  "level": "warn",
+                  "score": 100,
+                  "description": "Token metadata can be changed by the owner",
+                  "value": ""
+                }
+              ],
+              "insiders_detected": 2111,
+              "insider_networks": [
+                {
+                  "id": "salty-straw-badger",
+                  "size": 2111,
+                  "type": "transfer",
+                  "tokenAmount": 3178274705781402,
+                  "activeAccounts": 2111
+                }
+              ],
+              "top_holders": [
+                {
+                  "address": "5WumPYv4jDPRqWjWr3EeybLczpcohHrMPShK9WQ85qfY",
+                  "pct": 12.937837286437176,
+                  "amount": 1293781381.332316,
+                  "insider": false
+                },
+                {
+                  "address": "Ffz4sGA4ZM5i5s6dgP4oHNUoc5q4pEV3gTarULYcjc2Q",
+                  "pct": 7.8488725238352295,
+                  "amount": 784885828.362834,
+                  "insider": false
+                },
+                {
+                  "address": "9HwAxuuowYi3396rfUPk2dFzGvB1H87i8oC2BkEcR4QD",
+                  "pct": 7.218346456253717,
+                  "amount": 721833336.001007,
+                  "insider": false
+                },
+                {
+                  "address": "E294htaeagKoGLJmCpr4gkJF3B4uUEnTcq7kExX7WJGM",
+                  "pct": 6.1927561070749375,
+                  "amount": 619274487.155953,
+                  "insider": false
+                },
+                {
+                  "address": "8m5Aj17QvyLXuS747LEWMhoQ7gWrSNXia2ZfpBK4C5za",
+                  "pct": 4.825547623232886,
+                  "amount": 482553886.824339,
+                  "insider": false
+                },
+                {
+                  "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+                  "pct": 4.439230470934412,
+                  "amount": 443922241.684,
+                  "insider": false
+                },
+                {
+                  "address": "5cz3Jz3QnDmTsQiw5MwkfV9tq4zf2yCzWcH7tXq5BxCw",
+                  "pct": 3.421464527553649,
+                  "amount": 342145831.999166,
+                  "insider": false
+                },
+                {
+                  "address": "3Fy5oFavnWzTZ8YRBhZkyT3ioKtBSDVVxFkbSPefJHyF",
+                  "pct": 1.8000033147654633,
+                  "amount": 180000004.902003,
+                  "insider": false
+                },
+                {
+                  "address": "HTyLUKeseSzwb5wk1qXPMZUgi857BUfgH36KRL98EUzn",
+                  "pct": 1.8000032657453444,
+                  "amount": 180000000,
+                  "insider": false
+                },
+                {
+                  "address": "69CuwXNhEohuKx1aZxbjBCzBH3hr4hJgR4bPaG81nFGQ",
+                  "pct": 1.6372878269953366,
+                  "amount": 163728485.646456,
+                  "insider": false
+                }
+              ],
+              "total_liquidity_usd": 308019.58016041,
+              "lp_locked_pct": 0,
+              "mint_authority": null,
+              "freeze_authority": null,
+              "token_program": "spl-token",
+              "verified": true,
+              "verification_meta": {
+                "mint": "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
+                "payer": "",
+                "name": "Pyth Network",
+                "symbol": "pyth",
+                "description": "",
+                "jup_verified": true,
+                "jup_strict": true,
+                "links": []
+              },
+              "launchpad": "unknown",
+              "markets_count": 93,
+              "creator": null,
+              "rugged_events": [],
+              "fetched_at": "2026-06-19T07:55:30.085Z"
+            },
+            "solana_tracker": null
+          },
+          "token_extensions": {
+            "is_token_2022": false,
+            "owner_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "extensions": []
+          },
+          "aggregated_risk": {
+            "score": 15,
+            "risk_level": "safe",
+            "flags": [
+              "many_insiders",
+              "verified"
+            ]
+          },
+          "data_confidence": {
+            "sources_queried": 3,
+            "sources_responded": 2,
+            "timestamp": "2026-06-19T07:55:30.088Z",
+            "enrich_ms": 118
+          }
+        },
+        "goplus": {
+          "source_health": "ok",
+          "is_malicious": 0,
+          "can_buy": null,
+          "can_sell": null,
+          "cannot_sell_all": null,
+          "transfer_fee": null,
+          "blacklist_function": null,
+          "slippage_modifiable": null,
+          "risk_count": 0,
+          "raw_json": "{\"balance_mutable_authority\":{\"authority\":[],\"status\":\"0\"},\"closable\":{\"authority\":[],\"status\":\"0\"},\"creators\":[],\"default_account_state\":\"1\",\"default_account_state_upgradable\":{\"authority\":[],\"status\":\"0\"},\"dex\":[{\"burn_percent\":0,\"day\":{\"price_max\":\"1924.7210588893165\",\"price_min\":\"1803.197512304204\",\"volume\":\"183021.89585922935\"},\"dex_name\":\"raydium\",\"fee_rate\":\"0.0025\",\"id\":\"9n3dSLrERZQp95dHXywft7xV8D8xnGFLaUHtEhQVaXaC\",\"lp_amount\":null,\"month\":{\"price_max\":\"2177.3424778585045\",\"price_min\":\"1669.645675016752\",\"volume\":\"6577452.055509572\"},\"open_time\":\"0\",\"price\":\"1921.2372229356145\",\"tvl\":\"251369.4\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"2038.2804402395752\",\"price_min\":\"1669.645675016752\",\"volume\":\"2317152.8648840594\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"38970.430054099400\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.0005\",\"id\":\"8erNF5u3CHrqZJXtkfY8CjSxFYF1yqHmN8uDbAhk6tWM\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"1401346.79027145\"},\"open_time\":\"0\",\"price\":\"1926.8619553153052000\",\"tvl\":\"18993.53\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"423939.064231148000\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"560.509865056433\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.01\",\"id\":\"Fra9rBL1F5eAgtoqjXsBzZocD1UKbxXoERKVs6e23ixn\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"6090.989488647880\"},\"open_time\":\"0\",\"price\":\"27.5171531281475466\",\"tvl\":\"4825.54\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"2955.480622633710\"}},{\"burn_percent\":0,\"day\":{\"price_max\":\"1920.911083761\",\"price_min\":\"1805.7189074541743\",\"volume\":\"1894.798933885657\"},\"dex_name\":\"raydium\",\"fee_rate\":\"0.004\",\"id\":\"D2P4D7xtUAwzd8WRDaNQRcojoKKVyoWVG2PUPYscMT7p\",\"lp_amount\":null,\"month\":{\"price_max\":\"2133.333333333333\",\"price_min\":\"1672.1060292071193\",\"volume\":\"35271.15443955764\"},\"open_time\":\"0\",\"price\":\"1917.557089877356\",\"tvl\":\"3873.19\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"1996.2169667612425\",\"price_min\":\"1672.1060292071193\",\"volume\":\"23789.160232918508\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"16.8687256623191000\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.01\",\"id\":\"5tAxSLByaiWR4nnx1VtiGG5LS3Z3So4AR3LiU1fnu98m\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"711.166969088117\"},\"open_time\":\"0\",\"price\":\"1907.4243073290795000\",\"tvl\":\"2607.32\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"232.776058381921\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"84.5463325132119000\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.003\",\"id\":\"E2Z2vqwGRZfJWAFw9DPHWSnCd8dPt9BkhfQ6JyXjthm1\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"3348.609208810190\"},\"open_time\":\"0\",\"price\":\"1919.4048914435255000\",\"tvl\":\"2532.62\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"1383.969854762700\"}},{\"burn_percent\":null,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"77.7862821977253000\"},\"dex_name\":\"orca\",\"fee_rate\":\"0.003\",\"id\":\"7mPTnzjLgDUPuNU6cx61EaB4bhjexqPLEAf4ng8PpKkq\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"2352.255253107660\"},\"open_time\":\"0\",\"price\":\"2497.4633818689057000\",\"tvl\":\"2506.08\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"951.164908840423\"}},{\"burn_percent\":11.68,\"day\":{\"price_max\":\"1920.1638382093065\",\"price_min\":\"1800\",\"volume\":\"116.65179632387716\"},\"dex_name\":\"raydium\",\"fee_rate\":\"0.0025\",\"id\":\"59VtDHQrcDKswbaStjTsjNiqLngjX72UHFqChnpAb93p\",\"lp_amount\":\"8.894895114\",\"month\":{\"price_max\":\"2181.818181818182\",\"price_min\":\"1636.3636363636365\",\"volume\":\"4427.875624469567\"},\"open_time\":\"1702335070\",\"price\":\"1917.329760092295\",\"tvl\":\"2209.47\",\"type\":\"Standard\",\"week\":{\"price_max\":\"2030.525199681726\",\"price_min\":\"1642.857142857143\",\"volume\":\"1685.0737007182638\"}},{\"burn_percent\":0,\"day\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"0\"},\"dex_name\":\"raydium\",\"fee_rate\":\"0.0025\",\"id\":\"FWGk2dvJizVnbU8wAZt7YwgmKsnDZRyHhxnaWHvg64gU\",\"lp_amount\":null,\"month\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"0.00000683880445022611\"},\"open_time\":\"0\",\"price\":\"17.599255667990928\",\"tvl\":\"1905.68\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"-1\",\"price_min\":\"-1\",\"volume\":\"0.000002334902383636474\"}},{\"burn_percent\":0,\"day\":{\"price_max\":\"1921.506960754915\",\"price_min\":\"1808.3781240205533\",\"volume\":\"407.777996130769\"},\"dex_name\":\"raydium\",\"fee_rate\":\"0.008\",\"id\":\"bWpDAyJ8UidQoYU2rDemfoLE8pWP1p8GYKrxFrCtPbN\",\"lp_amount\":null,\"month\":{\"price_max\":\"1975.6097560975609\",\"price_min\":\"1672.362426617086\",\"volume\":\"8236.755163948284\"},\"open_time\":\"0\",\"price\":\"1906.2169053446833\",\"tvl\":\"1699.08\",\"type\":\"Concentrated\",\"week\":{\"price_max\":\"1939.5655477099804\",\"price_min\":\"1672.362426617086\",\"volume\":\"5479.499960364894\"}}],\"freezable\":{\"authority\":[],\"status\":\"0\"},\"holder_count\":\"302838\",\"holders\":[{\"account\":\"5WumPYv4jDPRqWjWr3EeybLczpcohHrMPShK9WQ85qfY\",\"balance\":\"1293781381.332316\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.1294\",\"tag\":\"\",\"token_account\":\"23KfDBTdpaBqfn8aUeoEDgfGJ5368gpnyYGfNkKcECqM\"},{\"account\":\"Ffz4sGA4ZM5i5s6dgP4oHNUoc5q4pEV3gTarULYcjc2Q\",\"balance\":\"784885828.362834\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0785\",\"tag\":\"\",\"token_account\":\"3XSoALqyVbG1ZMgmTwNcuUf294LzjUj7Mvy7MgA7YNVk\"},{\"account\":\"9HwAxuuowYi3396rfUPk2dFzGvB1H87i8oC2BkEcR4QD\",\"balance\":\"721833336.001007\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0722\",\"tag\":\"\",\"token_account\":\"Gnyw7rZykLq9FjLMzsu6nAryMJijy5FjCEbxxdkymRwk\"},{\"account\":\"E294htaeagKoGLJmCpr4gkJF3B4uUEnTcq7kExX7WJGM\",\"balance\":\"619274487.155953\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0619\",\"tag\":\"\",\"token_account\":\"5ULtZcyfuWvKuwB555WN4W1vsVW4F3yHU9UW1Gd7kAWy\"},{\"account\":\"8m5Aj17QvyLXuS747LEWMhoQ7gWrSNXia2ZfpBK4C5za\",\"balance\":\"482553886.824339\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0483\",\"tag\":\"\",\"token_account\":\"52AXihP4T7dgtfxFMjjLBFVGucNvHmxMW5GkvM1vQyFU\"},{\"account\":\"9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM\",\"balance\":\"443922241.684\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0444\",\"tag\":\"\",\"token_account\":\"ACthtigKSdBXfCKLUfZNjQzLMmKHzjbSafqpa1NJ3M7J\"},{\"account\":\"5cz3Jz3QnDmTsQiw5MwkfV9tq4zf2yCzWcH7tXq5BxCw\",\"balance\":\"342145831.999166\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0342\",\"tag\":\"\",\"token_account\":\"Eq9dm4pHewdSVaKdpVJogjLW6upd9hNkiboX2eSncmFV\"},{\"account\":\"3Fy5oFavnWzTZ8YRBhZkyT3ioKtBSDVVxFkbSPefJHyF\",\"balance\":\"180000004.902003\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0180\",\"tag\":\"\",\"token_account\":\"B5V95aZZV2jATa8wBjYvjf7dV6bYYxQ2VSzJ6sBD58oL\"},{\"account\":\"HTyLUKeseSzwb5wk1qXPMZUgi857BUfgH36KRL98EUzn\",\"balance\":\"180000000.0\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0180\",\"tag\":\"\",\"token_account\":\"FQ2yHp7D3SBYQoe2crFATJdhsazJKJ9Yvq4xFbTzCMYx\"},{\"account\":\"69CuwXNhEohuKx1aZxbjBCzBH3hr4hJgR4bPaG81nFGQ\",\"balance\":\"163728485.646456\",\"is_locked\":0,\"locked_detail\":[],\"percent\":\"0.0164\",\"tag\":\"\",\"token_account\":\"CMop2kfJnRrE24jwBfCP3E4yMt451appnxRafVLN6bAr\"}],\"lp_holders\":[],\"metadata\":{\"description\":\"Governance Token for the Pyth Network oracle.\",\"name\":\"Pyth Network\",\"symbol\":\"PYTH\",\"uri\":\"https://arweave.net/GWKBRfaCBSiDWs0hYHe_PCEEhKoq_Bl3JlpmW5MqRnE\"},\"metadata_mutable\":{\"metadata_upgrade_authority\":[{\"address\":\"HVx4oW785bu8QDQ8AwSVfD7H4iuH51ttakc2G5f9XTX8\",\"malicious_address\":0}],\"status\":\"1\"},\"mintable\":{\"authority\":[],\"status\":\"0\"},\"non_transferable\":\"0\",\"total_supply\":\"9999981857.003225\",\"transfer_fee\":{},\"transfer_fee_upgradable\":{\"authority\":[],\"status\":\"0\"},\"transfer_hook\":[],\"transfer_hook_upgradable\":{\"authority\":[],\"status\":\"0\"},\"trusted_token\":1}"
+        }
+      },
+      "must_flag": [],
+      "must_not_flag": [
+        "external_oracle_danger_floor_applied"
+      ]
     }
   ]
 }
