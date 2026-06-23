@@ -102,6 +102,18 @@ function createQuotaMiddleware(db) {
     // no-op: quota již spotřebována atomicky v checkFreeQuota
   }
 
+  // tryConsumeFreeQuota — atomický check+consume pro endpointy, které kvótu
+  // vynucují inline (až PO vlastním paid/CAPTCHA/cache gatingu), ne přes
+  // checkFreeQuota middleware. Vrací stejný tvar jako interní transakce:
+  // { ok, used, remaining } nebo { denied: 'ip'|'global', used|globalUsed }.
+  // Fail-OPEN při DB chybě (shoda s checkFreeQuota) — transientní chyba nikdy
+  // neblokuje scan.
+  function tryConsumeFreeQuota(ip) {
+    const today = new Date().toISOString().slice(0, 10);
+    try { return checkAndConsumeTx(ip, today); }
+    catch { return { ok: true, dbError: true }; }
+  }
+
   function getQuotaStatus(ip) {
     const today  = new Date().toISOString().slice(0, 10);
     const ipRow  = stmtIp.get(ip, today);
@@ -118,7 +130,7 @@ function createQuotaMiddleware(db) {
     };
   }
 
-  return { checkFreeQuota, consumeFreeQuota, getQuotaStatus, getClientIp, isInternalCall };
+  return { checkFreeQuota, consumeFreeQuota, tryConsumeFreeQuota, getQuotaStatus, getClientIp, isInternalCall };
 }
 
 function createBlacklistMiddleware(db) {

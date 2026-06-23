@@ -12,6 +12,14 @@
 
 ## Recent changes (top of stack, newest first)
 
+### 2026-06-17: Code-review remediation H1/M1/M2 + free-quota bypass — [security/backend]
+- **Změny:** server.js (/scan/iris +checkFreeQuota middleware; /scan/quick + /scan/free no-op consumeFreeQuota → atomický tryConsumeFreeQuota, guard !isInternalCall; /scan/free quota IP req.ip→_getClientIp + captcha bypass req.ip→isInternalCall), src/middleware/free-quota.js (+tryConsumeFreeQuota wrap nad checkAndConsumeTx, fail-open), src/crypto/sign.js (asyncSign settled-guard), tests/crypto/sign-spof.test.js + tests/middleware/free-quota.test.js (+regression/atomic testy).
+- **Důvod:** Code review + CodeRabbit. H1: /scan/iris free quota se nikdy nespotřebovala (consumeFreeQuota no-op mimo middleware); stejný bypass i na /scan/quick a /scan/free. M1: semafor double-release při invalid JSON → _active drift. M2: req.ip místo CF-Connecting-IP (sharp edge #1); captcha bypass → isInternalCall (_getClientIp padá na 127.0.0.1 bez CF hlavičky).
+- **Dopad:** všechny 3 free endpointy nyní sdílejí a vynucují 3/IP/den + global cap atomicky; paid (API key / x402) a interní volání kvótu nečerpají (/scan/quick gating zachován); signing pool drží cap 8 i v degradaci; /scan/free captcha bypass jen pro interní volání. Branch claude/code-review-r0c4eq (draft PR, čeká Hansův manual review — payment/crypto sensitive §6).
+- **Test:** test-gate pass (0 fail); sign-spof 3/3, free-quota 18/18 (vč. tryConsume atomic + shared-budget testů). Gate exit 1 jen kvůli pre-existing mcp/ `qs` CVE (npm audit + set -e, mimo scope).
+- **Backup:** žádná DB/schema/destruktivní operace (jen kód) → §11 zálohu nevyžaduje. Rollback = `git revert` commitů na claude/code-review-r0c4eq (base 5fcf592).
+- **Gotcha:** consumeFreeQuota zůstává no-op (BC); endpointy mimo checkFreeQuota middleware MUSÍ volat tryConsumeFreeQuota (atomic) — jinak se kvóta nespotřebuje. Read getQuotaStatus + no-op consume = tichý bypass.
+
 ### 2026-06-12: Alchemy DEX poller nasazen, helius-poller smazán — [db]
 - **Změny:** lib/alchemy-dex-poller.js (create, +public RPC fallback pro getSignaturesForAddress), scripts/start-poller-cron.js (require+logy), package.json (test chain), lib/helius-poller.js (delete). Commity b2d0583, 8d8122f.
 - **Důvod:** Task 2+3 plánu 2026-06-12-alchemy-dex-poller.md — Helius Enhanced API 403.

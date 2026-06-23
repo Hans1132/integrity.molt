@@ -29,7 +29,7 @@ const splMintPoller          = require('./src/monitor/spl-mint-poller');
 const { runWithAdvisor }     = require('./src/llm/anthropic-advisor');
 const { SECURITY_ANALYST_SYSTEM } = require('./src/llm/prompts/security-analyst');
 const { lookupScamDb }       = require('./src/scam-db/lookup');
-const { createQuotaMiddleware, createBlacklistMiddleware, GLOBAL_DAILY_CAP, getClientIp: _getClientIp } = require('./src/middleware/free-quota');
+const { createQuotaMiddleware, createBlacklistMiddleware, GLOBAL_DAILY_CAP, PER_IP_DAILY_LIMIT, getClientIp: _getClientIp } = require('./src/middleware/free-quota');
 // Initialized after db is required at line 7; db.db is the raw better-sqlite3 instance
 const _rawDb = db.db;
 const _stmtAbuseGlobalToday  = _rawDb.prepare('SELECT free_count, paid_count FROM global_scan_stats WHERE stat_date = ?');
@@ -38,7 +38,7 @@ const _stmtAbuseBlacklist    = _rawDb.prepare("SELECT ip, reason, added_at, expi
 const _stmtAbuseEvents24h    = _rawDb.prepare("SELECT event_type, COUNT(*) as count FROM abuse_events WHERE occurred_at > datetime('now', '-24 hours') GROUP BY event_type");
 const _stmtAbuseTopIps24h    = _rawDb.prepare("SELECT ip, event_type, COUNT(*) as count FROM abuse_events WHERE occurred_at > datetime('now', '-24 hours') GROUP BY ip, event_type ORDER BY count DESC LIMIT 10");
 const _quotaMw = createQuotaMiddleware(db.db);
-const { checkFreeQuota, consumeFreeQuota, getQuotaStatus, isInternalCall } = _quotaMw;
+const { checkFreeQuota, consumeFreeQuota, tryConsumeFreeQuota, getQuotaStatus, isInternalCall } = _quotaMw;
 const _blacklistMw = createBlacklistMiddleware(db.db);
 const { checkBlacklist, logAbuseEvent, addToBlacklist } = _blacklistMw;
 const { enrichScanResult, combineScores } = require('./src/enrichment');
@@ -1808,7 +1808,7 @@ const validateSolanaAddress = (req, res, next) => {
   next();
 };
 
-app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, async (req, res) => {
+app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, checkFreeQuota, async (req, res) => {
   const ip = _getClientIp(req);
   if (ip !== '127.0.0.1') {
     if (_freeScanRL.size >= _FREE_SCAN_RL_MAX) {
@@ -1828,21 +1828,10 @@ app.post('/scan/iris', express.json(), checkBlacklist, validateSolanaAddress, as
   const address = req.body?.address || req.body?.target;
   const safeAddress = address; // validated by validateSolanaAddress middleware
 
-  if (!isInternalCall(req)) {
-    const quota = getQuotaStatus(ip);
-    if (quota.remaining <= 0) {
-      return res.status(429).json({
-        error:       'Daily free scan limit reached',
-        message:     `You've used ${quota.used}/${quota.limit} free scans today. Limit resets at midnight UTC.`,
-        used:        quota.used,
-        limit:       quota.limit,
-        remaining:   0,
-        resets_at:   'midnight UTC',
-        upgrade_url: 'https://intmolt.org/scan',
-      });
-    }
-    consumeFreeQuota(ip);
-  }
+  // Daily free-tier quota is enforced atomically by the checkFreeQuota middleware
+  // above (check + consume in one transaction, internal calls skipped). The prior
+  // inline getQuotaStatus()+consumeFreeQuota() pair never consumed — consumeFreeQuota
+  // is a no-op outside the middleware — so the per-IP/day cap was never applied here.
 
   try {
     const [enrichment, scamDb, accountRes] = await Promise.all([
@@ -1958,19 +1947,29 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
       }
     }
 
-    // Daily quota check
+    // Daily quota check — atomic check+consume (consumeFreeQuota alone is a no-op
+    // outside the checkFreeQuota middleware, so the cap was never enforced here).
     if (!isInternalCall(req)) {
-      const quota = getQuotaStatus(ip);
-      if (quota.remaining <= 0) {
+      const quota = tryConsumeFreeQuota(ip);
+      if (quota.denied === 'global') {
+        return res.status(429).json({
+          error: 'Daily free scan capacity exhausted',
+          message: 'Free tier limit reached globally. Try again tomorrow or upgrade for unlimited scans.',
+          global_limit: GLOBAL_DAILY_CAP,
+          global_used: quota.globalUsed,
+          upgrade_url: 'https://intmolt.org/scan',
+        });
+      }
+      if (quota.denied) {
+        const used = quota.used ?? PER_IP_DAILY_LIMIT;
         return res.status(429).json({
           error: 'Daily free scan limit reached',
-          message: `You've used ${quota.used}/${quota.limit} free scans today. Limit resets at midnight UTC.`,
-          used: quota.used, limit: quota.limit, remaining: 0,
+          message: `You've used ${used}/${PER_IP_DAILY_LIMIT} free scans today. Limit resets at midnight UTC.`,
+          used, limit: PER_IP_DAILY_LIMIT, remaining: 0,
           resets_at: 'midnight UTC',
           upgrade_url: 'https://intmolt.org/scan',
         });
       }
-      consumeFreeQuota(ip);
     }
 
     try {
@@ -4472,10 +4471,10 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
   if (!address) return res.status(400).json({ error: 'Missing address' });
 
   // Matematická CAPTCHA verifikace (přeskočí se pro interní A2A volání ze stejného serveru)
-  const isInternalA2A = req.headers['x-a2a-caller'] === '1' && req.ip === '127.0.0.1';
+  const isInternalA2A = req.headers['x-a2a-caller'] === '1' && isInternalCall(req);
   const captchaOk = isInternalA2A || verifyCaptcha(captchaToken, captchaAnswer);
   if (!captchaOk) {
-    logAbuseEvent(req.ip, 'captcha_failed', { reason: 'invalid_answer' });
+    logAbuseEvent(_getClientIp(req), 'captcha_failed', { reason: 'invalid_answer' });
     return res.status(403).json({ error: 'CAPTCHA verification failed', captcha_required: true });
   }
   if (!['quick', 'deep', 'token', 'wallet', 'pool', 'evm-token', 'contract', 'agent-token'].includes(type)) {
@@ -4561,7 +4560,7 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
     });
   }
 
-  const ip          = req.ip;
+  const ip          = _getClientIp(req);
   const quotaStatus = getQuotaStatus(ip);
   const used        = quotaStatus.used;
 
@@ -4629,8 +4628,31 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
     });
   }
 
-  // Spotřebuj kvótu před spuštěním — zabrání souběžnému zneužití
-  consumeFreeQuota(ip);
+  // Spotřebuj kvótu atomicky až po cache-miss (cache hity nečerpají); interní
+  // volání kvótu nečerpají. consumeFreeQuota samotná je no-op, proto tryConsume.
+  // Read check výše (used >= FREE_SCAN_LIMIT) je rychlý paywall s teaserem;
+  // tato atomická spotřeba zavírá race i samotný bypass.
+  if (!isInternalCall(req)) {
+    const consumed = tryConsumeFreeQuota(ip);
+    if (consumed.denied === 'global') {
+      return res.status(429).json({
+        error:        'Daily free scan capacity exhausted',
+        message:      'Free tier limit reached globally. Try again tomorrow or upgrade for unlimited scans.',
+        global_limit: GLOBAL_DAILY_CAP,
+        global_used:  consumed.globalUsed,
+        upgrade_url:  'https://intmolt.org/scan',
+      });
+    }
+    if (consumed.denied) {
+      return res.status(429).json({
+        error:           'free_quota_exceeded',
+        message:         'Daily free scan limit reached. Upgrade at intmolt.org/pricing',
+        scans_used:      consumed.used ?? FREE_SCAN_LIMIT,
+        scans_limit:     FREE_SCAN_LIMIT,
+        scans_remaining: 0,
+      });
+    }
+  }
 
   const newUsed = used + 1;
   const t0 = Date.now();
