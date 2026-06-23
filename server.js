@@ -1951,6 +1951,15 @@ app.post('/scan/quick', trackFunnel('quick'), requireApiKey, express.json(), val
     // outside the checkFreeQuota middleware, so the cap was never enforced here).
     if (!isInternalCall(req)) {
       const quota = tryConsumeFreeQuota(ip);
+      if (quota.denied === 'global') {
+        return res.status(429).json({
+          error: 'Daily free scan capacity exhausted',
+          message: 'Free tier limit reached globally. Try again tomorrow or upgrade for unlimited scans.',
+          global_limit: GLOBAL_DAILY_CAP,
+          global_used: quota.globalUsed,
+          upgrade_url: 'https://intmolt.org/scan',
+        });
+      }
       if (quota.denied) {
         const used = quota.used ?? PER_IP_DAILY_LIMIT;
         return res.status(429).json({
@@ -4625,6 +4634,15 @@ app.post('/scan/free', express.json(), checkBlacklist, async (req, res) => {
   // tato atomická spotřeba zavírá race i samotný bypass.
   if (!isInternalCall(req)) {
     const consumed = tryConsumeFreeQuota(ip);
+    if (consumed.denied === 'global') {
+      return res.status(429).json({
+        error:        'Daily free scan capacity exhausted',
+        message:      'Free tier limit reached globally. Try again tomorrow or upgrade for unlimited scans.',
+        global_limit: GLOBAL_DAILY_CAP,
+        global_used:  consumed.globalUsed,
+        upgrade_url:  'https://intmolt.org/scan',
+      });
+    }
     if (consumed.denied) {
       return res.status(429).json({
         error:           'free_quota_exceeded',

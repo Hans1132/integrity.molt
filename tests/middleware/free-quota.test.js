@@ -253,6 +253,29 @@ async function run() {
     assert.strictEqual(tryConsumeFreeQuota(ip).denied, 'ip', '4th across both paths denied');
   });
 
+  await test('tryConsumeFreeQuota: returns denied:global when global cap exhausted', async () => {
+    clearTables();
+    rawDb.prepare(
+      `INSERT INTO global_scan_stats (stat_date, free_count) VALUES (?, ?)
+       ON CONFLICT(stat_date) DO UPDATE SET free_count = ?`
+    ).run(today, GLOBAL_DAILY_CAP, GLOBAL_DAILY_CAP);
+    const r = tryConsumeFreeQuota('10.0.1.4');
+    assert.strictEqual(r.denied, 'global');
+    assert.strictEqual(r.globalUsed, GLOBAL_DAILY_CAP);
+  });
+
+  await test('tryConsumeFreeQuota: fails open (ok+dbError) on DB error', async () => {
+    clearTables();
+    rawDb.exec('DROP TABLE free_scan_quota'); // force checkAndConsumeTx to throw
+    try {
+      const r = tryConsumeFreeQuota('10.0.1.5');
+      assert.strictEqual(r.ok, true, 'must fail open so a DB hiccup never blocks a scan');
+      assert.strictEqual(r.dbError, true);
+    } finally {
+      rawDb.exec(QUOTA_TABLES_DDL); // restore (CREATE TABLE IF NOT EXISTS)
+    }
+  });
+
   await test('checkBlacklist: blacklisted IP returns 403 with reason field', async () => {
     clearTables();
     const ip = '10.0.0.10';
