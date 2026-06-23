@@ -77,6 +77,11 @@ say "installing requirements"
 
 chown -R "$USER:$GROUP" "$APP_DIR"
 
+# 4b. configure git safe.directory for moltbot user so /refreshidentity's
+# rev-parse can read /root/x402-server's .git (owned by root, accessed by moltbot)
+say "configuring git safe.directory for $USER"
+sudo -u "$USER" HOME="$APP_DIR" git config --global --add safe.directory /root/x402-server 2>/dev/null || true
+
 # 5. /etc/moltbot defaults (don't overwrite if operator edited)
 if [[ ! -f "$LLM_CONF" ]]; then
     say "writing default $LLM_CONF"
