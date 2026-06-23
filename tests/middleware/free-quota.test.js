@@ -89,7 +89,7 @@ async function run() {
   await initSchema();
   rawDb.exec(QUOTA_TABLES_DDL);
 
-  const { checkFreeQuota, consumeFreeQuota, getQuotaStatus, getClientIp } = createQuotaMiddleware(rawDb);
+  const { checkFreeQuota, consumeFreeQuota, tryConsumeFreeQuota, getQuotaStatus, getClientIp } = createQuotaMiddleware(rawDb);
   const { checkBlacklist, addToBlacklist } = createBlacklistMiddleware(rawDb);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -216,6 +216,41 @@ async function run() {
     }
     const status = getQuotaStatus(ip);
     assert.strictEqual(status.used, 2, `expected used=2, got ${status.used}`);
+  });
+
+  // ── tryConsumeFreeQuota (inline atomic consume for /scan/quick, /scan/free) ──
+
+  await test('tryConsumeFreeQuota: increments quota atomically (not a no-op)', async () => {
+    clearTables();
+    const ip = '10.0.1.1';
+    const r1 = tryConsumeFreeQuota(ip);
+    assert.strictEqual(r1.ok, true);
+    assert.strictEqual(getQuotaStatus(ip).used, 1, 'must actually consume, unlike consumeFreeQuota no-op');
+    tryConsumeFreeQuota(ip);
+    assert.strictEqual(getQuotaStatus(ip).used, 2);
+  });
+
+  await test('tryConsumeFreeQuota: returns denied:ip after PER_IP_DAILY_LIMIT reached', async () => {
+    clearTables();
+    const ip = '10.0.1.2';
+    for (let i = 0; i < PER_IP_DAILY_LIMIT; i++) {
+      assert.strictEqual(tryConsumeFreeQuota(ip).ok, true, `consume ${i} should succeed`);
+    }
+    const denied = tryConsumeFreeQuota(ip);
+    assert.strictEqual(denied.denied, 'ip', 'next consume past the limit must be denied');
+    assert.strictEqual(denied.ok, undefined);
+    // Denied attempt must NOT increment further.
+    assert.strictEqual(getQuotaStatus(ip).used, PER_IP_DAILY_LIMIT);
+  });
+
+  await test('tryConsumeFreeQuota: shares the per-IP budget with checkFreeQuota', async () => {
+    clearTables();
+    const ip = '10.0.1.3';
+    // 2 via middleware, 1 via inline — 3rd inline consume exhausts, 4th denied.
+    checkFreeQuota(makeReq({ headers: { 'cf-connecting-ip': ip } }), makeRes(), () => {});
+    checkFreeQuota(makeReq({ headers: { 'cf-connecting-ip': ip } }), makeRes(), () => {});
+    assert.strictEqual(tryConsumeFreeQuota(ip).ok, true, '3rd (inline) still allowed');
+    assert.strictEqual(tryConsumeFreeQuota(ip).denied, 'ip', '4th across both paths denied');
   });
 
   await test('checkBlacklist: blacklisted IP returns 403 with reason field', async () => {

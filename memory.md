@@ -12,13 +12,13 @@
 
 ## Recent changes (top of stack, newest first)
 
-### 2026-06-17: Code-review remediation H1/M1/M2 — [security/backend]
-- **Změny:** server.js (/scan/iris +checkFreeQuota middleware, smazán mrtvý getQuotaStatus+no-op consumeFreeQuota blok; /scan/free quota IP req.ip→_getClientIp + captcha bypass req.ip→isInternalCall), src/crypto/sign.js (asyncSign settled-guard — semafor uvolněn právě jednou), tests/crypto/sign-spof.test.js (+regression test, _activeCountForTest export).
-- **Důvod:** Code review. H1: /scan/iris denní free quota se nikdy nespotřebovala (consumeFreeQuota je no-op mimo middleware). M1: semafor double-release při invalid JSON z sign-report.py → _active drift, prolomený concurrency cap. M2: req.ip místo CF-Connecting-IP (sharp edge #1) v quota key; captcha bypass přešel na isInternalCall (CodeRabbit: _getClientIp padá na 127.0.0.1 bez CF hlavičky).
-- **Dopad:** /scan/iris nyní respektuje 3/IP/den; signing pool drží cap 8 i v degradaci; /scan/free IP nespoofovatelná přes XFF, captcha bypass jen pro skutečně interní volání. Branch claude/code-review-r0c4eq (draft PR, čeká Hansův manual review — payment/crypto sensitive §6).
-- **Test:** test-gate 216/0 pass; sign-spof 3/3 (vč. nového drift testu), free-quota 15/15. Gate exit 1 jen kvůli pre-existing mcp/ `qs` CVE (npm audit + set -e, mimo scope).
+### 2026-06-17: Code-review remediation H1/M1/M2 + free-quota bypass — [security/backend]
+- **Změny:** server.js (/scan/iris +checkFreeQuota middleware; /scan/quick + /scan/free no-op consumeFreeQuota → atomický tryConsumeFreeQuota, guard !isInternalCall; /scan/free quota IP req.ip→_getClientIp + captcha bypass req.ip→isInternalCall), src/middleware/free-quota.js (+tryConsumeFreeQuota wrap nad checkAndConsumeTx, fail-open), src/crypto/sign.js (asyncSign settled-guard), tests/crypto/sign-spof.test.js + tests/middleware/free-quota.test.js (+regression/atomic testy).
+- **Důvod:** Code review + CodeRabbit. H1: /scan/iris free quota se nikdy nespotřebovala (consumeFreeQuota no-op mimo middleware); stejný bypass i na /scan/quick a /scan/free. M1: semafor double-release při invalid JSON → _active drift. M2: req.ip místo CF-Connecting-IP (sharp edge #1); captcha bypass → isInternalCall (_getClientIp padá na 127.0.0.1 bez CF hlavičky).
+- **Dopad:** všechny 3 free endpointy nyní sdílejí a vynucují 3/IP/den + global cap atomicky; paid (API key / x402) a interní volání kvótu nečerpají (/scan/quick gating zachován); signing pool drží cap 8 i v degradaci; /scan/free captcha bypass jen pro interní volání. Branch claude/code-review-r0c4eq (draft PR, čeká Hansův manual review — payment/crypto sensitive §6).
+- **Test:** test-gate pass (0 fail); sign-spof 3/3, free-quota 18/18 (vč. tryConsume atomic + shared-budget testů). Gate exit 1 jen kvůli pre-existing mcp/ `qs` CVE (npm audit + set -e, mimo scope).
 - **Backup:** žádná DB/schema/destruktivní operace (jen kód) → §11 zálohu nevyžaduje. Rollback = `git revert` commitů na claude/code-review-r0c4eq (base 5fcf592).
-- **Gotcha:** Stejný no-op consumeFreeQuota bug přežívá na 2 dalších místech (server.js ~1950/1960 a /scan/free ~4554/4622) — flagnuto pro follow-up, mimo schválený scope.
+- **Gotcha:** consumeFreeQuota zůstává no-op (BC); endpointy mimo checkFreeQuota middleware MUSÍ volat tryConsumeFreeQuota (atomic) — jinak se kvóta nespotřebuje. Read getQuotaStatus + no-op consume = tichý bypass.
 
 ### 2026-06-12: Alchemy DEX poller nasazen, helius-poller smazán — [db]
 - **Změny:** lib/alchemy-dex-poller.js (create, +public RPC fallback pro getSignaturesForAddress), scripts/start-poller-cron.js (require+logy), package.json (test chain), lib/helius-poller.js (delete). Commity b2d0583, 8d8122f.
