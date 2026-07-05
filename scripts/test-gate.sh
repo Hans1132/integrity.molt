@@ -108,6 +108,29 @@ else
   ERRORS="$ERRORS\n- Golden dataset accuracy tests failed"
 fi
 
+# 9b. Ground-truth eval — unit testy harness
+echo "📐 Eval harness unit tests..."
+if node tests/eval/metrics.test.js >/dev/null 2>&1 \
+   && node tests/eval/eval-core.test.js >/dev/null 2>&1 \
+   && node tests/eval/regression-gate.test.js >/dev/null 2>&1 \
+   && node tests/eval/run.test.js >/dev/null 2>&1 \
+   && node tests/eval/freeze-baseline.test.js >/dev/null 2>&1 \
+   && node tests/eval/gold-anchor-data.test.js >/dev/null 2>&1; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- Eval harness unit tests failed"
+fi
+
+# 9c. Ground-truth non-regression brána (SKIP dokud baseline.json neexistuje)
+echo "🎯 Eval non-regression..."
+if node scripts/eval/check-regression.js; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1))
+  ERRORS="$ERRORS\n- Ground-truth regression gate failed"
+fi
+
 # 10. Scam DB unit tests
 echo "🗄️  Scam DB tests..."
 if node tests/scam-db.test.js 2>/dev/null; then

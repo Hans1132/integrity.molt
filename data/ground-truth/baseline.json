@@ -1,0 +1,10 @@
+{
+  "frozen_at": "2026-06-19T08:26:04.585Z",
+  "rules_version": "v2.0.1",
+  "anchor_version": "1.0",
+  "split": "tune",
+  "n": 164,
+  "recall_scam": 0.09876543209876543,
+  "fpr": 0.20481927710843373,
+  "score_mae": 30.171
+}
