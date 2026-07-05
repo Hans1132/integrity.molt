@@ -112,7 +112,10 @@ fi
 echo "📐 Eval harness unit tests..."
 if node tests/eval/metrics.test.js >/dev/null 2>&1 \
    && node tests/eval/eval-core.test.js >/dev/null 2>&1 \
-   && node tests/eval/regression-gate.test.js >/dev/null 2>&1; then
+   && node tests/eval/regression-gate.test.js >/dev/null 2>&1 \
+   && node tests/eval/run.test.js >/dev/null 2>&1 \
+   && node tests/eval/freeze-baseline.test.js >/dev/null 2>&1 \
+   && node tests/eval/gold-anchor-data.test.js >/dev/null 2>&1; then
   PASS=$((PASS+1))
 else
   FAIL=$((FAIL+1))

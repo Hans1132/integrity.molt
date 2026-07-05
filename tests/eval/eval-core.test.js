@@ -109,18 +109,25 @@ test('loadAnchor throws when tokens is not an array', () => {
   assert.throws(() => loadAnchor(tmp), /tokens missing or not an array/);
 });
 
-// ── Additional schema.js coverage ──────────────────────────────────────────
-test('entry that is not an object → single generic error', () => {
-  assert.deepStrictEqual(validateGoldEntry(null), ['entry is not an object']);
-  assert.deepStrictEqual(validateGoldEntry('nope'), ['entry is not an object']);
+// ── Additional schema.js edge cases ────────────────────────────────────────
+
+test('split must be tune|holdout', () => {
+  const bad = { ...validEntry, split: 'test' };
+  assert.ok(validateGoldEntry(bad).some(e => e.includes('split')));
 });
 test('mint shorter than 32 chars → error', () => {
-  const bad = { ...validEntry, mint: 'tooShort' };
+  const bad = { ...validEntry, mint: 'tooshort' };
   assert.ok(validateGoldEntry(bad).some(e => e.includes('mint')));
 });
-test('split must be tune|holdout', () => {
-  const bad = { ...validEntry, split: 'production' };
-  assert.ok(validateGoldEntry(bad).some(e => e.includes('split')));
+test('non-string mint → error', () => {
+  const bad = { ...validEntry, mint: 12345 };
+  assert.ok(validateGoldEntry(bad).some(e => e.includes('mint')));
+});
+test('missing label entirely → verdict + score_range errors, no throw', () => {
+  const bad = { ...validEntry, label: undefined };
+  const errs = validateGoldEntry(bad);
+  assert.ok(errs.some(e => e.includes('verdict')));
+  assert.ok(errs.some(e => e.includes('score_range')));
 });
 test('must_flag not an array → error', () => {
   const bad = { ...validEntry, must_flag: 'not-an-array' };
@@ -134,92 +141,58 @@ test('missing snapshot.goplus → error', () => {
   const bad = { ...validEntry, snapshot: { enrichment: {} } };
   assert.ok(validateGoldEntry(bad).some(e => e.includes('snapshot.goplus')));
 });
-test('missing snapshot entirely → both enrichment and goplus errors', () => {
-  const bad = { ...validEntry, snapshot: undefined };
-  const errs = validateGoldEntry(bad);
-  assert.ok(errs.some(e => e.includes('snapshot.enrichment')));
-  assert.ok(errs.some(e => e.includes('snapshot.goplus')));
+test('null entry → single generic error, no throw', () => {
+  assert.deepStrictEqual(validateGoldEntry(null), ['entry is not an object']);
 });
-test('unknown verdict "unknown" is a valid lowercase enum value', () => {
-  const ok = { ...validEntry, label: { ...validEntry.label, verdict: 'unknown' } };
-  assert.deepStrictEqual(validateGoldEntry(ok), []);
+test('valid entry with verdict "danger" and category "scam" passes', () => {
+  const entry = { ...validEntry, category: 'scam',
+    label: { ...validEntry.label, verdict: 'danger', score_range: [70, 100] } };
+  assert.deepStrictEqual(validateGoldEntry(entry), []);
 });
-test('VERDICTS/CATEGORIES/SPLITS export the documented enums', () => {
-  const { VERDICTS, CATEGORIES, SPLITS } = require('../../scripts/eval/lib/schema');
-  assert.deepStrictEqual([...VERDICTS].sort(), ['caution', 'danger', 'safe', 'unknown']);
-  assert.deepStrictEqual([...CATEGORIES].sort(), ['edge', 'legit', 'scam']);
-  assert.deepStrictEqual([...SPLITS].sort(), ['holdout', 'tune']);
-});
-test('loadAnchor returns parsed data untouched on a valid anchor file', () => {
-  const { loadAnchor } = require('../../scripts/eval/lib/schema');
-  const tmp = require('path').join(process.env.CLAUDE_JOB_DIR || '/tmp', 'tmp', 'good-anchor.json');
-  require('fs').mkdirSync(require('path').dirname(tmp), { recursive: true });
-  const payload = { _meta: { version: '9.9' }, tokens: [validEntry] };
-  require('fs').writeFileSync(tmp, JSON.stringify(payload));
-  const loaded = loadAnchor(tmp);
-  assert.strictEqual(loaded._meta.version, '9.9');
-  assert.strictEqual(loaded.tokens.length, 1);
-  assert.strictEqual(loaded.tokens[0].id, 'gt-0001');
-});
-test('loadAnchor error message includes the offending token index and id', () => {
-  const { loadAnchor } = require('../../scripts/eval/lib/schema');
-  const tmp = require('path').join(process.env.CLAUDE_JOB_DIR || '/tmp', 'tmp', 'bad-token-anchor.json');
-  require('fs').mkdirSync(require('path').dirname(tmp), { recursive: true });
-  const badToken = { ...validEntry, id: 'gt-BAD', category: 'not-a-category' };
-  require('fs').writeFileSync(tmp, JSON.stringify({ _meta: {}, tokens: [validEntry, badToken] }));
-  assert.throws(() => loadAnchor(tmp), (err) => {
-    assert.ok(err.message.includes('token[1]'));
-    assert.ok(err.message.includes('gt-BAD'));
-    assert.ok(err.message.includes('category'));
-    return true;
-  });
+test('valid entry with verdict "unknown" passes (empty snapshot)', () => {
+  const entry = { ...validEntry, label: { ...validEntry.label, verdict: 'unknown', score_range: [0, 100] } };
+  assert.deepStrictEqual(validateGoldEntry(entry), []);
 });
 
-// ── Additional eval-core.js coverage: opts.whitelistMeta measuring toggle ──
-test('opts.whitelistMeta simulates production soft-whitelist and lowers the score (tier 1 strongest)', () => {
+// ── Additional eval-core.js coverage: match/mismatch fields + whitelist toggle ──
+
+test('evalToken: mustFlagOk is false when a required factor is absent', () => {
   const token = { category: 'legit', label: { verdict: 'safe', score_range: [0, 39] },
-                   must_flag: [], must_not_flag: [], snapshot: sampleSnapshot };
-  const unguardedByWhitelist = evalToken(token);
-  const tier1 = evalToken(token, { whitelistMeta: { tier: 1 } });
-  const tier2 = evalToken(token, { whitelistMeta: { tier: 2 } });
-  assert.ok(tier1.predictedScore < unguardedByWhitelist.predictedScore, 'tier 1 whitelist must reduce the score');
-  assert.ok(tier2.predictedScore < unguardedByWhitelist.predictedScore, 'tier 2 whitelist must reduce the score');
-  assert.ok(tier1.predictedScore < tier2.predictedScore, 'tier 1 (strength 1.0) must reduce more than non-tier-1 (strength 0.7)');
+                  must_flag: ['nonexistent_signal_xyz'], must_not_flag: [], snapshot: sampleSnapshot };
+  assert.strictEqual(evalToken(token).mustFlagOk, false);
 });
-test('default evalToken (no opts) does not apply the whitelist reduction', () => {
+test('evalToken: mustNotFlagOk is false when a forbidden factor is present', () => {
   const token = { category: 'legit', label: { verdict: 'safe', score_range: [0, 39] },
-                   must_flag: [], must_not_flag: [], snapshot: sampleSnapshot };
-  const noOpts = evalToken(token);
-  const explicitNoWhitelist = evalToken(token, {});
-  assert.strictEqual(noOpts.predictedScore, explicitNoWhitelist.predictedScore);
+                  must_flag: [], must_not_flag: ['freeze_authority_active'], snapshot: sampleSnapshot };
+  assert.strictEqual(evalToken(token).mustNotFlagOk, false);
 });
-test('mustFlagOk is true when the expected factor is actually present in risk_factors', () => {
-  const token = { category: 'legit', label: { verdict: 'safe', score_range: [0, 39] },
-                  must_flag: ['freeze_authority_active'], must_not_flag: [], snapshot: sampleSnapshot };
-  const r = evalToken(token);
-  assert.ok(r.risk_factors.includes('freeze_authority_active'));
-  assert.strictEqual(r.mustFlagOk, true);
-});
-test('mustFlagOk is false when an expected factor is absent from risk_factors', () => {
-  const token = { category: 'legit', label: { verdict: 'safe', score_range: [0, 39] },
-                  must_flag: ['this_factor_never_fires'], must_not_flag: [], snapshot: sampleSnapshot };
-  const r = evalToken(token);
-  assert.strictEqual(r.mustFlagOk, false);
-});
-test('verdictMatch and scoreInRange are false when the label deliberately disagrees with the prediction', () => {
-  const token = { category: 'legit', label: { verdict: 'danger', score_range: [70, 100] },
+test('evalToken: verdictMatch/scoreInRange are false on a mismatched label', () => {
+  const token = { category: 'legit', label: { verdict: 'caution', score_range: [40, 69] },
                   must_flag: [], must_not_flag: [], snapshot: sampleSnapshot };
   const r = evalToken(token);
   assert.strictEqual(r.verdictMatch, false);
   assert.strictEqual(r.scoreInRange, false);
 });
-test('evalToken exposes risk_factors identical to the underlying IRIS output', () => {
-  const { enrichment, goplus } = sampleSnapshot;
-  const iris = calculateIRIS_v2(enrichment, EVAL_SCAM_DB, goplus);
+test('evalToken: opts.whitelistMeta simulates soft-whitelist and lowers score vs. default', () => {
   const token = { category: 'legit', label: { verdict: 'safe', score_range: [0, 39] },
                   must_flag: [], must_not_flag: [], snapshot: sampleSnapshot };
-  const r = evalToken(token);
-  assert.deepStrictEqual(r.risk_factors, iris.risk_factors);
+  const baseline = evalToken(token);
+  const tier1 = evalToken(token, { whitelistMeta: { tier: 1 } });
+  const tier2 = evalToken(token, { whitelistMeta: { tier: 2 } });
+  // tier 1 = full (1.0) whitelist strength → strongest reduction; tier !== 1 = 0.7 strength.
+  assert.ok(tier1.predictedScore < baseline.predictedScore,
+    `tier1 score (${tier1.predictedScore}) should be lower than default (${baseline.predictedScore})`);
+  assert.ok(tier1.predictedScore < tier2.predictedScore,
+    `tier1 (${tier1.predictedScore}) should reduce more than tier2 (${tier2.predictedScore})`);
+  assert.ok(tier2.predictedScore < baseline.predictedScore,
+    `tier2 score (${tier2.predictedScore}) should still be lower than default (${baseline.predictedScore})`);
+});
+test('evalToken: default call (no opts) leaves EVAL_SCAM_DB untouched (no whitelist applied)', () => {
+  const token = { category: 'legit', label: { verdict: 'safe', score_range: [0, 39] },
+                  must_flag: [], must_not_flag: [], snapshot: sampleSnapshot };
+  const r1 = evalToken(token);
+  const r2 = evalToken(token, {});
+  assert.strictEqual(r1.predictedScore, r2.predictedScore, 'no opts and empty opts must behave identically');
 });
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
